@@ -36,7 +36,7 @@ include_directories(${GENERATED_JNI_HEADERS_DIR})
 include_directories(3rdparty/libplacebo/install/include)
 
 # Project sources
-set(SOURCES src/placebo_jni.c)
+set(SOURCES src/placebo_jni.cpp)
 
 # Add shared library target
 add_library(libplacebo-jni-native SHARED ${SOURCES})
