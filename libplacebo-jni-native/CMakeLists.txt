@@ -40,24 +40,11 @@ set(SOURCES src/placebo_jni.c)
 
 # Add shared library target
 add_library(libplacebo-jni-native SHARED ${SOURCES})
-#find_library(LIBPLACEBO
-#    NAMES libplacebo.a
-#    PATHS ${CMAKE_SOURCE_DIR}/3rdparty/libplacebo/install/lib
-#    NO_DEFAULT_PATH)
-#if(NOT LIBPLACEBO)
-#    message(FATAL_ERROR "libplacebo not found in ${CMAKE_SOURCE_DIR}/3rdparty/libplacebo/install/lib. Abort build")
-#endif()
-#target_link_libraries(libplacebo-jni-native PRIVATE ${LIBPLACEBO} ${JNI_LIBRARIES})
 target_link_libraries(libplacebo-jni-native PRIVATE
     ${CMAKE_SOURCE_DIR}/3rdparty/libplacebo/install/lib/libplacebo.a
     ${JNI_LIBRARIES})
-# D:/a/libplacebo-jni/libplacebo-jni/libplacebo-jni-native/3rdparty/libplacebo/install/lib
-if(MSVC)
-    set_property(
-            TARGET opus
-            PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreadedDebug"
-    )
 
+if(MSVC)
     set_property(
             TARGET libplacebo-jni-native
             PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreadedDebug"
