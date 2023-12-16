@@ -5,7 +5,7 @@ def generatedJniHeadersDir = generatedHeadersDir.absolutePath
 tasks.register('setupMeson', Exec) {
   workingDir = projectDir
   commandLine 'meson', 'setup', 'build', '--buildtype', 'release',
-          '--default-library=static', '-Ddemos=false',
+          '--default-library=static',
           "-Dprefix=${projectDir}/3rdparty/libplacebo/install",
           "-DGENERATED_JNI_HEADERS_DIR=${generatedJniHeadersDir}"
 }
