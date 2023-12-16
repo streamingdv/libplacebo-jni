@@ -40,12 +40,15 @@ set(SOURCES src/placebo_jni.c)
 
 # Add shared library target
 add_library(libplacebo-jni-native SHARED ${SOURCES})
-find_library(LIBPLACEBO NAMES placebo PATHS ${CMAKE_SOURCE_DIR}/3rdparty/libplacebo/install/lib)
+find_library(LIBPLACEBO
+    NAMES placebo
+    PATHS ${CMAKE_SOURCE_DIR}/3rdparty/libplacebo/install/lib
+    PATH_SUFFIXES lib)
 if(NOT LIBPLACEBO)
-    message(FATAL_ERROR "libplacebo not found in ${CMAKE_SOURCE_DIR}/3rdparty/libplacebo/install/lib")
+    message(FATAL_ERROR "libplacebo not found in ${CMAKE_SOURCE_DIR}/3rdparty/libplacebo/install/lib. Abort build")
 endif()
 target_link_libraries(libplacebo-jni-native PRIVATE ${LIBPLACEBO} ${JNI_LIBRARIES})
-
+# D:/a/libplacebo-jni/libplacebo-jni/libplacebo-jni-native/3rdparty/libplacebo/install/lib
 if(MSVC)
     set_property(
             TARGET opus
