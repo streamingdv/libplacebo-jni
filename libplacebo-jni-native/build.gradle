@@ -1,7 +1,7 @@
 // Define the path to generated JNI headers
 def generatedJniHeadersDir = generatedHeadersDir.absolutePath
 
-tasks.register('setupMesonLibPlacebo', Exec) {
+tasks.register('setupMesonPlacebo', Exec) {
   workingDir = "${projectDir}/3rdparty/libplacebo"
   commandLine 'meson', 'setup', 'build', '--buildtype', 'release',
           '--default-library=static', '-Ddemos=false',
@@ -48,5 +48,5 @@ tasks.named('installMesonJni').configure { dependsOn 'compileMesonJni' }
 
 // Define a new task that will trigger the whole sequence
 tasks.register('buildAndInstall') {
-  dependsOn 'setupMesonLibPlacebo', 'compileMesonPlacebo', 'installMesonPlacebo', 'setupMesonJni', 'compileMesonJni', 'installMesonJni'
+  dependsOn 'setupMesonPlacebo', 'compileMesonPlacebo', 'installMesonPlacebo', 'setupMesonJni', 'compileMesonJni', 'installMesonJni'
 }
