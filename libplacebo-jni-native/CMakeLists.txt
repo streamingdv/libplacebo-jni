@@ -42,7 +42,7 @@ set(SOURCES src/placebo_jni.c)
 add_library(libplacebo-jni-native SHARED ${SOURCES})
 find_library(LIBPLACEBO NAMES placebo PATHS ${CMAKE_SOURCE_DIR}/3rdparty/libplacebo/install/lib)
 if(NOT LIBPLACEBO)
-    message(FATAL_ERROR "libplacebo not found")
+    message(FATAL_ERROR "libplacebo not found in ${CMAKE_SOURCE_DIR}/3rdparty/libplacebo/install/lib")
 endif()
 target_link_libraries(libplacebo-jni-native PRIVATE ${LIBPLACEBO} ${JNI_LIBRARIES})
 
