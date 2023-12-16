@@ -48,7 +48,7 @@ jobs:
 
       - name: Build libplacebo-jni
         run: |
-          gradlew build
+          ./gradlew build
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v2
