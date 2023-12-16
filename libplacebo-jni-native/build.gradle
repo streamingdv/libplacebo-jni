@@ -1,5 +1,13 @@
-// Define the path to generated JNI headers
-def generatedJniHeadersDir = generatedHeadersDir.absolutePath
+import net.jan.gradle.cmake.tasks.CMakeBuildTask
+import org.apache.tools.ant.taskdefs.condition.Os
+
+buildscript {
+  dependencies {
+    classpath files("gradle-cmake.jar")
+  }
+}
+
+apply plugin: "net.jan.gradle.cmake"
 
 tasks.register('setupMesonPlacebo', Exec) {
   workingDir = "${projectDir}/3rdparty/libplacebo"
@@ -20,33 +28,43 @@ tasks.register('installMesonPlacebo', Exec) {
   commandLine 'meson', 'install', '-C', 'build'
 }
 
-// Define a task for setting up the Meson build
-tasks.register('setupMesonJni', Exec) {
-  workingDir = projectDir
-  commandLine 'meson', 'setup', 'build', '--buildtype', 'release',
-          "-DGENERATED_JNI_HEADERS_DIR=${generatedJniHeadersDir}"
-}
+tasks.register('setupJni', CMakeBuildTask) {
+  sourceDirectory file(".")
+  generationDirectory new File(buildDir, "cmake-gen")
 
-// Define a task for compiling the project
-tasks.register('compileMesonJni', Exec) {
-  workingDir = projectDir
-  commandLine 'meson', 'compile', '-vC', 'build'
-}
+  cmake {
+    if (is32bit) {
+      if (!Os.isFamily(Os.FAMILY_WINDOWS)) {
+        throw new GradleException("Only windows supports 32bit currently")
+      } else {
+        arguments = [
+                "-A", "Win32",
+                "-T", "host=x64"
+        ]
+      }
+    } else if (Os.isFamily(Os.FAMILY_WINDOWS)) {
+      arguments = [
+              "-A", "x64",
+              "-T", "host=x64"
+      ]
+    }
 
-// Define a task for installing the build
-tasks.register('installMesonJni', Exec) {
-  workingDir = projectDir
-  commandLine 'meson', 'install', '-C', 'build'
+    variables = [
+            "CMAKE_BUILD_TYPE"              : java.util.Optional.of("Release"),
+            "CMAKE_RUNTIME_OUTPUT_DIRECTORY": java.util.Optional.of(nativeBinariesDir.absolutePath),
+            "CMAKE_LIBRARY_OUTPUT_DIRECTORY": java.util.Optional.of(nativeBinariesDir.absolutePath),
+            "CMAKE_ARCHIVE_OUTPUT_DIRECTORY": java.util.Optional.of(nativeBinariesDir.absolutePath),
+            "GENERATED_JNI_HEADERS_DIR"     : java.util.Optional.of(generatedHeadersDir.absolutePath)
+    ]
+  }
 }
 
 // Define task dependencies
 tasks.named('compileMesonPlacebo').configure { dependsOn 'setupMesonPlacebo' }
 tasks.named('installMesonPlacebo').configure { dependsOn 'compileMesonPlacebo' }
-tasks.named('setupMesonJni').configure { dependsOn 'installMesonPlacebo' }
-tasks.named('compileMesonJni').configure { dependsOn 'setupMesonJni' }
-tasks.named('installMesonJni').configure { dependsOn 'compileMesonJni' }
+tasks.named('setupJni').configure { dependsOn 'installMesonPlacebo' }
 
 // Define a new task that will trigger the whole sequence
 tasks.register('buildAndInstall') {
-  dependsOn 'setupMesonPlacebo', 'compileMesonPlacebo', 'installMesonPlacebo', 'setupMesonJni', 'compileMesonJni', 'installMesonJni'
+  dependsOn 'setupMesonPlacebo', 'compileMesonPlacebo', 'installMesonPlacebo', 'setupJni'
 }
