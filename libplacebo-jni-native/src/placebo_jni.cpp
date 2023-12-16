@@ -32,9 +32,9 @@ JNIEXPORT jlong JNICALL Java_PlaceboWrapper_createLog
         .log_level = plLevel,
     };
 
-    struct pl_log *placebo_log = pl_log_create(apiVersion, &log_params);
+    pl_log placebo_log = pl_log_create(apiVersion, &log_params);
 
-    return reinterpret_cast<jlong>(placebo_log);
+    return reinterpret_cast<jlong>(&placebo_log);
 }
 
 extern "C"
@@ -46,6 +46,6 @@ JNIEXPORT void JNICALL Java_PlaceboWrapper_cleanupLog
     }
      pl_log *log = reinterpret_cast<pl_log *>(logHandle);
      if (log != nullptr) {
-         pl_log_destroy(&log);
+         pl_log_destroy(log);
      }
 }
