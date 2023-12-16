@@ -33,7 +33,7 @@ endif()
 
 # Include directories
 include_directories(${GENERATED_JNI_HEADERS_DIR})
-include_directories(3rdparty/libplacebo/install/include/libplacebo)
+include_directories(3rdparty/libplacebo/install/include)
 
 # Project sources
 set(SOURCES src/placebo_jni.c)
