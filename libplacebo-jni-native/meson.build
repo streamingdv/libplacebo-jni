@@ -1,5 +1,5 @@
 # Project setup
-project('libplacebo-jni-native', 'c',
+project('libplacebo-jni-native', ['c', 'cpp', 'java'],
         default_options : ['buildtype=release', 'b_ndebug=if-release', 'c_std=c11', 'cpp_std=c++20'],
         version : '1.0.0',
         meson_version : '>=0.50.0')
