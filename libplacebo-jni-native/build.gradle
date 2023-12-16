@@ -1,32 +1,52 @@
 // Define the path to generated JNI headers
 def generatedJniHeadersDir = generatedHeadersDir.absolutePath
 
+tasks.register('setupMesonLibPlacebo', Exec) {
+  workingDir = "${projectDir}/3rdparty/libplacebo"
+  commandLine 'meson', 'setup', 'build', '--buildtype', 'release',
+          '--default-library=static', '-Ddemos=false',
+          "-Dprefix=${projectDir}/3rdparty/libplacebo/install"
+}
+
+// Define a task for compiling the project
+tasks.register('compileMesonPlacebo', Exec) {
+  workingDir = "${projectDir}/3rdparty/libplacebo"
+  commandLine 'meson', 'compile', '-vC', 'build'
+}
+
+// Define a task for installing the build
+tasks.register('installMesonPlacebo', Exec) {
+  workingDir = "${projectDir}/3rdparty/libplacebo"
+  commandLine 'meson', 'install', '-C', 'build'
+}
+
 // Define a task for setting up the Meson build
-tasks.register('setupMeson', Exec) {
+tasks.register('setupMesonJni', Exec) {
   workingDir = projectDir
   commandLine 'meson', 'setup', 'build', '--buildtype', 'release',
-          '--default-library=static',
-          "-Dprefix=${projectDir}/3rdparty/libplacebo/install",
           "-DGENERATED_JNI_HEADERS_DIR=${generatedJniHeadersDir}"
 }
 
 // Define a task for compiling the project
-tasks.register('compileMeson', Exec) {
+tasks.register('compileMesonJni', Exec) {
   workingDir = projectDir
   commandLine 'meson', 'compile', '-vC', 'build'
 }
 
 // Define a task for installing the build
-tasks.register('installMeson', Exec) {
+tasks.register('installMesonJni', Exec) {
   workingDir = projectDir
   commandLine 'meson', 'install', '-C', 'build'
 }
 
 // Define task dependencies
-tasks.named('compileMeson').configure { dependsOn 'setupMeson' }
-tasks.named('installMeson').configure { dependsOn 'compileMeson' }
+tasks.named('compileMesonPlacebo').configure { dependsOn 'setupMesonPlacebo' }
+tasks.named('installMesonPlacebo').configure { dependsOn 'compileMesonPlacebo' }
+tasks.named('setupMesonJni').configure { dependsOn 'installMesonPlacebo' }
+tasks.named('compileMesonJni').configure { dependsOn 'setupMesonJni' }
+tasks.named('installMesonJni').configure { dependsOn 'compileMesonJni' }
 
 // Define a new task that will trigger the whole sequence
 tasks.register('buildAndInstall') {
-  dependsOn 'setupMeson', 'compileMeson', 'installMeson'
+  dependsOn 'setupMesonLibPlacebo', 'compileMesonPlacebo', 'installMesonPlacebo', 'setupMesonJni', 'compileMesonJni', 'installMesonJni'
 }

@@ -1,19 +1,13 @@
 # Project setup
 project('libplacebo-jni-native', 'c',
-        default_options : ['buildtype=release', 'b_ndebug=if-release', 'c_std=c11', 'cpp_std=c++11'],
+        default_options : ['buildtype=release', 'b_ndebug=if-release', 'c_std=c11', 'cpp_std=c++20'],
         version : '1.0.0',
         meson_version : '>=0.50.0')
-
-# Policy settings are not directly applicable in Meson
 
 # Set global compile options
 if host_machine.system() == 'darwin'
     add_global_arguments('-fPIC -fstack-protector', language : 'c')
 endif
-
-# Add 3rd party libraries
-# will be called like this from gradle "meson setup builddir -Dlibplacebo:default_library=static"
-subdir('3rdparty/libplacebo')
 
 # Requires JNI
 jni_dep = dependency('jni', required : true)
