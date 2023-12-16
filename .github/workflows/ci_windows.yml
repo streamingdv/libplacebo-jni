@@ -26,15 +26,6 @@ jobs:
         with:
           submodules: 'recursive'
 
-      - name: Install Java JDK 21
-        run: |
-          choco install openjdk --version=21
-
-      - name: Set JAVA_HOME
-        run: |
-          echo "JAVA_HOME=$JAVA_HOME" >> $GITHUB_ENV
-          echo "$JAVA_HOME/bin" >> $GITHUB_PATH
-
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
         with:
@@ -56,6 +47,15 @@ jobs:
             mingw-w64-${{matrix.env}}-libdovi
             mingw-w64-${{matrix.env}}-lcms2
             mingw-w64-${{matrix.env}}-shaderc
+
+      - name: Install Java JDK 21
+        run: |
+          choco install openjdk --version=21
+
+      - name: Set JAVA_HOME
+        run: |
+          echo "JAVA_HOME=$JAVA_HOME" >> $GITHUB_ENV
+          echo "$JAVA_HOME/bin" >> $GITHUB_PATH
 
       - name: Build libplacebo-jni
         run: |
