@@ -43,7 +43,7 @@ add_library(libplacebo-jni-native SHARED ${SOURCES})
 find_library(LIBPLACEBO
     NAMES placebo
     PATHS ${CMAKE_SOURCE_DIR}/3rdparty/libplacebo/install/lib
-    PATH_SUFFIXES lib)
+    NO_DEFAULT_PATH)
 if(NOT LIBPLACEBO)
     message(FATAL_ERROR "libplacebo not found in ${CMAKE_SOURCE_DIR}/3rdparty/libplacebo/install/lib. Abort build")
 endif()
