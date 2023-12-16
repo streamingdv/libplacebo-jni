@@ -1,56 +1,32 @@
-plugins {
-  id 'java'
-  id 'application'
-  id 'org.javamodularity.moduleplugin' version '1.8.12'
-  id 'org.openjfx.javafxplugin' version '0.0.13'
-  id 'org.beryx.jlink' version '2.25.0'
+// Define the path to generated JNI headers
+def generatedJniHeadersDir = generatedHeadersDir.absolutePath
+
+// Define a task for setting up the Meson build
+tasks.register('setupMeson', Exec) {
+  workingDir = projectDir
+  commandLine 'meson', 'setup', 'build', '--buildtype', 'release',
+          '--default-library=static', '-Ddemos=false',
+          "-Dprefix=${projectDir}/3rdparty/libplacebo/install",
+          "-DGENERATED_JNI_HEADERS_DIR=${generatedJniHeadersDir}"
 }
 
-group 'com.grill.placebo'
-version '1.0-SNAPSHOT'
-
-repositories {
-  mavenCentral()
+// Define a task for compiling the project
+tasks.register('compileMeson', Exec) {
+  workingDir = projectDir
+  commandLine 'meson', 'compile', '-vC', 'build'
 }
 
-ext {
-  junitVersion = '5.9.2'
+// Define a task for installing the build
+tasks.register('installMeson', Exec) {
+  workingDir = projectDir
+  commandLine 'meson', 'install', '-C', 'build'
 }
 
-sourceCompatibility = '21'
-targetCompatibility = '21'
+// Define task dependencies
+tasks.named('compileMeson').configure { dependsOn 'setupMeson' }
+tasks.named('installMeson').configure { dependsOn 'compileMeson' }
 
-tasks.withType(JavaCompile) {
-  options.encoding = 'UTF-8'
-}
-
-application {
-  mainModule = 'com.grill.placebo.placebojninative'
-  mainClass = 'com.grill.placebo.placebojninative.HelloApplication'
-}
-
-javafx {
-  version = '21-ea+24'
-  modules = ['javafx.controls', 'javafx.fxml']
-}
-
-dependencies {
-
-  testImplementation("org.junit.jupiter:junit-jupiter-api:${junitVersion}")
-  testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${junitVersion}")
-}
-
-test {
-useJUnitPlatform()}
-
-jlink {
-  imageZip = project.file("${buildDir}/distributions/app-${javafx.platform.classifier}.zip")
-  options = ['--strip-debug', '--compress', '2', '--no-header-files', '--no-man-pages']
-  launcher {
-    name = 'app'
-  }
-}
-
-jlinkZip {
-  group = 'distribution'
+// Define a new task that will trigger the whole sequence
+tasks.register('buildAndInstall') {
+  dependsOn 'setupMeson', 'compileMeson', 'installMeson'
 }

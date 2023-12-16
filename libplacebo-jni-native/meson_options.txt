@@ -1,0 +1,1 @@
+option('GENERATED_JNI_HEADERS_DIR', type : 'string', description : 'Path to generated JNI headers')

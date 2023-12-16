@@ -1,56 +1,70 @@
+import org.apache.tools.ant.taskdefs.condition.Os
+
 plugins {
-  id 'java'
-  id 'application'
-  id 'org.javamodularity.moduleplugin' version '1.8.12'
-  id 'org.openjfx.javafxplugin' version '0.0.13'
-  id 'org.beryx.jlink' version '2.25.0'
+  id 'java-library'
 }
 
 group 'com.grill.placebo'
-version '1.0-SNAPSHOT'
+version '1.0'
 
-repositories {
-  mavenCentral()
+static def osDependentBinary(name) {
+  return Os.isFamily(Os.FAMILY_WINDOWS) ? "${name}.exe" : name
 }
 
-ext {
-  junitVersion = '5.9.2'
+static def findJavaC() {
+  def javaCBinary = new File(System.getProperty("java.home"), "bin/${osDependentBinary("javac")}")
+  if (javaCBinary.exists()) {
+    return javaCBinary.absolutePath
+  } else {
+    javaCBinary = new File(System.getProperty("java.home"), "../bin/${osDependentBinary("javac")}")
+    if(javaCBinary.exists()) {
+      return javaCBinary.absolutePath
+    }
+
+    def path = System.getenv("PATH")
+    if (path != null) {
+      def paths = path.split(File.pathSeparator)
+      for (def currentPath : paths) {
+        javaCBinary = new File(currentPath, osDependentBinary("javac"))
+        if (javaCBinary.exists()) {
+          return javaCBinary.absolutePath
+        }
+      }
+    }
+  }
+
+  throw new GradleException("Failed to find javac required for header generation, " +
+          "please put it on the PATH or run gradle with a JDK installation!")
 }
 
-sourceCompatibility = '21'
-targetCompatibility = '21'
+def javaCCommand = findJavaC()
 
-tasks.withType(JavaCompile) {
-  options.encoding = 'UTF-8'
-}
-
-application {
-  mainModule = 'com.grill.placebo.libplacebojnijava'
-  mainClass = 'com.grill.placebo.libplacebojnijava.HelloApplication'
-}
-
-javafx {
-  version = '21-ea+24'
-  modules = ['javafx.controls', 'javafx.fxml']
-}
-
-dependencies {
-
-  testImplementation("org.junit.jupiter:junit-jupiter-api:${junitVersion}")
-  testRuntimeOnly("org.junit.jupiter:junit-jupiter-engine:${junitVersion}")
-}
-
-test {
-useJUnitPlatform()}
-
-jlink {
-  imageZip = project.file("${buildDir}/distributions/app-${javafx.platform.classifier}.zip")
-  options = ['--strip-debug', '--compress', '2', '--no-header-files', '--no-man-pages']
-  launcher {
-    name = 'app'
+processResources {
+  from(nativeBinaries) {
+    into "native-binaries"
   }
 }
 
-jlinkZip {
-  group = 'distribution'
+compileJava {
+  options.compilerArgs += ["-h", generatedHeadersDir.getAbsolutePath()]
+}
+
+OutputStream prefixedOutputStream(String prefix, OutputStream parentStream) {
+  OutputStream ret = new OutputStream() {
+    StringBuilder builder = new StringBuilder(prefix)
+
+    @Override
+    void write(int i) throws IOException {
+      if (i as char == '\n' as char) {
+        builder.append(i as char)
+        parentStream.write(builder.toString().getBytes())
+        parentStream.flush()
+        builder.setLength(0)
+        builder.append(prefix)
+      } else {
+        builder.append(i as char)
+      }
+    }
+  }
+  return ret
 }

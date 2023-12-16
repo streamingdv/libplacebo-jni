@@ -1,0 +1,3 @@
+[submodule "libplacebo-jni-native/3rdparty/libplacebo"]
+	path = libplacebo-jni-native/3rdparty/libplacebo
+	url = https://github.com/haasn/libplacebo.git
