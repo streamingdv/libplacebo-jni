@@ -41,7 +41,7 @@ set(SOURCES src/placebo_jni.c)
 # Add shared library target
 add_library(libplacebo-jni-native SHARED ${SOURCES})
 find_library(LIBPLACEBO
-    NAMES placebo
+    NAMES libplacebo.a
     PATHS ${CMAKE_SOURCE_DIR}/3rdparty/libplacebo/install/lib
     NO_DEFAULT_PATH)
 if(NOT LIBPLACEBO)
