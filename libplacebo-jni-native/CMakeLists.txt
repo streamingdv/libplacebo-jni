@@ -59,7 +59,7 @@ if(MSVC)
     )
 
     set_property(
-            TARGET opus-jni-native
+            TARGET libplacebo-jni-native
             PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreadedDebug"
     )
 endif()
