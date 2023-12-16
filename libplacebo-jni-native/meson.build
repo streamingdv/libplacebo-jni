@@ -10,7 +10,7 @@ if host_machine.system() == 'darwin'
 endif
 
 # Requires JNI
-jni_dep = dependency('jni', required : true)
+jni_dep = dependency('jni', version: '>= 1.8.0', modules: ['jvm', 'awt'])
 
 # Configure project
 if get_option('GENERATED_JNI_HEADERS_DIR') == ''
