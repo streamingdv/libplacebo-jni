@@ -9,26 +9,7 @@ buildscript {
 
 apply plugin: "net.jan.gradle.cmake"
 
-tasks.register('setupMesonPlacebo', Exec) {
-  workingDir = "${projectDir}/3rdparty/libplacebo"
-  commandLine 'meson', 'setup', 'build', '--buildtype', 'release',
-          '--default-library=static', '-Ddemos=false',
-          "-Dprefix=${projectDir}/3rdparty/libplacebo/install"
-}
-
-// Define a task for compiling the project
-tasks.register('compileMesonPlacebo', Exec) {
-  workingDir = "${projectDir}/3rdparty/libplacebo"
-  commandLine 'meson', 'compile', '-vC', 'build'
-}
-
-// Define a task for installing the build
-tasks.register('installMesonPlacebo', Exec) {
-  workingDir = "${projectDir}/3rdparty/libplacebo"
-  commandLine 'meson', 'install', '-C', 'build'
-}
-
-tasks.register('setupJni', CMakeBuildTask) {
+tasks.register('buildAndInstall', CMakeBuildTask) {
   sourceDirectory file(".")
   generationDirectory new File(buildDir, "cmake-gen")
 
@@ -57,14 +38,4 @@ tasks.register('setupJni', CMakeBuildTask) {
             "GENERATED_JNI_HEADERS_DIR"     : java.util.Optional.of(generatedHeadersDir.absolutePath)
     ]
   }
-}
-
-// Define task dependencies
-tasks.named('compileMesonPlacebo').configure { dependsOn 'setupMesonPlacebo' }
-tasks.named('installMesonPlacebo').configure { dependsOn 'compileMesonPlacebo' }
-tasks.named('setupJni').configure { dependsOn 'installMesonPlacebo' }
-
-// Define a new task that will trigger the whole sequence
-tasks.register('buildAndInstall') {
-  dependsOn 'setupMesonPlacebo', 'compileMesonPlacebo', 'installMesonPlacebo', 'setupJni'
 }

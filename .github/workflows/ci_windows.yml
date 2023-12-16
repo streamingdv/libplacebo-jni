@@ -16,10 +16,6 @@ jobs:
             env: i686
             arch: 32bit
 
-    defaults:
-      run:
-        shell: msys2 {0}
-
     steps:
       - name: Checkout libplacebo-jni repository
         uses: actions/checkout@v2
@@ -52,18 +48,20 @@ jobs:
             mingw-w64-${{matrix.env}}-lcms2
             mingw-w64-${{matrix.env}}-shaderc
 
-      - name: Set environment variables for MSYS2
+      - name: Build libplacebo
+        working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
         run: |
-          echo "JAVA_HOME=/c/Program Files/OpenJDK/jdk-21" >> $GITHUB_ENV
-          echo "/c/Program Files/OpenJDK/jdk-21/bin" >> $GITHUB_PATH
+          meson setup build --buildtype release --default-library=static -Ddemos=false -Dprefix=$PWD/install
+          meson compile -vC build
+          meson install -C build
+        shell: msys2 {0}
 
       - name: Build libplacebo-jni
         run: |
           ./gradlew build
-        shell: msys2 {0}
 
-      - name: Upload Artifact
-        uses: actions/upload-artifact@v2
-        with:
-          name: windows-library-artifacts-${{ matrix.arch }}
-          path: libplacebo/install
+      #- name: Upload Artifact
+      #  uses: actions/upload-artifact@v2
+      #  with:
+      #    name: windows-library-artifacts-${{ matrix.arch }}
+      #    path: libplacebo/install
