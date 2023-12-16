@@ -1,0 +1,57 @@
+name: CI Windows
+on:
+  workflow_dispatch:
+
+jobs:
+  build-binaries-windows:
+    name: Build Windows lib
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        include:
+          - sys: UCRT64
+            env: ucrt-x86_64
+            arch: 64bit
+          - sys: MINGW32
+            env: i686
+            arch: 32bit
+
+    defaults:
+      run:
+        shell: msys2 {0}
+
+    steps:
+      - name: Checkout libplacebo-jni repository
+        uses: actions/checkout@v2
+
+      - name: Setup MSYS2
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: ${{matrix.sys}}
+          update: true
+          install: >-
+            base-devel
+            mingw-w64-${{matrix.env}}-jq
+            mingw-w64-${{matrix.env}}-gcc
+            mingw-w64-${{matrix.env}}-pkg-config
+            mingw-w64-${{matrix.env}}-vapoursynth
+            mingw-w64-${{matrix.env}}-meson
+            mingw-w64-${{matrix.env}}-ninja
+            mingw-w64-${{matrix.env}}-spirv-tools
+            mingw-w64-${{matrix.env}}-spirv-cross
+            mingw-w64-${{matrix.env}}-vulkan
+            mingw-w64-${{matrix.env}}-vulkan-headers
+            mingw-w64-${{matrix.env}}-vulkan-loader
+            mingw-w64-${{matrix.env}}-libdovi
+            mingw-w64-${{matrix.env}}-lcms2
+            mingw-w64-${{matrix.env}}-shaderc
+
+      - name: Build libplacebo-jni
+        run: |
+          gradlew build
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: windows-library-artifacts-${{ matrix.arch }}
+          path: libplacebo/install
