@@ -10,6 +10,9 @@ project(libplacebo-jni-native)
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
 
+# Set the variable with a default value (windows default)
+set(LIBPLACEBO_LIB_PATH "${CMAKE_SOURCE_DIR}/3rdparty/libplacebo/install/lib/libplacebo.a" CACHE STRING "Path to libplacebo library")
+
 # Check for host system
 if(UNIX OR MINGW)
     set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -fstack-protector")
@@ -41,7 +44,7 @@ set(SOURCES src/placebo_jni.cpp)
 add_library(libplacebo-jni-native SHARED ${SOURCES})
 target_compile_definitions(libplacebo-jni-native PRIVATE PL_STATIC)
 target_link_libraries(libplacebo-jni-native PRIVATE
-    ${CMAKE_SOURCE_DIR}/3rdparty/libplacebo/install/lib/libplacebo.a
+    ${LIBPLACEBO_LIB_PATH}
     ${JNI_LIBRARIES}
     shlwapi)
 

@@ -47,13 +47,11 @@ jobs:
           ./gradlew clean
           ./gradlew libplacebo-jni-java:compileJava
 
-      - name: List contents of libplacebo lib directory
-        run: ls -l ${{ github.workspace }}/libplacebo-jni-native/3rdparty/libplacebo/install/lib
-
       - name: Configure and Build libplacebo-jni with CMake
         run: |
           cmake -G "Ninja" -B build -S ./libplacebo-jni-native \
             -DCMAKE_BUILD_TYPE=Release \
+            -DLIBPLACEBO_LIB_PATH=${{ github.workspace }}/libplacebo-jni-native/3rdparty/libplacebo/install/lib/x86_64-linux-gnu/libplacebo.a \ # Override path to libplacebo
             -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries \
             -DCMAKE_LIBRARY_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries \
             -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries \
