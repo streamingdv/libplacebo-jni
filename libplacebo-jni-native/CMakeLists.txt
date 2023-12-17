@@ -30,6 +30,18 @@ include_directories(${JNI_INCLUDE_DIRS})
 
 # Check for GENERATED_JNI_HEADERS_DIR
 set(GENERATED_JNI_HEADERS_DIR "" CACHE STRING "Path to generated JNI headers")
+
+# Collect all files in the directory
+file(GLOB MY_DIRECTORY_CONTENTS "${GENERATED_JNI_HEADERS_DIR}")
+if(NOT MY_DIRECTORY_CONTENTS)
+    message(STATUS "The directory ${GENERATED_JNI_HEADERS_DIR} is empty.")
+else()
+    # Print each file in the directory
+    foreach(FILE IN LISTS MY_DIRECTORY_CONTENTS)
+        message(STATUS "File in directory: ${FILE}")
+    endforeach()
+endif()
+
 if(GENERATED_JNI_HEADERS_DIR STREQUAL "")
     message(FATAL_ERROR "Please run CMake with -DGENERATED_JNI_HEADERS_DIR=/path/to/generated/headers or simply use the gradle build task")
 endif()
