@@ -8,10 +8,10 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Install Java and Git
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y openjdk-11-jdk git  # Adjust JDK version as needed
+      #- name: Install Java and Git
+      #  run: |
+      #    sudo apt-get update
+      #    sudo apt-get install -y openjdk-11-jdk git  # Adjust JDK version as needed
 
       - name: Checkout libplacebo-jni repository
         uses: actions/checkout@v2
