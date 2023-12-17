@@ -33,7 +33,7 @@ jobs:
           pip3 install --upgrade ninja==1.11.1
 
       - name: Build libplacebo
-        working-directory: ${{ github.workspace }}/libplacebo-jni-native/3rdparty/libplacebo
+        working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
         run: |
           meson setup build --buildtype release --default-library=static -Ddemos=false -Dprefix=$PWD/install
           meson compile -vC build
@@ -49,7 +49,7 @@ jobs:
 
       - name: Configure and Build libplacebo-jni with CMake
         run: |
-          cmake -G "Ninja" -B build -S ./libplacebo-jni-native \
+          cmake -G "Ninja" -B build -S ${{ github.workspace }}/libplacebo-jni-native \
             -DCMAKE_BUILD_TYPE=Release \
             -DLIBPLACEBO_LIB_PATH=${{ github.workspace }}/libplacebo-jni-native/3rdparty/libplacebo/install/lib/x86_64-linux-gnu/libplacebo.a \ # Override path to libplacebo
             -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries \
