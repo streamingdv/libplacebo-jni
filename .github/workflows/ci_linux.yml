@@ -52,7 +52,8 @@ jobs:
             -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries \
             -DCMAKE_LIBRARY_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries \
             -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries \
-            -DGENERATED_JNI_HEADERS_DIR=${{ github.workspace }}/build/generatedHeaders
+            -DGENERATED_JNI_HEADERS_DIR=${{ github.workspace }}/build/generatedHeaders \
+            -DIS_RUNNING_ON_WINDOWS=OFF
           cmake --build build
 
       - name: Upload Artifact

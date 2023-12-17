@@ -12,6 +12,7 @@ set(CMAKE_CXX_STANDARD 20)
 
 # Set the variable with a default value (windows default)
 set(LIBPLACEBO_LIB_PATH "${CMAKE_SOURCE_DIR}/3rdparty/libplacebo/install/lib/libplacebo.a" CACHE STRING "Path to libplacebo library")
+option(IS_RUNNING_ON_WINDOWS "Variable indicating if this CMakeLists is executed on a Windows OS" ON)
 
 # Check for host system
 if(UNIX OR MINGW)
@@ -55,10 +56,17 @@ set(SOURCES src/placebo_jni.cpp)
 # Add shared library target
 add_library(libplacebo-jni-native SHARED ${SOURCES})
 target_compile_definitions(libplacebo-jni-native PRIVATE PL_STATIC)
-target_link_libraries(libplacebo-jni-native PRIVATE
-    ${LIBPLACEBO_LIB_PATH}
-    ${JNI_LIBRARIES}
-    shlwapi)
+if(IS_RUNNING_ON_WINDOWS)
+    target_link_libraries(libplacebo-jni-native PRIVATE
+        ${LIBPLACEBO_LIB_PATH}
+        ${JNI_LIBRARIES}
+        shlwapi)
+else()
+    target_link_libraries(libplacebo-jni-native PRIVATE
+        ${LIBPLACEBO_LIB_PATH}
+        ${JNI_LIBRARIES})
+endif()
+
 
 if(MSVC)
     set_property(
