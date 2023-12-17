@@ -2,6 +2,7 @@ import org.apache.tools.ant.taskdefs.condition.Os
 
 plugins {
   id 'java-library'
+  id 'maven-publish'
 }
 
 group 'com.grill.placebo'
@@ -47,4 +48,12 @@ processResources {
 
 compileJava {
   options.compilerArgs += ["-h", generatedHeadersDir.getAbsolutePath()]
+}
+
+publishing {
+  publications {
+    mavenJava(MavenPublication) {
+      from components.java
+    }
+  }
 }
