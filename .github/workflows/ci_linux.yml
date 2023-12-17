@@ -55,15 +55,14 @@ jobs:
 
       - name: Configure and Build libplacebo-jni with CMake
         run: |
-          NATIVE_BINARIES_DIR_UNIX=$(cygpath "${{github.workspace}}/build/nativeBinaries")
-          GENERATED_HEADERS_DIR_UNIX=$(cygpath "${{github.workspace}}/build/generatedHeaders")
           cmake -G "Ninja" -B build -S ./libplacebo-jni-native \
             -DCMAKE_BUILD_TYPE=Release \
-            -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${NATIVE_BINARIES_DIR_UNIX} \
-            -DCMAKE_LIBRARY_OUTPUT_DIRECTORY=${NATIVE_BINARIES_DIR_UNIX} \
-            -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=${NATIVE_BINARIES_DIR_UNIX} \
-            -DGENERATED_JNI_HEADERS_DIR=${GENERATED_HEADERS_DIR_UNIX}
+            -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries \
+            -DCMAKE_LIBRARY_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries \
+            -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries \
+            -DGENERATED_JNI_HEADERS_DIR=${{ github.workspace }}/build/generatedHeaders
           cmake --build build
+
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v2
