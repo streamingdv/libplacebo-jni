@@ -16,7 +16,7 @@ void LogCallbackFunction(void *log_priv, enum pl_log_level level, const char *ms
 }
 
 extern "C"
-JNIEXPORT jlong JNICALL Java_PlaceboWrapper_createLog
+JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_createLog
   (JNIEnv *env, jobject obj, jint apiVersion, jint logLevel, jobject logCallback) {
 
     globalEnv = env;
@@ -38,7 +38,7 @@ JNIEXPORT jlong JNICALL Java_PlaceboWrapper_createLog
 }
 
 extern "C"
-JNIEXPORT void JNICALL Java_PlaceboWrapper_cleanupLog
+JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_cleanupLog
   (JNIEnv *env, jobject obj, jlong logHandle) {
     if (globalCallback != nullptr) {
         env->DeleteGlobalRef(globalCallback);
