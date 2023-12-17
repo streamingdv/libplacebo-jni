@@ -14,11 +14,6 @@ jobs:
       - name: Create nativeBinaries directory
         run: mkdir -p ./build/nativeBinaries
 
-      - name: Download Linux 64-bit Artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: linux-libplacebo-jni-artifact-64bit
-
       - name: Download Windows 64-bit Artifact
         uses: actions/download-artifact@v4
         with:
@@ -28,6 +23,11 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: windows-libjerasure-jni-artifact-32bit
+
+      - name: Download Linux 64-bit Artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-libplacebo-jni-artifact-64bit
 
       - name: Move and Rename Artifacts
         run: |
