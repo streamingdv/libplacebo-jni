@@ -47,6 +47,9 @@ jobs:
           ./gradlew clean
           ./gradlew libplacebo-jni-java:compileJava
 
+      - name: List contents of libplacebo lib directory
+        run: ls -l ${{ github.workspace }}/libplacebo-jni-native/3rdparty/libplacebo/install/lib
+
       - name: Configure and Build libplacebo-jni with CMake
         run: |
           cmake -G "Ninja" -B build -S ./libplacebo-jni-native \
