@@ -12,9 +12,9 @@ jobs:
           - sys: UCRT64
             env: ucrt-x86_64
             arch: 64bit
-          #- sys: MINGW32
-          #  env: i686
-          #  arch: 32bit
+          - sys: MINGW32
+            env: i686
+            arch: 32bit
 
     steps:
       - name: Checkout libplacebo-jni repository
