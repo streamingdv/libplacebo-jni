@@ -49,11 +49,6 @@ jobs:
             mingw-w64-${{ matrix.env }}-shaderc
             mingw-w64-${{ matrix.env }}-cmake
             mingw-w64-${{ matrix.env }}-python
-            mingw-w64-${{ matrix.env }}-python-pip
-
-      - name: Install dlib
-        run: pip install dlib
-        shell: msys2 {0}
 
       - name: Build libplacebo
         working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
