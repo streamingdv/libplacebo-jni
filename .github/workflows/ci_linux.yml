@@ -11,6 +11,11 @@ jobs:
       image: ubuntu:latest
 
     steps:
+      - name: Install Java
+        run: |
+          apt-get update
+          apt-get install -y openjdk-21-jdk
+
       - name: Install Git
         run: |
           apt-get update
