@@ -39,13 +39,11 @@ jobs:
           meson setup build --buildtype release --default-library=static -Ddemos=false -Dprefix=$PWD/install
           meson compile -vC build
           meson install -C build
-        shell: msys2 {0}
 
       - name: Build libplacebo-jni-java compile java
         run: |
           ./gradlew clean
           ./gradlew libplacebo-jni-java:compileJava
-        shell: msys2 {0}
 
       - name: Configure and Build libplacebo-jni with CMake
         run: |
@@ -58,7 +56,6 @@ jobs:
             -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=${NATIVE_BINARIES_DIR_UNIX} \
             -DGENERATED_JNI_HEADERS_DIR=${GENERATED_HEADERS_DIR_UNIX}
           cmake --build build
-        shell: msys2 {0}
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v2
