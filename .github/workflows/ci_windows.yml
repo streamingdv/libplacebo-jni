@@ -58,6 +58,12 @@ jobs:
           meson install -C build
         shell: msys2 {0}
 
+      - name: Create directories
+        run: |
+          mkdir -p ${{ github.workspace }}/build/nativeBinaries
+          mkdir -p ${{ github.workspace }}/build/generatedHeaders
+        shell: msys2 {0}
+
       - name: Configure and Build libplacebo-jni with CMake
         run: |
           cmake -G "Ninja" -B build -S ./libplacebo-jni-native \
