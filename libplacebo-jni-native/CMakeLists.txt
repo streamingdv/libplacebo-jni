@@ -67,6 +67,8 @@ else()
         ${JNI_LIBRARIES})
 endif()
 
+# Set the PREFIX property to empty
+set_target_properties(libplacebo-jni-native PROPERTIES PREFIX "") # avoid the "liblib" naming issu
 
 if(MSVC)
     set_property(
