@@ -32,6 +32,19 @@ if(GENERATED_JNI_HEADERS_DIR STREQUAL "")
 endif()
 
 # Include directories
+message("Include following directory for JNI headers ${GENERATED_JNI_HEADERS_DIR}")
+
+# Collect all files in the directory
+file(GLOB MY_DIRECTORY_CONTENTS "${GENERATED_JNI_HEADERS_DIR}/*")
+if(NOT MY_DIRECTORY_CONTENTS)
+    message(STATUS "The directory ${GENERATED_JNI_HEADERS_DIR} is empty.")
+else()
+    # Print each file in the directory
+    foreach(FILE IN LISTS MY_DIRECTORY_CONTENTS)
+        message(STATUS "File in directory: ${FILE}")
+    endforeach()
+endif()
+
 include_directories(${GENERATED_JNI_HEADERS_DIR})
 include_directories(3rdparty/libplacebo/install/include)
 
