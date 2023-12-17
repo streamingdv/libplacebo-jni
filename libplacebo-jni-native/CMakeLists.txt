@@ -31,13 +31,10 @@ if(GENERATED_JNI_HEADERS_DIR STREQUAL "")
     message(FATAL_ERROR "Please run CMake with -DGENERATED_JNI_HEADERS_DIR=/path/to/generated/headers or simply use the gradle build task")
 endif()
 
-# Include directories
-message("Include following directory for JNI headers ${GENERATED_JNI_HEADERS_DIR}")
-
 # Collect all files in the directory
-file(GLOB MY_DIRECTORY_CONTENTS "${GENERATED_JNI_HEADERS_DIR}/*")
+file(GLOB MY_DIRECTORY_CONTENTS "${CMAKE_SOURCE_DIR}/3rdparty/libplacebo/install/lib/*")
 if(NOT MY_DIRECTORY_CONTENTS)
-    message(STATUS "The directory ${GENERATED_JNI_HEADERS_DIR} is empty.")
+    message(STATUS "The directory ${CMAKE_SOURCE_DIR}/3rdparty/libplacebo/install/lib is empty.")
 else()
     # Print each file in the directory
     foreach(FILE IN LISTS MY_DIRECTORY_CONTENTS)
@@ -53,6 +50,7 @@ set(SOURCES src/placebo_jni.cpp)
 
 # Add shared library target
 add_library(libplacebo-jni-native SHARED ${SOURCES})
+target_compile_definitions(libplacebo-jni-native PRIVATE PL_STATIC)
 target_link_libraries(libplacebo-jni-native PRIVATE
     ${CMAKE_SOURCE_DIR}/3rdparty/libplacebo/install/lib/libplacebo.a
     ${JNI_LIBRARIES})
