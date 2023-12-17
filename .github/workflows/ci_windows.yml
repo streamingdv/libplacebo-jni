@@ -22,10 +22,6 @@ jobs:
         with:
           submodules: 'recursive'
 
-      #- name: Install JDK 21 (using Chocolatey in PowerShell)
-      #  run: choco install openjdk --version=21
-      #  shell: pwsh
-
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
         with:
@@ -77,8 +73,8 @@ jobs:
           cmake --build build
         shell: msys2 {0}
 
-      # - name: Upload Artifact
-      #   uses: actions/upload-artifact@v2
-      #   with:
-      #     name: windows-library-artifacts-${{ matrix.arch }}
-      #     path: libplacebo/install
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: windows-libjerasure-jni-artifacts-${{ matrix.arch }}
+          path: ${{github.workspace}}/build/nativeBinaries
