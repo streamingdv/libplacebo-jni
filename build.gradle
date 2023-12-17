@@ -57,10 +57,9 @@ if(project.hasProperty("32bit")) {
 
 project(":libplacebo-jni-java").afterEvaluate { javaProject ->
   project("libplacebo-jni-native").afterEvaluate { nativeProject ->
-    nativeProject.tasks["buildAndInstall"].dependsOn(javaProject.tasks["compileJava"])
 
     if(!isExternalBuild) {
-      javaProject.tasks["processResources"].dependsOn(nativeProject.tasks["buildAndInstall"])
+      //javaProject.tasks["processResources"].dependsOn(nativeProject.tasks["buildAndInstall"])
     }
   }
 }
@@ -127,6 +126,6 @@ if(ciBuild) {
   }
 
   project("libplacebo-jni-native").afterEvaluate { nativeProject ->
-    nativeProject.tasks["buildAndInstall"].finalizedBy(moveNativeBinaries)
+    //nativeProject.tasks["buildAndInstall"].finalizedBy(moveNativeBinaries)
   }
 }
