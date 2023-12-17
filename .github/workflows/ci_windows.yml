@@ -58,9 +58,15 @@ jobs:
           meson install -C build
         shell: msys2 {0}
 
-      - name: Build libplacebo-jni
+      - name: Configure and Build libplacebo-jni with CMake
         run: |
-          ./gradlew build
+          cmake -G "Ninja" -B build -S ./libplacebo-jni-native \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries \
+            -DCMAKE_LIBRARY_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries \
+            -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries \
+            -DGENERATED_JNI_HEADERS_DIR=${{ github.workspace }}/build/generatedHeaders
+          cmake --build build
         shell: msys2 {0}
 
       # - name: Upload Artifact
