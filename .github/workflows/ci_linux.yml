@@ -40,6 +40,9 @@ jobs:
           meson compile -vC build
           meson install -C build
 
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
       - name: Build libplacebo-jni-java compile java
         run: |
           ./gradlew clean
