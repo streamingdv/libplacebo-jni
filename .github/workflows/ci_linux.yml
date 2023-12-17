@@ -33,7 +33,7 @@ jobs:
           pip3 install --upgrade ninja==1.11.1
 
       - name: Build libplacebo
-        working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
+        working-directory: ${{ github.workspace }}/libplacebo-jni-native/3rdparty/libplacebo
         run: |
           meson setup build --buildtype release --default-library=static -Ddemos=false -Dprefix=$PWD/install
           meson compile -vC build
