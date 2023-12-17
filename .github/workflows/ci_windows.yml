@@ -79,7 +79,7 @@ jobs:
         run: mv ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native.dll ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native-${{ matrix.archValue }}.dll
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: windows-libjerasure-jni-artifact-${{ matrix.arch }}
           path: ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native-${{ matrix.archValue }}.dll

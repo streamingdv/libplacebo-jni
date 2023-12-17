@@ -60,7 +60,7 @@ jobs:
         run: mv ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native.so ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native-64.so
 
       - name: Upload Artifact
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v4
         with:
           name: linux-libplacebo-jni-artifact-64bit
           path: ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native-64.so
