@@ -53,7 +53,8 @@ add_library(libplacebo-jni-native SHARED ${SOURCES})
 target_compile_definitions(libplacebo-jni-native PRIVATE PL_STATIC)
 target_link_libraries(libplacebo-jni-native PRIVATE
     ${CMAKE_SOURCE_DIR}/3rdparty/libplacebo/install/lib/libplacebo.a
-    ${JNI_LIBRARIES})
+    ${JNI_LIBRARIES}
+    shlwapi)
 
 if(MSVC)
     set_property(
