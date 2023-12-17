@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  combine-artifacts:
+  build-java-lib:
     runs-on: ubuntu-latest
 
     steps:
