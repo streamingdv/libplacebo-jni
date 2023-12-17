@@ -29,25 +29,31 @@ jobs:
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
         with:
-          msystem: ${{matrix.sys}}
+          msystem: ${{ matrix.sys }}
           update: true
           install: >-
             base-devel
-            mingw-w64-${{matrix.env}}-jq
-            mingw-w64-${{matrix.env}}-gcc
-            mingw-w64-${{matrix.env}}-pkg-config
-            mingw-w64-${{matrix.env}}-vapoursynth
-            mingw-w64-${{matrix.env}}-meson
-            mingw-w64-${{matrix.env}}-ninja
-            mingw-w64-${{matrix.env}}-spirv-tools
-            mingw-w64-${{matrix.env}}-spirv-cross
-            mingw-w64-${{matrix.env}}-vulkan
-            mingw-w64-${{matrix.env}}-vulkan-headers
-            mingw-w64-${{matrix.env}}-vulkan-loader
-            mingw-w64-${{matrix.env}}-libdovi
-            mingw-w64-${{matrix.env}}-lcms2
-            mingw-w64-${{matrix.env}}-shaderc
-            mingw-w64-${{matrix.env}}-cmake
+            mingw-w64-${{ matrix.env }}-jq
+            mingw-w64-${{ matrix.env }}-gcc
+            mingw-w64-${{ matrix.env }}-pkg-config
+            mingw-w64-${{ matrix.env }}-vapoursynth
+            mingw-w64-${{ matrix.env }}-meson
+            mingw-w64-${{ matrix.env }}-ninja
+            mingw-w64-${{ matrix.env }}-spirv-tools
+            mingw-w64-${{ matrix.env }}-spirv-cross
+            mingw-w64-${{ matrix.env }}-vulkan
+            mingw-w64-${{ matrix.env }}-vulkan-headers
+            mingw-w64-${{ matrix.env }}-vulkan-loader
+            mingw-w64-${{ matrix.env }}-libdovi
+            mingw-w64-${{ matrix.env }}-lcms2
+            mingw-w64-${{ matrix.env }}-shaderc
+            mingw-w64-${{ matrix.env }}-cmake
+            mingw-w64-${{ matrix.env }}-python
+            mingw-w64-${{ matrix.env }}-python-pip
+
+      - name: Install dlib
+        run: pip install dlib
+        shell: msys2 {0}
 
       - name: Build libplacebo
         working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
@@ -62,8 +68,8 @@ jobs:
           ./gradlew build
         shell: msys2 {0}
 
-      #- name: Upload Artifact
-      #  uses: actions/upload-artifact@v2
-      #  with:
-      #    name: windows-library-artifacts-${{ matrix.arch }}
-      #    path: libplacebo/install
+      # - name: Upload Artifact
+      #   uses: actions/upload-artifact@v2
+      #   with:
+      #     name: windows-library-artifacts-${{ matrix.arch }}
+      #     path: libplacebo/install
