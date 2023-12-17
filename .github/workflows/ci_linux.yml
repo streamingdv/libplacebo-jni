@@ -56,8 +56,11 @@ jobs:
             -DIS_RUNNING_ON_WINDOWS=OFF
           cmake --build build
 
+      - name: Rename DLL file
+        run: mv ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native.so ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native-64.so
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v2
         with:
-          name: linux-libplacebo-jni-artifacts
-          path: ${{github.workspace}}/build/nativeBinaries
+          name: linux-libplacebo-jni-artifact-64bit
+          path: ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native-64.so

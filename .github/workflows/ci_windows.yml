@@ -12,9 +12,11 @@ jobs:
           - sys: UCRT64
             env: ucrt-x86_64
             arch: 64bit
+            archValue: 64
           - sys: MINGW32
             env: i686
             arch: 32bit
+            archValue: 32
 
     steps:
       - name: Checkout libplacebo-jni repository
@@ -73,8 +75,11 @@ jobs:
           cmake --build build
         shell: msys2 {0}
 
+      - name: Rename DLL file
+        run: mv ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native.dll ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native-${{ matrix.archValue }}.dll
+
       - name: Upload Artifact
         uses: actions/upload-artifact@v2
         with:
-          name: windows-libjerasure-jni-artifacts-${{ matrix.arch }}
-          path: ${{github.workspace}}/build/nativeBinaries
+          name: windows-libjerasure-jni-artifact-${{ matrix.arch }}
+          path: ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native-${{ matrix.archValue }}.dll
