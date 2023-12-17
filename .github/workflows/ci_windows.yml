@@ -58,10 +58,9 @@ jobs:
           meson install -C build
         shell: msys2 {0}
 
-      - name: Create directories
+      - name: Build libplacebo-jni-java compile java
         run: |
-          mkdir -p ${{ github.workspace }}/build/nativeBinaries
-          mkdir -p ${{ github.workspace }}/build/generatedHeaders
+          ./gradlew libplacebo-jni-java:compileJava
         shell: msys2 {0}
 
       - name: Configure and Build libplacebo-jni with CMake
