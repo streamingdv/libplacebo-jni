@@ -1,10 +1,7 @@
 name: Build Placebo Java Lib
 
 on:
-  workflow_run:
-    workflows: ["CI Linux", "CI Windows"]
-    types:
-      - completed
+  workflow_dispatch:
 
 jobs:
   build-java-lib:
@@ -44,7 +41,6 @@ jobs:
         run: |
           ./gradlew clean
           ./gradlew -PnativeBinaryExternalDir=${{ github.workspace }}/build/nativeBinaries build
-        shell: msys2 {0}
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
