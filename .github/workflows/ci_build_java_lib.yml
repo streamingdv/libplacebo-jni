@@ -1,4 +1,4 @@
-name: Combine Artifacts
+name: Build Placebo Java Lib
 
 on:
   workflow_dispatch:
