@@ -13,7 +13,6 @@ if(!ext.nativeBinariesDir.exists() && !ext.nativeBinariesDir.mkdirs()) {
   throw new GradleException("Failed to create directory ${ext.nativeBinariesDir.absolutePath}")
 }
 
-def isExternalBuild = false
 def ciBuild = project.hasProperty("CI") && Boolean.parseBoolean(project.property("CI").toString())
 
 if(!project.hasProperty("nativeBinaryExternalDir")) {
@@ -45,26 +44,15 @@ if(!project.hasProperty("nativeBinaryExternalDir")) {
     println "Found native binary ${file.absolutePath}"
     ext.nativeBinaries.add(file)
   }
-
-  isExternalBuild = true
 }
 
-if(project.hasProperty("32bit")) {
-  ext.is32bit = true
-} else {
-  ext.is32bit = false
-}
+ext.is32bit = project.hasProperty("32bit")
 
 project(":libplacebo-jni-java").afterEvaluate { javaProject ->
-  project("libplacebo-jni-native").afterEvaluate { nativeProject ->
-
-    if(!isExternalBuild) {
-      //javaProject.tasks["processResources"].dependsOn(nativeProject.tasks["buildAndInstall"])
-    }
-  }
+  javaProject.tasks["build"].dependsOn(javaProject.tasks["compileJava"])
 }
 
-def getExtension(File file) {
+static def getExtension(File file) {
   String fileName = file.getName()
 
   if(fileName.lastIndexOf(".") != -1 && fileName.lastIndexOf(".") != 0) {
@@ -74,7 +62,7 @@ def getExtension(File file) {
   }
 }
 
-def getPathWithoutExtension(File file) {
+static def getPathWithoutExtension(File file) {
   String fileName = file.getAbsolutePath()
 
   if(fileName.lastIndexOf(".") != -1 && fileName.lastIndexOf(".") != 0) {
@@ -88,7 +76,7 @@ def processBinary(File binary, boolean doMove) {
   String extension = getExtension(binary)
   String path = getPathWithoutExtension(binary)
 
-  File newPath = null
+  File newPath
   if(ext.is32bit) {
     newPath = new File(path + "-32." + extension)
   } else {
@@ -123,9 +111,5 @@ if(ciBuild) {
         processBinary(binary, true)
       }
     }
-  }
-
-  project("libplacebo-jni-native").afterEvaluate { nativeProject ->
-    //nativeProject.tasks["buildAndInstall"].finalizedBy(moveNativeBinaries)
   }
 }

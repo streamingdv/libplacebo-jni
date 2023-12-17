@@ -48,23 +48,3 @@ processResources {
 compileJava {
   options.compilerArgs += ["-h", generatedHeadersDir.getAbsolutePath()]
 }
-
-OutputStream prefixedOutputStream(String prefix, OutputStream parentStream) {
-  OutputStream ret = new OutputStream() {
-    StringBuilder builder = new StringBuilder(prefix)
-
-    @Override
-    void write(int i) throws IOException {
-      if (i as char == '\n' as char) {
-        builder.append(i as char)
-        parentStream.write(builder.toString().getBytes())
-        parentStream.flush()
-        builder.setLength(0)
-        builder.append(prefix)
-      } else {
-        builder.append(i as char)
-      }
-    }
-  }
-  return ret
-}

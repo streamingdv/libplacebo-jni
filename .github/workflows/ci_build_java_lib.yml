@@ -1,0 +1,48 @@
+name: Combine Artifacts
+
+on:
+  workflow_dispatch:
+
+jobs:
+  combine-artifacts:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Create nativeBinaries directory
+        run: mkdir -p ./build/nativeBinaries
+
+      - name: Download Linux 64-bit Artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: linux-libplacebo-jni-artifact-64bit
+
+      - name: Download Windows 64-bit Artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: windows-libjerasure-jni-artifact-64bit
+
+      - name: Download Windows 32-bit Artifact
+        uses: actions/download-artifact@v2
+        with:
+          name: windows-libjerasure-jni-artifact-32bit
+
+      - name: Move and Rename Artifacts
+        run: |
+          mv linux-libplacebo-jni-artifact-64bit/*.so ./build/nativeBinaries/libplacebo-jni-native-64.so
+          mv windows-libjerasure-jni-artifact-64bit/*.dll ./build/nativeBinaries/libplacebo-jni-native-64.dll
+          mv windows-libjerasure-jni-artifact-32bit/*.dll ./build/nativeBinaries/libplacebo-jni-native-32.dll
+
+      - name: Build libplacebo-java lib
+        run: |
+          ./gradlew clean
+          ./gradlew -PnativeBinaryExternalDir=${{ github.workspace }}/build/nativeBinaries build
+        shell: msys2 {0}
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: libplacebo-java-linux-windows
+          path: ${{github.workspace}}/libplacebo-jni-native/build/libs
