@@ -86,17 +86,17 @@ if(IS_RUNNING_ON_WINDOWS)
         ${SHADERC_COMBINED_STATIC_LIBRARIES}
         ${VULKAN_STATIC_LIBRARIES}
         "${GLSLANG_LIBS_DIR}/libMachineIndependent.a"
-        "${GLSLANG_LIBS_DIR}/libGenericCodeGen.a"
-        "${GLSLANG_LIBS_DIR}/libglslang.a"
         "${GLSLANG_LIBS_DIR}/libOSDependent.a"
-        "${GLSLANG_LIBS_DIR}/libglslang-default-resource-limits.a"
+        "${GLSLANG_LIBS_DIR}/libglslang.a"
         "${GLSLANG_LIBS_DIR}/libSPIRV.a"
         "${GLSLANG_LIBS_DIR}/libSPVRemapper.a"
-        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools.a"
-        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-opt.a"
-        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-reduce.a"
+        "${GLSLANG_LIBS_DIR}/libglslang-default-resource-limits.a"
+        "${GLSLANG_LIBS_DIR}/libGenericCodeGen.a"
         "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-link.a"
         "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-lint.a"
+        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-reduce.a"
+        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-opt.a"
+        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools.a"
         "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-diff.a"
         shlwapi
     )
@@ -107,17 +107,17 @@ else()
         ${SHADERC_COMBINED_STATIC_LIBRARIES}
         ${VULKAN_STATIC_LIBRARIES}
         "${GLSLANG_LIBS_DIR}/libMachineIndependent.a"
-        "${GLSLANG_LIBS_DIR}/libGenericCodeGen.a"
-        "${GLSLANG_LIBS_DIR}/libglslang.a"
         "${GLSLANG_LIBS_DIR}/libOSDependent.a"
-        "${GLSLANG_LIBS_DIR}/libglslang-default-resource-limits.a"
+        "${GLSLANG_LIBS_DIR}/libglslang.a"
         "${GLSLANG_LIBS_DIR}/libSPIRV.a"
         "${GLSLANG_LIBS_DIR}/libSPVRemapper.a"
-        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools.a"
-        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-opt.a"
-        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-reduce.a"
+        "${GLSLANG_LIBS_DIR}/libglslang-default-resource-limits.a"
+        "${GLSLANG_LIBS_DIR}/libGenericCodeGen.a"
         "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-link.a"
         "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-lint.a"
+        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-reduce.a"
+        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-opt.a"
+        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools.a"
         "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-diff.a"
     )
 endif()
