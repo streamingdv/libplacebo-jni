@@ -38,9 +38,19 @@ endif()
 # Check for GLSLANG_LIBS_DIR
 set(GLSLANG_LIBS_DIR "" CACHE STRING "Path to glslang static libraries")
 if(GLSLANG_LIBS_DIR STREQUAL "")
-    message(FATAL_ERROR "Please run CMake with -DGLSLANG_LIBS_DIR=/path/to/gsland/static/libs")
+    message(FATAL_ERROR "Please run CMake with -DGLSLANG_LIBS_DIR=/path/to/glslang/static/libs")
 endif()
-file(GLOB GLSLANG_STATIC_LIBS "${GLSLANG_LIBS_DIR}/*.a")
+
+# Glob all .a files
+file(GLOB GLSLANG_ALL_LIBS "${GLSLANG_LIBS_DIR}/*.a")
+
+# Filter out libSPIRV-Tools-shared.dll.a
+set(GLSLANG_STATIC_LIBS "")
+foreach(LIB ${GLSLANG_ALL_LIBS})
+    if(NOT LIB MATCHES "libSPIRV-Tools-shared.dll.a$")
+        list(APPEND GLSLANG_STATIC_LIBS ${LIB})
+    endif()
+endforeach()
 
 # Check for GLSLANG_HEADERS_DIR
 set(GLSLANG_HEADERS_DIR "" CACHE STRING "Path to glslang headers")
