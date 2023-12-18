@@ -25,6 +25,35 @@ public class PlaceboManager {
         public final static int PL_LOG_ALL = PL_LOG_TRACE;
     }
 
+    public static class VulkanExtensions {
+        public static final String VK_KHR_SURFACE_EXTENSION = "VK_KHR_SURFACE_EXTENSION_NAME";
+        public static final String VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION = "VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME";
+        public static final String VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION = "VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION_NAME";
+        public static final String VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION = "VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION_NAME";
+        public static final String VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION = "VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION_NAME";
+
+        public static String[] getExtensions() {
+            return new String[] {
+                    VK_KHR_SURFACE_EXTENSION,
+                    VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION,
+                    VK_KHR_EXTERNAL_MEMORY_CAPABILITIES_EXTENSION,
+                    VK_KHR_EXTERNAL_SEMAPHORE_CAPABILITIES_EXTENSION,
+                    VK_KHR_GET_SURFACE_CAPABILITIES_2_EXTENSION
+            };
+        }
+    }
+
+    // Class to represent pl_vk_inst_params structure
+    public static class PlVkInstParams {
+        public boolean debug;
+        public boolean debugExtra;
+        public int maxApiVersion;
+        public String[] extensions;
+        public String[] optExtensions;
+        public String[] layers;
+        public String[] optLayers;
+    }
+
     public static final int API_VERSION = 342;
 
     /**
@@ -40,7 +69,21 @@ public class PlaceboManager {
      * Deletes a logger with the log callback
      * @param logHandle the log handle to be deleted
      */
-    public native void cleanupLog(long logHandle);
+    public native void destroyLog(long logHandle);
+
+    /**
+     * Get the underlying windowing system. Please note: this is only supported on Unix systems
+     * @return the underlying windowing system or "unknown"
+     */
+    public static native String getWindowingSystem();
+
+    /**
+     * Creates a Vulkan instance
+     * @param plLog the logHandle
+     * @param params the params
+     * @return the handle to the vk instance
+     */
+    public native long plVkInstCreate(long plLog, PlVkInstParams params);
 
     /************************/
     /*** load lib methods ***/
