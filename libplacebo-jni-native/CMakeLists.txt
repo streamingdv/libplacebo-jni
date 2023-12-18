@@ -60,18 +60,18 @@ target_compile_definitions(libplacebo-jni-native PRIVATE PL_STATIC)
 if(IS_RUNNING_ON_WINDOWS)
     # Find packages using PkgConfig with static linking preference
     find_package(PkgConfig REQUIRED)
-    pkg_check_modules(SHADERC_STATIC REQUIRED shaderc_static)
+    pkg_check_modules(SHADERC_COMBINED REQUIRED shaderc_static)
     pkg_check_modules(VULKAN_STATIC REQUIRED vulkan)
 
     # Include 3rd party directories and library paths
-    include_directories(${SHADERC_STATIC_INCLUDE_DIRS} ${VULKAN_STATIC_INCLUDE_DIRS})
-    link_directories(${SHADERC_STATIC_LIBRARY_DIRS} ${VULKAN_STATIC_LIBRARY_DIRS})
+    include_directories(${SHADERC_COMBINED_INCLUDE_DIRS} ${VULKAN_STATIC_INCLUDE_DIRS})
+    link_directories(${SHADERC_COMBINED_LIBRARY_DIRS} ${VULKAN_STATIC_LIBRARY_DIRS})
 
     # Link libraries - Static versions
     target_link_libraries(libplacebo-jni-native PRIVATE
         ${LIBPLACEBO_LIB_PATH}
         ${JNI_LIBRARIES}
-        ${SHADERC_STATIC_LIBRARIES}
+        ${SHADERC_COMBINED_LIBRARIES}
         ${VULKAN_STATIC_LIBRARIES}
         shlwapi)
 else()
