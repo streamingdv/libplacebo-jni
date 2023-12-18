@@ -45,8 +45,8 @@ jobs:
             mingw-w64-${{ matrix.env }}-libdovi
             mingw-w64-${{ matrix.env }}-lcms2
             mingw-w64-${{ matrix.env }}-shaderc
-            mingw-w64-${{ matrix.env }}-cmake
             mingw-w64-${{ matrix.env }}-glslang
+            mingw-w64-${{ matrix.env }}-cmake
             mingw-w64-${{ matrix.env }}-python
 
       - name: Build libplacebo

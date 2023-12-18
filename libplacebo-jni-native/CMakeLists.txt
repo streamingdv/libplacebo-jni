@@ -62,37 +62,10 @@ if(IS_RUNNING_ON_WINDOWS)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(SHADERC_COMBINED_STATIC REQUIRED shaderc_combined)
     pkg_check_modules(VULKAN_STATIC REQUIRED vulkan)
-    #pkg_check_modules(GLSLANG_STATIC REQUIRED glslang)
-    pkg_check_modules(SPIRV_STATIC REQUIRED SPIRV)
-    pkg_check_modules(SPIRV_TOOLS_OPT_STATIC REQUIRED SPIRV-Tools-opt)
-    pkg_check_modules(SPIRV_TOOLS_STATIC REQUIRED SPIRV-Tools)
-    pkg_check_modules(SPIRV_TOOLS_LINK_STATIC REQUIRED SPIRV-Tools-link)
-    pkg_check_modules(SPIRV_CROSS_GLSL_STATIC REQUIRED spirv-cross-glsl)
-    pkg_check_modules(SPIRV_CROSS_C_STATIC REQUIRED spirv-cross-c)
 
     # Include 3rd party directories and library paths
-    include_directories(
-        ${SHADERC_COMBINED_STATIC_INCLUDE_DIRS}
-        ${VULKAN_STATIC_INCLUDE_DIRS}
-        #${GLSLANG_STATIC_INCLUDE_DIRS}
-        ${SPIRV_STATIC_INCLUDE_DIRS}
-        ${SPIRV_TOOLS_OPT_STATIC_INCLUDE_DIRS}
-        ${SPIRV_TOOLS_STATIC_INCLUDE_DIRS}
-        ${SPIRV_TOOLS_LINK_STATIC_INCLUDE_DIRS}
-        ${SPIRV_CROSS_GLSL_STATIC_INCLUDE_DIRS}
-        ${SPIRV_CROSS_C_STATIC_INCLUDE_DIRS}
-    )
-    link_directories(
-        ${SHADERC_COMBINED_STATIC_LIBRARY_DIRS}
-        ${VULKAN_STATIC_LIBRARY_DIRS}
-        #${GLSLANG_STATIC_LIBRARY_DIRS}
-        ${SPIRV_STATIC_LIBRARY_DIRS}
-        ${SPIRV_TOOLS_OPT_STATIC_LIBRARY_DIRS}
-        ${SPIRV_TOOLS_STATIC_LIBRARY_DIRS}
-        ${SPIRV_TOOLS_LINK_STATIC_LIBRARY_DIRS}
-        ${SPIRV_CROSS_GLSL_STATIC_LIBRARY_DIRS}
-        ${SPIRV_CROSS_C_STATIC_LIBRARY_DIRS}
-    )
+    include_directories(${SHADERC_COMBINED_STATIC_INCLUDE_DIRS} ${VULKAN_STATIC_INCLUDE_DIRS})
+    link_directories(${SHADERC_COMBINED_STATIC_LIBRARY_DIRS} ${VULKAN_STATIC_LIBRARY_DIRS})
 
     # Link libraries - Static versions
     target_link_libraries(libplacebo-jni-native PRIVATE
@@ -100,16 +73,11 @@ if(IS_RUNNING_ON_WINDOWS)
         ${JNI_LIBRARIES}
         ${SHADERC_COMBINED_STATIC_LIBRARIES}
         ${VULKAN_STATIC_LIBRARIES}
-        #${GLSLANG_STATIC_LIBRARIES}
-        ${SPIRV_STATIC_LIBRARIES}
-        ${SPIRV_TOOLS_OPT_STATIC_LIBRARIES}
-        ${SPIRV_TOOLS_STATIC_LIBRARIES}
-        ${SPIRV_TOOLS_LINK_STATIC_LIBRARIES}
-        ${SPIRV_CROSS_GLSL_STATIC_LIBRARIES}
-        ${SPIRV_CROSS_C_STATIC_LIBRARIES}
         glslang
-        shlwapi
-    )
+        SPIRV
+        SPIRV-Tools-opt
+        SPIRV-Tools
+        shlwapi)
 else()
     target_link_libraries(libplacebo-jni-native PRIVATE
         ${LIBPLACEBO_LIB_PATH}
