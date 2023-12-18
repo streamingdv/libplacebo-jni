@@ -73,13 +73,6 @@ if(IS_RUNNING_ON_WINDOWS)
         ${JNI_LIBRARIES}
         ${SHADERC_COMBINED_STATIC_LIBRARIES}
         ${VULKAN_STATIC_LIBRARIES}
-        glslang
-        SPIRV
-        SPIRV-Tools-opt
-        SPIRV-Tools
-        SPIRV-Tools-link
-        spirv-cross-glsl
-        spirv-cross-c
         shlwapi)
 else()
     target_link_libraries(libplacebo-jni-native PRIVATE
