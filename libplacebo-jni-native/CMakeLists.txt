@@ -60,7 +60,7 @@ target_compile_definitions(libplacebo-jni-native PRIVATE PL_STATIC)
 if(IS_RUNNING_ON_WINDOWS)
     # Find packages using PkgConfig with static linking preference
     find_package(PkgConfig REQUIRED)
-    pkg_check_modules(SHADERC_COMBINED REQUIRED shaderc_static)
+    pkg_check_modules(SHADERC_COMBINED REQUIRED shaderc_combined)
     pkg_check_modules(VULKAN_STATIC REQUIRED vulkan)
 
     # Include 3rd party directories and library paths
