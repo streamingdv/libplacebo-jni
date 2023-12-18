@@ -63,17 +63,20 @@ if(IS_RUNNING_ON_WINDOWS)
     pkg_check_modules(SHADERC_COMBINED_STATIC REQUIRED shaderc_combined)
     pkg_check_modules(VULKAN_STATIC REQUIRED vulkan)
     pkg_check_modules(SPIRV_TOOLS_STATIC REQUIRED spirv-tools)
+    pkg_check_modules(GLSLANG REQUIRED glslang)
 
     # Include 3rd party directories and library paths
     include_directories(
         ${SHADERC_COMBINED_STATIC_INCLUDE_DIRS}
         ${VULKAN_STATIC_INCLUDE_DIRS}
         ${SPIRV_TOOLS_STATIC_INCLUDE_DIRS}
+        ${GLSLANG_INCLUDE_DIRS}
     )
     link_directories(
         ${SHADERC_COMBINED_STATIC_LIBRARY_DIRS}
         ${VULKAN_STATIC_LIBRARY_DIRS}
         ${SPIRV_TOOLS_STATIC_LIBRARY_DIRS}
+        ${GLSLANG_LIBRARY_DIRS}
     )
 
     # Link libraries - Static versions
@@ -83,7 +86,7 @@ if(IS_RUNNING_ON_WINDOWS)
         ${SHADERC_COMBINED_STATIC_LIBRARIES}
         ${VULKAN_STATIC_LIBRARIES}
         ${SPIRV_TOOLS_STATIC_LIBRARIES}
-        glslang
+        ${GLSLANG_LIBRARIES}
         shlwapi
     )
 else()
