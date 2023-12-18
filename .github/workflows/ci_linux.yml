@@ -80,6 +80,14 @@ jobs:
 
       - name: Configure and Build libplacebo-jni with CMake
         run: |
+          if [ "${{ env.BUILD_GLSLANG }}" = "true" ]; then
+            GLSLANG_LIBS_DIR=${{github.workspace}}/glslang/install/lib
+            GLSLANG_HEADERS_DIR="${{github.workspace}}/glslang/install/include
+          else
+            GLSLANG_LIBS_DIR=${{github.workspace}}/libs/glslang/linux/x64/lib
+            GLSLANG_HEADERS_DIR=${{github.workspace}}/libs/glslang/linux/x64/include
+          fi
+          
           cmake -G "Ninja" -B build -S ./libplacebo-jni-native \
             -DCMAKE_BUILD_TYPE=Release \
             -DLIBPLACEBO_LIB_PATH=${{ github.workspace }}/libplacebo-jni-native/3rdparty/libplacebo/install/lib/x86_64-linux-gnu/libplacebo.a \
@@ -87,8 +95,8 @@ jobs:
             -DCMAKE_LIBRARY_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries \
             -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries \
             -DGENERATED_JNI_HEADERS_DIR=${{ github.workspace }}/build/generatedHeaders \
-            -DGLSLANG_LIBS_DIR=${{github.workspace}}/glslang/install/lib \
-            -DGLSLANG_HEADERS_DIR=${{github.workspace}}/glslang/install/include \
+            -DGLSLANG_LIBS_DIR=${GLSLANG_LIBS_DIR} \
+            -DGLSLANG_HEADERS_DIR=${GLSLANG_HEADERS_DIR}
             -DIS_RUNNING_ON_WINDOWS=OFF
           cmake --build build
 

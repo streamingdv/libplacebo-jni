@@ -116,8 +116,8 @@ jobs:
             GLSLANG_LIBS_DIR_UNIX=$(cygpath "${{github.workspace}}/glslang/install/lib")
             GLSLANG_HEADERS_DIR_UNIX=$(cygpath "${{github.workspace}}/glslang/install/include")
           else
-            GLSLANG_LIBS_DIR_UNIX=$(cygpath "${{github.workspace}}/libs/windows/${{ matrix.archAltValue }}/lib")
-            GLSLANG_HEADERS_DIR_UNIX=$(cygpath "${{github.workspace}}/libs/windows/${{ matrix.archAltValue }}/include")
+            GLSLANG_LIBS_DIR_UNIX=$(cygpath "${{github.workspace}}/libs/glslang/windows/${{ matrix.archAltValue }}/lib")
+            GLSLANG_HEADERS_DIR_UNIX=$(cygpath "${{github.workspace}}/libs/glslang/windows/${{ matrix.archAltValue }}/include")
           fi
           
           cmake -G "Ninja" -B build -S ./libplacebo-jni-native \
