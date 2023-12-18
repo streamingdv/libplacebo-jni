@@ -88,6 +88,7 @@ if(IS_RUNNING_ON_WINDOWS)
         ${SPIRV_TOOLS_STATIC_LIBRARIES}
         ${GLSLANG_STATIC_LIBRARIES}
         shlwapi
+        glslang
     )
 else()
     target_link_libraries(libplacebo-jni-native PRIVATE
