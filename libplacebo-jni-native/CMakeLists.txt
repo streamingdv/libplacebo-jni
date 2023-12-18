@@ -58,21 +58,21 @@ add_library(libplacebo-jni-native SHARED ${SOURCES})
 target_compile_definitions(libplacebo-jni-native PRIVATE PL_STATIC)
 
 if(IS_RUNNING_ON_WINDOWS)
-    #find_package(shaderc REQUIRED)
+    # Find packages using PkgConfig with static linking preference
     find_package(PkgConfig REQUIRED)
-    pkg_check_modules(SHADERC REQUIRED shaderc)
-    pkg_check_modules(VULKAN REQUIRED vulkan)
+    pkg_check_modules(SHADERC_STATIC REQUIRED shaderc_static)
+    pkg_check_modules(VULKAN_STATIC REQUIRED vulkan)
 
     # Include 3rd party directories and library paths
-    include_directories(${SHADERC_INCLUDE_DIRS} ${VULKAN_INCLUDE_DIRS})
-    link_directories(${SHADERC_LIBRARY_DIRS} ${VULKAN_LIBRARY_DIRS})
+    include_directories(${SHADERC_STATIC_INCLUDE_DIRS} ${VULKAN_STATIC_INCLUDE_DIRS})
+    link_directories(${SHADERC_STATIC_LIBRARY_DIRS} ${VULKAN_STATIC_LIBRARY_DIRS})
 
-    # Link libraries
+    # Link libraries - Static versions
     target_link_libraries(libplacebo-jni-native PRIVATE
         ${LIBPLACEBO_LIB_PATH}
         ${JNI_LIBRARIES}
-        ${SHADERC_LIBRARIES}
-        ${VULKAN_LIBRARIES}
+        ${SHADERC_STATIC_LIBRARIES}
+        ${VULKAN_STATIC_LIBRARIES}
         shlwapi)
 else()
     target_link_libraries(libplacebo-jni-native PRIVATE

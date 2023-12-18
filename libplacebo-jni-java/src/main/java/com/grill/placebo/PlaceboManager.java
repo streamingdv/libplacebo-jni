@@ -75,7 +75,7 @@ public class PlaceboManager {
      * Get the underlying windowing system. Please note: this is only supported on Unix systems
      * @return the underlying windowing system or "unknown"
      */
-    public static native String getWindowingSystem();
+    public native String getWindowingSystem();
 
     /**
      * Creates a Vulkan instance
