@@ -38,6 +38,7 @@ jobs:
           install: >-
             base-devel
             mingw-w64-${{ matrix.env }}-jq
+            mingw-w64-${{ matrix.env }}-git
             mingw-w64-${{ matrix.env }}-gcc
             mingw-w64-${{ matrix.env }}-pkg-config
             mingw-w64-${{ matrix.env }}-vapoursynth
