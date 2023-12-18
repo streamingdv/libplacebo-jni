@@ -154,7 +154,7 @@ extern "C"
 JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plVkInstDestroy
   (JNIEnv *env, jobject obj, jlong placebo_vk_inst) {
      pl_vk_inst *instance = reinterpret_cast<pl_vk_inst *>(placebo_vk_inst);
-     if (log != nullptr) {
+     if (instance != nullptr) {
          pl_vk_inst_destroy(instance);
      }
 }
