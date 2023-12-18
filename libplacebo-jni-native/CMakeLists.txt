@@ -98,6 +98,7 @@ else()
         ${VULKAN_STATIC_LIBRARIES}
         ${SPIRV_TOOLS_STATIC_LIBRARIES}
         ${GLSLANG_STATIC_LIBS}
+    )
 endif()
 
 # Set the PREFIX property to empty
