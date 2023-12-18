@@ -13,10 +13,10 @@ jobs:
             env: ucrt-x86_64
             arch: 64bit
             archValue: 64
-          - sys: MINGW32
-            env: i686
-            arch: 32bit
-            archValue: 32
+          #- sys: MINGW32
+          #  env: i686
+          #  arch: 32bit
+          #  archValue: 32
 
     steps:
       - name: Checkout libplacebo-jni repository
