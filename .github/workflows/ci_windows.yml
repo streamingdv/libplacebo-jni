@@ -68,6 +68,12 @@ jobs:
           cmake --build . --config Release --target install
         shell: msys2 {0}
 
+      - name: Upload gslang artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: gslang-artefacts-${{ matrix.arch }}
+          path: ${{github.workspace}}/glslang/install
+
       - name: Build libplacebo
         working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
         run: |
