@@ -64,7 +64,7 @@ jobs:
       - name: Build glslang
         working-directory: ./glslang
         run: |
-          cmake -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX="$(pwd)/install" .
+          cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="$(pwd)/install" .
           cmake --build . --config Release --target install
         shell: msys2 {0}
 
@@ -92,12 +92,16 @@ jobs:
         run: |
           NATIVE_BINARIES_DIR_UNIX=$(cygpath "${{github.workspace}}/build/nativeBinaries")
           GENERATED_HEADERS_DIR_UNIX=$(cygpath "${{github.workspace}}/build/generatedHeaders")
+          GLSLANG_LIBS_DIR_UNIX=$(cygpath "${{github.workspace}}/glslang/install/lib")
+          GLSLANG_HEADERS_DIR_UNIX=$(cygpath "${{github.workspace}}/glslang/install/include")
           cmake -G "Ninja" -B build -S ./libplacebo-jni-native \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${NATIVE_BINARIES_DIR_UNIX} \
             -DCMAKE_LIBRARY_OUTPUT_DIRECTORY=${NATIVE_BINARIES_DIR_UNIX} \
             -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=${NATIVE_BINARIES_DIR_UNIX} \
-            -DGENERATED_JNI_HEADERS_DIR=${GENERATED_HEADERS_DIR_UNIX}
+            -DGENERATED_JNI_HEADERS_DIR=${GENERATED_HEADERS_DIR_UNIX} \
+            -DGLSLANG_LIBS_DIR=${GLSLANG_LIBS_DIR_UNIX} \
+            -DGLSLANG_HEADERS_DIR=${GLSLANG_HEADERS_DIR_UNIX}
           cmake --build build
         shell: msys2 {0}
 

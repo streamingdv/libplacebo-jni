@@ -31,23 +31,27 @@ include_directories(${JNI_INCLUDE_DIRS})
 
 # Check for GENERATED_JNI_HEADERS_DIR
 set(GENERATED_JNI_HEADERS_DIR "" CACHE STRING "Path to generated JNI headers")
-
-# Collect all files in the directory
-file(GLOB MY_DIRECTORY_CONTENTS "${GENERATED_JNI_HEADERS_DIR}")
-if(NOT MY_DIRECTORY_CONTENTS)
-    message(STATUS "The directory ${GENERATED_JNI_HEADERS_DIR} is empty.")
-else()
-    # Print each file in the directory
-    foreach(FILE IN LISTS MY_DIRECTORY_CONTENTS)
-        message(STATUS "File in directory: ${FILE}")
-    endforeach()
-endif()
-
 if(GENERATED_JNI_HEADERS_DIR STREQUAL "")
-    message(FATAL_ERROR "Please run CMake with -DGENERATED_JNI_HEADERS_DIR=/path/to/generated/headers or simply use the gradle build task")
+    message(FATAL_ERROR "Please run CMake with -DGENERATED_JNI_HEADERS_DIR=/path/to/generated/headers")
 endif()
 
+# Check for GLSLANG_LIBS_DIR
+set(GLSLANG_LIBS_DIR "" CACHE STRING "Path to glslang static libraries")
+if(GLSLANG_LIBS_DIR STREQUAL "")
+    message(FATAL_ERROR "Please run CMake with -DGLSLANG_LIBS_DIR=/path/to/gsland/static/libs")
+endif()
+file(GLOB GLSLANG_STATIC_LIBS "${GLSLANG_LIBS_DIR}/*.a")
+
+# Check for GLSLANG_HEADERS_DIR
+set(GLSLANG_HEADERS_DIR "" CACHE STRING "Path to glslang headers")
+if(GLSLANG_HEADERS_DIR STREQUAL "")
+    message(FATAL_ERROR "Please run CMake with -DGLSLANG_HEADERS_DIR=/path/to/glslang/include")
+endif()
+include_directories(${GLSLANG_HEADERS_DIR})
+
+# Inlcude JNI headers
 include_directories(${GENERATED_JNI_HEADERS_DIR})
+# Include libplacebo headers
 include_directories(3rdparty/libplacebo/install/include)
 
 # Project sources
@@ -57,28 +61,25 @@ set(SOURCES src/placebo_jni.cpp)
 add_library(libplacebo-jni-native SHARED ${SOURCES})
 target_compile_definitions(libplacebo-jni-native PRIVATE PL_STATIC)
 
+# Find packages using PkgConfig with static linking preference
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(SHADERC_COMBINED_STATIC REQUIRED shaderc_combined)
+pkg_check_modules(VULKAN_STATIC REQUIRED vulkan)
+pkg_check_modules(SPIRV_TOOLS_STATIC REQUIRED spirv-tools)
+
+# Include 3rd party directories and library paths
+include_directories(
+    ${SHADERC_COMBINED_STATIC_INCLUDE_DIRS}
+    ${VULKAN_STATIC_INCLUDE_DIRS}
+    ${SPIRV_TOOLS_STATIC_INCLUDE_DIRS}
+)
+link_directories(
+    ${SHADERC_COMBINED_STATIC_LIBRARY_DIRS}
+    ${VULKAN_STATIC_LIBRARY_DIRS}
+    ${SPIRV_TOOLS_STATIC_LIBRARY_DIRS}
+)
+
 if(IS_RUNNING_ON_WINDOWS)
-    # Find packages using PkgConfig with static linking preference
-    find_package(PkgConfig REQUIRED)
-    pkg_check_modules(SHADERC_COMBINED_STATIC REQUIRED shaderc_combined)
-    pkg_check_modules(VULKAN_STATIC REQUIRED vulkan)
-    pkg_check_modules(SPIRV_TOOLS_STATIC REQUIRED spirv-tools)
-    pkg_check_modules(GLSLANG REQUIRED glslang)
-
-    # Include 3rd party directories and library paths
-    include_directories(
-        ${SHADERC_COMBINED_STATIC_INCLUDE_DIRS}
-        ${VULKAN_STATIC_INCLUDE_DIRS}
-        ${SPIRV_TOOLS_STATIC_INCLUDE_DIRS}
-        ${GLSLANG_INCLUDE_DIRS}
-    )
-    link_directories(
-        ${SHADERC_COMBINED_STATIC_LIBRARY_DIRS}
-        ${VULKAN_STATIC_LIBRARY_DIRS}
-        ${SPIRV_TOOLS_STATIC_LIBRARY_DIRS}
-        ${GLSLANG_LIBRARY_DIRS}
-    )
-
     # Link libraries - Static versions
     target_link_libraries(libplacebo-jni-native PRIVATE
         ${LIBPLACEBO_LIB_PATH}
@@ -86,13 +87,17 @@ if(IS_RUNNING_ON_WINDOWS)
         ${SHADERC_COMBINED_STATIC_LIBRARIES}
         ${VULKAN_STATIC_LIBRARIES}
         ${SPIRV_TOOLS_STATIC_LIBRARIES}
-        ${GLSLANG_LIBRARIES}
+        ${GLSLANG_STATIC_LIBS}
         shlwapi
     )
 else()
     target_link_libraries(libplacebo-jni-native PRIVATE
         ${LIBPLACEBO_LIB_PATH}
-        ${JNI_LIBRARIES})
+        ${JNI_LIBRARIES}
+        ${SHADERC_COMBINED_STATIC_LIBRARIES}
+        ${VULKAN_STATIC_LIBRARIES}
+        ${SPIRV_TOOLS_STATIC_LIBRARIES}
+        ${GLSLANG_STATIC_LIBS}
 endif()
 
 # Set the PREFIX property to empty
