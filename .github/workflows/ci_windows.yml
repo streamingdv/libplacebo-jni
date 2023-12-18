@@ -64,6 +64,13 @@ jobs:
           key: ${{ runner.os }}-glslang-${{ hashFiles('glslang/**') }}
           restore-keys: ${{ runner.os }}-glslang-
 
+      - name: Print cache hit status
+        run: |
+          echo "Cache hit: ${{ steps.cache-glslang.outputs.cache-hit }}"
+
+      - name: List glslang/install directory contents
+        run: ls -la glslang/install
+
       - name: Update glslang sources
         if: steps.cache-glslang.outputs.cache-hit != 'true'
         working-directory: ./glslang
