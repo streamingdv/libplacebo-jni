@@ -24,6 +24,12 @@ jobs:
         with:
           submodules: 'recursive'
 
+      - name: Checkout glslang repository
+        uses: actions/checkout@v2
+        with:
+          repository: 'KhronosGroup/glslang'
+          path: 'glslang'
+
       - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
         with:
@@ -48,6 +54,13 @@ jobs:
             mingw-w64-${{ matrix.env }}-glslang
             mingw-w64-${{ matrix.env }}-cmake
             mingw-w64-${{ matrix.env }}-python
+
+      - name: Build glslang
+        working-directory: ./glslang
+        run: |
+          cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="$(pwd)/install" .
+          cmake --build . --config Release --target install
+        shell: msys2 {0}
 
       - name: Build libplacebo
         working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
