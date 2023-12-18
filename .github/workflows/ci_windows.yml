@@ -55,6 +55,11 @@ jobs:
             mingw-w64-${{ matrix.env }}-cmake
             mingw-w64-${{ matrix.env }}-python
 
+      - name: Update glslang sources
+        working-directory: ./glslang
+        run: ./update_glslang_sources.py
+        shell: msys2 {0}
+
       - name: Build glslang
         working-directory: ./glslang
         run: |
