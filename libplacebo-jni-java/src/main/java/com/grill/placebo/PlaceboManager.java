@@ -61,13 +61,13 @@ public class PlaceboManager {
      * @param apiVersion the API version
      * @param logLevel the log level
      * @param callback the callback
-     * @return the log handle
+     * @return the log handle, pl_log
      */
     public native long createLog(int apiVersion, int logLevel, LogCallback callback);
 
     /**
      * Deletes a logger with the log callback
-     * @param logHandle the log handle to be deleted
+     * @param logHandle the log handle to be deleted, pl_log
      */
     public native void destroyLog(long logHandle);
 
@@ -81,9 +81,15 @@ public class PlaceboManager {
      * Creates a Vulkan instance
      * @param plLog the logHandle
      * @param params the params
-     * @return the handle to the vk instance
+     * @return the handle to the vk instance, placebo_vk_inst
      */
     public native long plVkInstCreate(long plLog, PlVkInstParams params);
+
+    /**
+     * Deletes a vl inst
+     * @param placebo_vk_inst the vk inst to be deleted, placebo_vk_inst
+     */
+    public native void plVkInstDestroy(long placebo_vk_inst);
 
     /************************/
     /*** load lib methods ***/

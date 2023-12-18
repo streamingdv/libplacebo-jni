@@ -150,6 +150,15 @@ JNIEXPORT jlong JNICALL Java_PlaceboLibrary_plVkInstCreate(JNIEnv *env, jobject 
     return reinterpret_cast<jlong>(instance);
 }
 
+extern "C"
+JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plVkInstDestroy
+  (JNIEnv *env, jobject obj, jlong placebo_vk_inst) {
+     pl_vk_inst *instance = reinterpret_cast<pl_vk_inst *>(placebo_vk_inst);
+     if (log != nullptr) {
+         pl_vk_inst_destroy(instance);
+     }
+}
+
 // ToDo next -> pl_vulkan_create with params placebo_log and pl_vk_inst
 /*
  struct pl_vulkan_params vulkan_params = {
