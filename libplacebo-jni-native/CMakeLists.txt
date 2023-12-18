@@ -57,12 +57,18 @@ set(SOURCES src/placebo_jni.cpp)
 add_library(libplacebo-jni-native SHARED ${SOURCES})
 target_compile_definitions(libplacebo-jni-native PRIVATE PL_STATIC)
 if(IS_RUNNING_ON_WINDOWS)
-    find_package(shaderc REQUIRED)
+    #find_package(shaderc REQUIRED)
+    find_package(PkgConfig REQUIRED)
+    pkg_check_modules(SHADERC REQUIRED shaderc)
+
+    # Include directories and library paths
+    include_directories(${SHADERC_INCLUDE_DIRS})
+    link_directories(${SHADERC_LIBRARY_DIRS})
     target_link_libraries(libplacebo-jni-native PRIVATE
         ${LIBPLACEBO_LIB_PATH}
         ${JNI_LIBRARIES}
-        shlwapi
-        shaderc::shaderc)
+        ${SHADERC_LIBRARIES}
+        shlwapi)
 else()
     target_link_libraries(libplacebo-jni-native PRIVATE
         ${LIBPLACEBO_LIB_PATH}
