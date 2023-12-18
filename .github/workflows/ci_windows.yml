@@ -1,10 +1,11 @@
 name: CI Windows
 on:
   workflow_dispatch:
-    build_glslang:
-      description: 'Build glslang (true/false)'
-      required: true
-      default: 'false' # to save time, actual build is already in libs folder
+    inputs:
+      build_glslang:
+        description: 'Build glslang (true/false)'
+        required: true
+        default: 'false' # to save time, actual build is already in libs folder
 
 jobs:
   build-binaries-windows:
@@ -20,11 +21,11 @@ jobs:
             arch: 64bit
             archValue: 64
             archAltValue: x64
-          #- sys: MINGW32
-          #  env: i686
-          #  arch: 32bit
-          #  archValue: 32
-          #  archAltValue: x32
+          - sys: MINGW32
+            env: i686
+            arch: 32bit
+            archValue: 32
+            archAltValue: x32
 
     steps:
       - name: Checkout libplacebo-jni repository

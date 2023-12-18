@@ -1,10 +1,11 @@
 name: CI Linux
 on:
   workflow_dispatch:
-    build_glslang:
-      description: 'Build glslang (true/false)'
-      required: true
-      default: 'true' # to save time, actual build is already in libs folder
+    inputs:
+      build_glslang:
+        description: 'Build glslang (true/false)'
+        required: true
+        default: 'true' # to save time, actual build is already in libs folder
 
 jobs:
   build-binaries-unix:
