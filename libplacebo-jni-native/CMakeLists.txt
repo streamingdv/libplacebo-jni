@@ -62,10 +62,19 @@ if(IS_RUNNING_ON_WINDOWS)
     find_package(PkgConfig REQUIRED)
     pkg_check_modules(SHADERC_COMBINED_STATIC REQUIRED shaderc_combined)
     pkg_check_modules(VULKAN_STATIC REQUIRED vulkan)
+    pkg_check_modules(SPIRV_TOOLS_STATIC REQUIRED spirv-tools)
 
     # Include 3rd party directories and library paths
-    include_directories(${SHADERC_COMBINED_STATIC_INCLUDE_DIRS} ${VULKAN_STATIC_INCLUDE_DIRS})
-    link_directories(${SHADERC_COMBINED_STATIC_LIBRARY_DIRS} ${VULKAN_STATIC_LIBRARY_DIRS})
+    include_directories(
+        ${SHADERC_COMBINED_STATIC_INCLUDE_DIRS}
+        ${VULKAN_STATIC_INCLUDE_DIRS}
+        ${SPIRV_TOOLS_STATIC_INCLUDE_DIRS}
+    )
+    link_directories(
+        ${SHADERC_COMBINED_STATIC_LIBRARY_DIRS}
+        ${VULKAN_STATIC_LIBRARY_DIRS}
+        ${SPIRV_TOOLS_STATIC_LIBRARY_DIRS}
+    )
 
     # Link libraries - Static versions
     target_link_libraries(libplacebo-jni-native PRIVATE
@@ -73,7 +82,9 @@ if(IS_RUNNING_ON_WINDOWS)
         ${JNI_LIBRARIES}
         ${SHADERC_COMBINED_STATIC_LIBRARIES}
         ${VULKAN_STATIC_LIBRARIES}
-        shlwapi)
+        ${SPIRV_TOOLS_STATIC_LIBRARIES}
+        shlwapi
+    )
 else()
     target_link_libraries(libplacebo-jni-native PRIVATE
         ${LIBPLACEBO_LIB_PATH}
