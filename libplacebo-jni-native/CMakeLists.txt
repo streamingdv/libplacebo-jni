@@ -41,17 +41,6 @@ if(GLSLANG_LIBS_DIR STREQUAL "")
     message(FATAL_ERROR "Please run CMake with -DGLSLANG_LIBS_DIR=/path/to/glslang/static/libs")
 endif()
 
-# Glob all .a files
-file(GLOB GLSLANG_ALL_LIBS "${GLSLANG_LIBS_DIR}/*.a")
-
-# Filter out libSPIRV-Tools-shared.dll.a
-set(GLSLANG_STATIC_LIBS "")
-foreach(LIB ${GLSLANG_ALL_LIBS})
-    if(NOT LIB MATCHES "libSPIRV-Tools-shared.dll.a$")
-        list(APPEND GLSLANG_STATIC_LIBS ${LIB})
-    endif()
-endforeach()
-
 # Check for GLSLANG_HEADERS_DIR
 set(GLSLANG_HEADERS_DIR "" CACHE STRING "Path to glslang headers")
 if(GLSLANG_HEADERS_DIR STREQUAL "")
@@ -96,8 +85,19 @@ if(IS_RUNNING_ON_WINDOWS)
         ${JNI_LIBRARIES}
         ${SHADERC_COMBINED_STATIC_LIBRARIES}
         ${VULKAN_STATIC_LIBRARIES}
-        #${SPIRV_TOOLS_STATIC_LIBRARIES}
-        ${GLSLANG_STATIC_LIBS}
+        "${GLSLANG_LIBS_DIR}/libMachineIndependent.a"
+        "${GLSLANG_LIBS_DIR}/libGenericCodeGen.a"
+        "${GLSLANG_LIBS_DIR}/libglslang.a"
+        "${GLSLANG_LIBS_DIR}/libOSDependent.a"
+        "${GLSLANG_LIBS_DIR}/libglslang-default-resource-limits.a"
+        "${GLSLANG_LIBS_DIR}/libSPIRV.a"
+        "${GLSLANG_LIBS_DIR}/libSPVRemapper.a"
+        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools.a"
+        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-opt.a"
+        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-reduce.a"
+        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-link.a"
+        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-lint.a"
+        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-diff.a"
         shlwapi
     )
 else()
@@ -106,8 +106,19 @@ else()
         ${JNI_LIBRARIES}
         ${SHADERC_COMBINED_STATIC_LIBRARIES}
         ${VULKAN_STATIC_LIBRARIES}
-        #${SPIRV_TOOLS_STATIC_LIBRARIES}
-        ${GLSLANG_STATIC_LIBS}
+        "${GLSLANG_LIBS_DIR}/libMachineIndependent.a"
+        "${GLSLANG_LIBS_DIR}/libGenericCodeGen.a"
+        "${GLSLANG_LIBS_DIR}/libglslang.a"
+        "${GLSLANG_LIBS_DIR}/libOSDependent.a"
+        "${GLSLANG_LIBS_DIR}/libglslang-default-resource-limits.a"
+        "${GLSLANG_LIBS_DIR}/libSPIRV.a"
+        "${GLSLANG_LIBS_DIR}/libSPVRemapper.a"
+        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools.a"
+        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-opt.a"
+        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-reduce.a"
+        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-link.a"
+        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-lint.a"
+        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-diff.a"
     )
 endif()
 
