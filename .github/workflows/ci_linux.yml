@@ -1,11 +1,17 @@
 name: CI Linux
 on:
   workflow_dispatch:
+    build_glslang:
+      description: 'Build glslang (true/false)'
+      required: true
+      default: 'true' # to save time, actual build is already in libs folder
 
 jobs:
   build-binaries-unix:
     name: Build unix lib
     runs-on: ubuntu-latest
+    env:
+      BUILD_GLSLANG: ${{ github.event.inputs.build_glslang }}
 
     steps:
       - name: Checkout libplacebo-jni repository
@@ -14,6 +20,7 @@ jobs:
           submodules: 'recursive'
 
       - name: Checkout glslang repository
+        if: env.BUILD_GLSLANG == 'true'
         uses: actions/checkout@v2
         with:
           repository: 'KhronosGroup/glslang'
@@ -31,16 +38,25 @@ jobs:
           pip3 install --upgrade ninja==1.11.1
 
       - name: Update glslang sources
+        if: env.BUILD_GLSLANG == 'true'
         working-directory: ./glslang
         run: ./update_glslang_sources.py
         shell: msys2 {0}
 
       - name: Build glslang
+        if: env.BUILD_GLSLANG == 'true'
         working-directory: ./glslang
         run: |
           cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="$(pwd)/install" .
           cmake --build . --config Release --target install
         shell: msys2 {0}
+
+      - name: Upload gslang artefacts
+        if: env.BUILD_GLSLANG == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: gslang-artefacts-x64
+          path: ${{github.workspace}}/glslang/install
 
       - name: Build libplacebo
         working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
@@ -48,6 +64,12 @@ jobs:
           meson setup build --buildtype release --default-library=static -Ddemos=false -Dprefix=$PWD/install
           meson compile -vC build
           meson install -C build
+
+      - name: Upload libplacebo artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: libplacebo-artefacts-${{ matrix.arch }}
+          path: ${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew

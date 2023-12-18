@@ -1,11 +1,17 @@
 name: CI Windows
 on:
   workflow_dispatch:
+    build_glslang:
+      description: 'Build glslang (true/false)'
+      required: true
+      default: 'false' # to save time, actual build is already in libs folder
 
 jobs:
   build-binaries-windows:
     name: Build Windows lib
     runs-on: windows-latest
+    env:
+      BUILD_GLSLANG: ${{ github.event.inputs.build_glslang }}
     strategy:
       matrix:
         include:
@@ -13,10 +19,12 @@ jobs:
             env: ucrt-x86_64
             arch: 64bit
             archValue: 64
+            archAltValue: x64
           #- sys: MINGW32
           #  env: i686
           #  arch: 32bit
           #  archValue: 32
+          #  archAltValue: x32
 
     steps:
       - name: Checkout libplacebo-jni repository
@@ -25,6 +33,7 @@ jobs:
           submodules: 'recursive'
 
       - name: Checkout glslang repository
+        if: env.BUILD_GLSLANG == 'true'
         uses: actions/checkout@v2
         with:
           repository: 'KhronosGroup/glslang'
@@ -56,34 +65,26 @@ jobs:
             mingw-w64-${{ matrix.env }}-cmake
             mingw-w64-${{ matrix.env }}-python
 
-      - name: Cache glslang build
-        id: cache-glslang
-        uses: actions/cache@v2
-        with:
-          path: glslang/install
-          key: ${{ runner.os }}-glslang-${{ hashFiles('glslang/**') }}
-          restore-keys: ${{ runner.os }}-glslang-
-
-      - name: Print cache hit status
-        run: |
-          echo "Cache hit: ${{ steps.cache-glslang.outputs.cache-hit }}"
-
-      - name: List glslang/install directory contents
-        run: ls -la glslang/install
-
       - name: Update glslang sources
-        if: steps.cache-glslang.outputs.cache-hit != 'true'
+        if: env.BUILD_GLSLANG == 'true'
         working-directory: ./glslang
         run: ./update_glslang_sources.py
         shell: msys2 {0}
 
       - name: Build glslang
-        if: steps.cache-glslang.outputs.cache-hit != 'true'
+        if: env.BUILD_GLSLANG == 'true'
         working-directory: ./glslang
         run: |
           cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="$(pwd)/install" .
           cmake --build . --config Release --target install
         shell: msys2 {0}
+
+      - name: Upload gslang artefacts
+        if: env.BUILD_GLSLANG == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: gslang-artefacts-${{ matrix.arch }}
+          path: ${{github.workspace}}/glslang/install
 
       - name: Build libplacebo
         working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
@@ -92,6 +93,12 @@ jobs:
           meson compile -vC build
           meson install -C build
         shell: msys2 {0}
+
+      - name: Upload libplacebo artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: libplacebo-artefacts-${{ matrix.arch }}
+          path: ${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install
 
       - name: Build libplacebo-jni-java compile java
         run: |
@@ -103,8 +110,15 @@ jobs:
         run: |
           NATIVE_BINARIES_DIR_UNIX=$(cygpath "${{github.workspace}}/build/nativeBinaries")
           GENERATED_HEADERS_DIR_UNIX=$(cygpath "${{github.workspace}}/build/generatedHeaders")
-          GLSLANG_LIBS_DIR_UNIX=$(cygpath "${{github.workspace}}/glslang/install/lib")
-          GLSLANG_HEADERS_DIR_UNIX=$(cygpath "${{github.workspace}}/glslang/install/include")
+          
+          if [ "${{ env.BUILD_GLSLANG }}" = "true" ]; then
+            GLSLANG_LIBS_DIR_UNIX=$(cygpath "${{github.workspace}}/glslang/install/lib")
+            GLSLANG_HEADERS_DIR_UNIX=$(cygpath "${{github.workspace}}/glslang/install/include")
+          else
+            GLSLANG_LIBS_DIR_UNIX=$(cygpath "${{github.workspace}}/libs/windows/${{ matrix.archAltValue }}/lib")
+            GLSLANG_HEADERS_DIR_UNIX=$(cygpath "${{github.workspace}}/libs/windows/${{ matrix.archAltValue }}/include")
+          fi
+          
           cmake -G "Ninja" -B build -S ./libplacebo-jni-native \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${NATIVE_BINARIES_DIR_UNIX} \
