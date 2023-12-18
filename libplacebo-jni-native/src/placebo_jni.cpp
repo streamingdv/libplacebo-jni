@@ -183,3 +183,5 @@ typedef const struct pl_vk_inst_t {
     const char * const *layers;
     int num_layers;
 } *pl_vk_inst;
+
+*/
