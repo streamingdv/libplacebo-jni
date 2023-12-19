@@ -5,6 +5,8 @@
 #include <vector>
 #include <jni.h>
 
+#include <windows.h>
+
 #include <libplacebo/log.h>
 #include <libplacebo/vulkan.h>
 
