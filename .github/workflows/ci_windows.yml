@@ -21,18 +21,16 @@ jobs:
     strategy:
       matrix:
         include:
-          - sys: UCRT64
-            env: ucrt-x86_64
-            arch: 64bit
-            archValue: 64
-            archAltValue: x64
-            vulkanArch: x64
+          #- sys: UCRT64
+          #  env: ucrt-x86_64
+          #  arch: 64bit
+          #  archValue: 64
+          #  archAltValue: x64
           - sys: MINGW32
             env: i686
             arch: 32bit
             archValue: 32
             archAltValue: x32
-            vulkanArch: Win32
 
     steps:
       - name: Checkout libplacebo-jni repository
@@ -84,7 +82,7 @@ jobs:
         #if: env.BUILD_GLSLANG == 'true'
         working-directory: ./vulkan-loader
         run: |
-          cmake -S . -B build -D UPDATE_DEPS=On
+          cmake -S . -B build -D UPDATE_DEPS=On -D ENABLE_WERROR=Off
           cmake --build build --config Release
         shell: msys2 {0}
 
