@@ -78,7 +78,7 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_createLog
 
     pl_log placebo_log = pl_log_create(apiVersion, &log_params);
 
-    return reinterpret_cast<jlong>(&placebo_log);
+    return reinterpret_cast<jlong>(placebo_log);
 }
 
 extern "C"
