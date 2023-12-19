@@ -97,10 +97,10 @@ jobs:
           
           if [ "${{ env.BUILD_LIBPLACEBO }}" = "true" ]; then
             LIBPLACEBO_LIB_PATH=${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/lib/libplacebo.a
-            LIBPLACEBO_HEADERS_DIR=$(cygpath "${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/include
+            LIBPLACEBO_HEADERS_DIR=${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/include
           else
             LIBPLACEBO_LIB_PATH=${{github.workspace}}/libs/libplacebo/linux/x64/lib/x86_64-linux-gnu/libplacebo.a
-            LIBPLACEBO_HEADERS_DIR=${{github.workspace}}/libs/libplacebo/linux/x64}/include
+            LIBPLACEBO_HEADERS_DIR=${{github.workspace}}/libs/libplacebo/linux/x64/include
           fi
           
           cmake -G "Ninja" -B build -S ./libplacebo-jni-native \
