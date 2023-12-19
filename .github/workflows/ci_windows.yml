@@ -84,7 +84,7 @@ jobs:
         #if: env.BUILD_GLSLANG == 'true'
         working-directory: ./vulkan-loader
         run: |
-          cmake -S . -B build -D UPDATE_DEPS=On
+          cmake -A ${{ matrix.vulkanArch }} -S . -B build -D UPDATE_DEPS=On
           cmake --build build
         shell: msys2 {0}
 
