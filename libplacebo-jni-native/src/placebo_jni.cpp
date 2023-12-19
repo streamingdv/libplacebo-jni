@@ -71,14 +71,14 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_createLog
 
 extern "C"
 JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_destroyLog
-  (JNIEnv *env, jobject obj, jlong logHandle) {
-    if (globalCallback != nullptr) {
-        env->DeleteGlobalRef(globalCallback);
-        globalCallback = nullptr;
-    }
-     pl_log *log = reinterpret_cast<pl_log *>(logHandle);
+  (JNIEnv *env, jobject obj, jlong placebo_log) {
+     pl_log *log = reinterpret_cast<pl_log *>(placebo_log);
      if (log != nullptr) {
          pl_log_destroy(log);
+     }
+     if (globalCallback != nullptr) {
+         env->DeleteGlobalRef(globalCallback);
+         globalCallback = nullptr;
      }
 }
 
@@ -105,7 +105,7 @@ JNIEXPORT jstring JNICALL Java_com_grill_placebo_PlaceboManager_getWindowingSyst
 JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVkInstCreate(JNIEnv *env, jobject obj, jlong plLog, jobject paramsObj) {
     jclass paramsCls = env->GetObjectClass(paramsObj);
 
-    jfieldID debugField = env->GetFieldID(paramsCls, "debug", "Z");
+    /*jfieldID debugField = env->GetFieldID(paramsCls, "debug", "Z");
     jfieldID debugExtraField = env->GetFieldID(paramsCls, "debugExtra", "Z");
     jfieldID maxApiVersionField = env->GetFieldID(paramsCls, "maxApiVersion", "I");
     jfieldID extensionsField = env->GetFieldID(paramsCls, "extensions", "[Ljava/lang/String;");
@@ -143,6 +143,27 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVkInstCreate(JNI
     vk_inst_params.num_layers = layersJArray != nullptr ? layersCStr.size() : 0;
     vk_inst_params.opt_layers = optLayersJArray != nullptr ? optLayersCStr.data() : nullptr;
     vk_inst_params.num_opt_layers = optLayersJArray != nullptr ? optLayersCStr.size() : 0;
+
+    pl_log log = reinterpret_cast<pl_log>(plLog);
+    pl_vk_inst instance = pl_vk_inst_create(log, &vk_inst_params);
+
+    return reinterpret_cast<jlong>(instance);*/
+
+    const char *vk_exts[] = {
+        VK_KHR_SURFACE_EXTENSION_NAME,
+        VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
+    };
+
+    const char *opt_extensions[] = {
+        VK_EXT_HDR_METADATA_EXTENSION_NAME,
+    };
+
+    struct pl_vk_inst_params vk_inst_params = {
+        .extensions = vk_exts,
+        .num_extensions = 2,
+        .opt_extensions = opt_extensions,
+        .num_opt_extensions = 1,
+    };
 
     pl_log log = reinterpret_cast<pl_log>(plLog);
     pl_vk_inst instance = pl_vk_inst_create(log, &vk_inst_params);
