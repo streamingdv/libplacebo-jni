@@ -80,22 +80,12 @@ jobs:
             mingw-w64-${{ matrix.env }}-cmake
             mingw-w64-${{ matrix.env }}-python
 
-      - name: Configure vulkan-loader project
+      - name: Build vulkan-loader
         #if: env.BUILD_GLSLANG == 'true'
         working-directory: ./vulkan-loader
         run: |
           cmake -S . -B build -D UPDATE_DEPS=On
-          cmake --build build
-        shell: msys2 {0}
-
-      - name: Build vulkan-loader
-        #if: env.BUILD_GLSLANG == 'true'
-        run: |
-          cd vulkan-loader
-          mkdir -p build
-          cd build
-          cmake -D UPDATE_DEPS=ON ..
-          cmake --build . --config Release
+          cmake --build build --config Release
         shell: msys2 {0}
 
       - name: Upload vulkan-loader artefacts
