@@ -4,8 +4,10 @@
 #include <string>
 #include <vector>
 #include <jni.h>
+
 #include <libplacebo/log.h>
 #include <libplacebo/vulkan.h>
+
 #include <vulkan/vulkan.h>
 
 /*** define helper functions ***/
@@ -152,7 +154,7 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVkInstCreate(JNI
 
     const char *vk_exts[] = {
         VK_KHR_SURFACE_EXTENSION_NAME,
-        VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME,
+        VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
     };
 
     const char *opt_extensions[] = {

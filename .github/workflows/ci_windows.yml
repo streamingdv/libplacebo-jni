@@ -82,7 +82,7 @@ jobs:
         #if: env.BUILD_GLSLANG == 'true'
         working-directory: ./vulkan-loader
         run: |
-          cmake -S . -B build -D UPDATE_DEPS=On -D ENABLE_WERROR=Off -DBUILD_SHARED_LIBS=OFF
+          cmake -S . -B build -D UPDATE_DEPS=On -D ENABLE_WERROR=Off
           cmake --build build --config Release
         shell: msys2 {0}
 
