@@ -83,7 +83,7 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_destroyLog
 }
 
 extern "C"
-JNIEXPORT jstring JNICALL Java_WindowSystemDetector_getWindowingSystem(JNIEnv* env, jclass) {
+JNIEXPORT jstring JNICALL Java_com_grill_placebo_PlaceboManager_getWindowingSystem(JNIEnv* env, jobject obj) {
     const char* sessionType = std::getenv("XDG_SESSION_TYPE");
     if (sessionType != nullptr && sessionType[0] != '\0') {
         return env->NewStringUTF(sessionType);
@@ -102,7 +102,7 @@ JNIEXPORT jstring JNICALL Java_WindowSystemDetector_getWindowingSystem(JNIEnv* e
     return env->NewStringUTF("unknown");
 }
 
-JNIEXPORT jlong JNICALL Java_PlaceboLibrary_plVkInstCreate(JNIEnv *env, jobject obj, jlong plLog, jobject paramsObj) {
+JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVkInstDestroy(JNIEnv *env, jobject obj, jlong plLog, jobject paramsObj) {
     jclass paramsCls = env->GetObjectClass(paramsObj);
 
     jfieldID debugField = env->GetFieldID(paramsCls, "debug", "Z");
