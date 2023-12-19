@@ -61,7 +61,7 @@ jobs:
         #if: env.BUILD_GLSLANG == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: vulkan-loader-artefacts-${{ matrix.arch }}
+          name: vulkan-loader-artefacts-x64
           path: ${{github.workspace}}/vulkan-loader
 
       #- name: Update glslang sources
