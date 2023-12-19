@@ -54,8 +54,19 @@ jobs:
         #if: env.BUILD_GLSLANG == 'true'
         working-directory: ./vulkan-loader
         run: |
-          cmake -S . -B build -D UPDATE_DEPS=On -DBUILD_SHARED_LIBS=OFF
-          cmake --build build --config Release
+          mkdir -p build
+          cd build
+          cmake -D CMAKE_BUILD_TYPE=Debug \
+          -D VULKAN_HEADERS_INSTALL_DIR=${{github.workspace}}/build \
+          -D CMAKE_INSTALL_PREFIX=install ..
+          cmake --build .
+
+      #- name: Build vulkan-loader
+      #  #if: env.BUILD_GLSLANG == 'true'
+      #  working-directory: ./vulkan-loader
+      #  run: |
+      #    cmake -S . -B build -D UPDATE_DEPS=On -DBUILD_SHARED_LIBS=OFF
+      #    cmake --build build --config Release
 
       - name: Upload vulkan-loader artefacts
         #if: env.BUILD_GLSLANG == 'true'
