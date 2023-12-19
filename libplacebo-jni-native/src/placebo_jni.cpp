@@ -13,7 +13,9 @@
 #include <libplacebo/vulkan.h>
 
 #include <vulkan/vulkan.h>
-#include <vulkan/vulkan_win32.h>
+#ifdef _WIN32
+    #include <vulkan/vulkan_win32.h>
+#endif
 #include <vulkan/vulkan_xcb.h>
 #include <vulkan/vulkan_wayland.h>
 
