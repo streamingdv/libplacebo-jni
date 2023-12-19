@@ -131,7 +131,7 @@ jobs:
       
           cmake -G "Ninja" -B build -S ./libplacebo-jni-native \
             -DCMAKE_BUILD_TYPE=Release \
-            -DVULKAN_LIB_DIR=${{github.workspace}}/libs/vulkan-loader/windows/${{ matrix.archAltValue }} \
+            -DVULKAN_LIB_DIR=${{github.workspace}}/libs/vulkan-loader/linux/x64 \
             -DLIBPLACEBO_LIB_PATH=${LIBPLACEBO_LIB_PATH} \
             -DLIBPLACEBO_HEADERS_DIR=${LIBPLACEBO_HEADERS_DIR} \
             -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries \
