@@ -11,8 +11,9 @@
     #include <xcb/xcb.h>
 #endif
 
-#include <libplacebo/log.h>
 #include <libplacebo/vulkan.h>
+#include <libplacebo/log.h>
+#include <libplacebo/cache.h>
 
 #include <vulkan/vulkan.h>
 #ifdef _WIN32
@@ -145,7 +146,7 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanCreate
          PL_VULKAN_DEFAULTS
      };
 
-     pl_vulkan placebo_vulkan = pl_vulkan_create(placebo_log, &vulkan_params);
+     pl_vulkan placebo_vulkan = pl_vulkan_create(log, &vulkan_params);
      return reinterpret_cast<jlong>(placebo_vulkan);
 }
 
@@ -154,42 +155,21 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanDestroy
   (JNIEnv *env, jobject obj, jlong placebo_vulkan) {
      pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
      if (vulkan != nullptr) {
-         pl_vk_inst_destroy(&vulkan);
+         pl_vulkan_destroy(&vulkan);
      }
 }
 
-// ToDo next -> pl_vulkan_create with params placebo_log and pl_vk_inst
+// ToDo next ->
 /*
- struct pl_vulkan_params vulkan_params = {
-        .instance = placebo_vk_inst->instance,
-        .get_proc_addr = placebo_vk_inst->get_proc_addr,
-        PL_VULKAN_DEFAULTS
-    };
-    placebo_vulkan = pl_vulkan_create(placebo_log, &vulkan_params);
-    return placebo_vulkan
-*/
-
-
-/*
-// Structure representing a VkInstance. Using this is not required.
-typedef const struct pl_vk_inst_t {
-    VkInstance instance;
-
-    // The Vulkan API version supported by this VkInstance.
-    uint32_t api_version;
-
-    // The associated vkGetInstanceProcAddr pointer.
-    PFN_vkGetInstanceProcAddr get_proc_addr;
-
-    // The instance extensions that were successfully enabled, including
-    // extensions enabled by libplacebo internally. May contain duplicates.
-    const char * const *extensions;
-    int num_extensions;
-
-    // The instance layers that were successfully enabled, including
-    // layers enabled by libplacebo internally. May contain duplicates.
-    const char * const *layers;
-    int num_layers;
-} *pl_vk_inst;
-
+     struct pl_cache_params cache_params = {
+         .log = placebo_log,
+         .max_total_size = 10 << 20, // 10 MB
+     };
+     placebo_cache = pl_cache_create(&cache_params);
+     pl_gpu_set_cache(placebo_vulkan->gpu, placebo_cache);
+     FILE *file = fopen(qPrintable(GetShaderCacheFile()), "rb");
+     if (file) {
+         pl_cache_load_file(placebo_cache, file);
+         fclose(file);
+     }
 */
