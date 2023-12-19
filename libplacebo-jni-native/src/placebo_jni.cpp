@@ -6,6 +6,7 @@
 #include <jni.h>
 #include <libplacebo/log.h>
 #include <libplacebo/vulkan.h>
+#include <vulkan/vulkan.h>
 
 /*** define helper functions ***/
 
