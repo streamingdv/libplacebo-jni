@@ -7,8 +7,9 @@
 
 #ifdef _WIN32
     #include <windows.h>
+#else
+    #include <xcb/xcb.h>
 #endif
-#include <xcb/xcb.h>
 
 #include <libplacebo/log.h>
 #include <libplacebo/vulkan.h>
@@ -16,9 +17,10 @@
 #include <vulkan/vulkan.h>
 #ifdef _WIN32
     #include <vulkan/vulkan_win32.h>
+#else
+    #include <vulkan/vulkan_xcb.h>
+    #include <vulkan/vulkan_wayland.h>
 #endif
-#include <vulkan/vulkan_xcb.h>
-#include <vulkan/vulkan_wayland.h>
 
 /*** define helper functions ***/
 

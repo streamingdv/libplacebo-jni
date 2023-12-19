@@ -49,6 +49,11 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libavcodec-dev libavformat-dev libegl1-mesa-dev libsdl2-dev libxxhash-dev glslang-dev libvulkan-dev liblcms2-dev build-essential libx11-xcb-dev libxkbcommon-dev libwayland-dev libxrandr-dev cmake
 
+      - name: Install xbxc dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install libxcb1-dev libxcb-randr0-dev libxcb-keysyms1-dev libxcb-icccm4-dev libxcb-image0-dev libxcb-xkb-dev
+
       - name: Install Meson and Ninja
         run: |
           sudo apt-get install -y python3-pip

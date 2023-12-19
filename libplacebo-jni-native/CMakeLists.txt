@@ -71,28 +71,16 @@ target_compile_definitions(libplacebo-jni-native PRIVATE PL_STATIC)
 # Find packages using PkgConfig with static linking preference
 find_package(PkgConfig REQUIRED)
 
-pkg_check_modules(XCB REQUIRED xcb)
-include_directories(${XCB_INCLUDE_DIRS})
-link_directories(${XCB_LIBRARY_DIRS})
-#pkg_check_modules(VULKAN_STATIC REQUIRED vulkan)
-#link_directories(${VULKAN_STATIC_LIBRARY_DIRS})
-
-
 if(IS_RUNNING_ON_WINDOWS)
     pkg_check_modules(SHADERC_COMBINED_STATIC REQUIRED shaderc_combined)
-    include_directories(
-        ${SHADERC_COMBINED_STATIC_INCLUDE_DIRS}
-    )
-    link_directories(
-        ${SHADERC_COMBINED_STATIC_LIBRARY_DIRS}
-    )
+    include_directories(${SHADERC_COMBINED_STATIC_INCLUDE_DIRS})
+    link_directories(${SHADERC_COMBINED_STATIC_LIBRARY_DIRS})
 
     # Link libraries - Static versions
     target_link_libraries(libplacebo-jni-native PRIVATE
         ${LIBPLACEBO_LIB_PATH}
         ${JNI_LIBRARIES}
         ${SHADERC_COMBINED_STATIC_LIBRARIES}
-        #${VULKAN_STATIC_LIBRARIES}
         "${VULKAN_LIB_DIR}/lib/libloader-opt.a"
         "${VULKAN_LIB_DIR}/lib/libvulkan-1.dll.a"
         "${GLSLANG_LIBS_DIR}/libMachineIndependent.a"
@@ -111,11 +99,17 @@ if(IS_RUNNING_ON_WINDOWS)
         shlwapi
     )
 else()
+    pkg_check_modules(VULKAN REQUIRED vulkan)
+    link_directories(${VULKAN_LIBRARY_DIRS})
+
+    pkg_check_modules(XCB REQUIRED xcb)
+    include_directories(${XCB_INCLUDE_DIRS})
+    link_directories(${XCB_LIBRARY_DIRS})
     add_definitions(${XCB_CFLAGS_OTHER})
+
     target_link_libraries(libplacebo-jni-native PRIVATE
         ${LIBPLACEBO_LIB_PATH}
         ${JNI_LIBRARIES}
-        ${VULKAN_STATIC_LIBRARIES}
         "${GLSLANG_LIBS_DIR}/libMachineIndependent.a"
         "${GLSLANG_LIBS_DIR}/libOSDependent.a"
         "${GLSLANG_LIBS_DIR}/libglslang.a"
