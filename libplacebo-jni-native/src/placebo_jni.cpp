@@ -102,7 +102,7 @@ JNIEXPORT jstring JNICALL Java_com_grill_placebo_PlaceboManager_getWindowingSyst
     return env->NewStringUTF("unknown");
 }
 
-JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVkInstDestroy(JNIEnv *env, jobject obj, jlong plLog, jobject paramsObj) {
+JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVkInstCreate(JNIEnv *env, jobject obj, jlong plLog, jobject paramsObj) {
     jclass paramsCls = env->GetObjectClass(paramsObj);
 
     jfieldID debugField = env->GetFieldID(paramsCls, "debug", "Z");
