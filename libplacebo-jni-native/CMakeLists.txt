@@ -54,6 +54,13 @@ include_directories(${GENERATED_JNI_HEADERS_DIR})
 set(LIBPLACEBO_HEADERS_DIR "${CMAKE_SOURCE_DIR}/3rdparty/libplacebo/install/include" CACHE STRING "Path to libplacebo headers")
 include_directories(${LIBPLACEBO_HEADERS_DIR})
 
+# Check for VULKAN_HEADERS_DIR
+#set(VULKAN_HEADERS_DIR "" CACHE STRING "Path to vulkan headers")
+#if(VULKAN_HEADERS_DIR STREQUAL "")
+#    message(FATAL_ERROR "Please run CMake with -DVULKAN_HEADERS_DIR=/path/to/glslang/include")
+#endif()
+#include_directories(${VULKAN_HEADERS_DIR})
+
 # Project sources
 set(SOURCES src/placebo_jni.cpp)
 
@@ -63,20 +70,39 @@ target_compile_definitions(libplacebo-jni-native PRIVATE PL_STATIC)
 
 # Find packages using PkgConfig with static linking preference
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(SHADERC_COMBINED_STATIC REQUIRED shaderc_combined)
 pkg_check_modules(VULKAN_STATIC REQUIRED vulkan)
 
 # Include 3rd party directories and library paths
-include_directories(
-    ${SHADERC_COMBINED_STATIC_INCLUDE_DIRS}
-    ${VULKAN_STATIC_INCLUDE_DIRS}
-)
-link_directories(
-    ${SHADERC_COMBINED_STATIC_LIBRARY_DIRS}
-    ${VULKAN_STATIC_LIBRARY_DIRS}
-)
+include_directories(${VULKAN_STATIC_INCLUDE_DIRS})
+message(STATUS "VULKAN_STATIC_INCLUDE_DIRS: ${VULKAN_STATIC_INCLUDE_DIRS}")
+foreach(DIR ${VULKAN_STATIC_INCLUDE_DIRS})
+        file(GLOB FILES "${DIR}/*")
+        message(STATUS "Files in ${DIR}:")
+        foreach(FILE ${FILES})
+            message(STATUS "  ${FILE}")
+        endforeach()
+    endforeach()
+link_directories(${VULKAN_STATIC_LIBRARY_DIRS})
 
 if(IS_RUNNING_ON_WINDOWS)
+    pkg_check_modules(SHADERC_COMBINED_STATIC REQUIRED shaderc_combined)
+    message(STATUS "SHADERC_COMBINED_STATIC_INCLUDE_DIRS: ${SHADERC_COMBINED_STATIC_INCLUDE_DIRS}")
+
+    foreach(DIR ${SHADERC_COMBINED_STATIC_INCLUDE_DIRS})
+        file(GLOB FILES "${DIR}/*")
+        message(STATUS "Files in ${DIR}:")
+        foreach(FILE ${FILES})
+            message(STATUS "  ${FILE}")
+        endforeach()
+    endforeach()
+
+    include_directories(
+        ${SHADERC_COMBINED_STATIC_INCLUDE_DIRS}
+    )
+    link_directories(
+        ${SHADERC_COMBINED_STATIC_LIBRARY_DIRS}
+    )
+
     # Link libraries - Static versions
     target_link_libraries(libplacebo-jni-native PRIVATE
         ${LIBPLACEBO_LIB_PATH}
@@ -102,7 +128,6 @@ else()
     target_link_libraries(libplacebo-jni-native PRIVATE
         ${LIBPLACEBO_LIB_PATH}
         ${JNI_LIBRARIES}
-        ${SHADERC_COMBINED_STATIC_LIBRARIES}
         ${VULKAN_STATIC_LIBRARIES}
         "${GLSLANG_LIBS_DIR}/libMachineIndependent.a"
         "${GLSLANG_LIBS_DIR}/libOSDependent.a"
