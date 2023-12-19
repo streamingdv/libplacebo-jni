@@ -165,7 +165,7 @@ jobs:
       
           cmake -G "Ninja" -B build -S ./libplacebo-jni-native \
             -DCMAKE_BUILD_TYPE=Release \
-            -DVULKAN_HEADERS_DIR=$(cygpath "${{github.workspace}}/libs/vulkan-loader/windows/${{ matrix.archAltValue }}/include") \
+            -DVULKAN_LIB_DIR=$(cygpath "${{github.workspace}}/libs/vulkan-loader/windows/${{ matrix.archAltValue }}") \
             -DLIBPLACEBO_LIB_PATH=${LIBPLACEBO_LIB_PATH_UNIX} \
             -DLIBPLACEBO_HEADERS_DIR=${LIBPLACEBO_HEADERS_DIR_UNIX} \
             -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${NATIVE_BINARIES_DIR_UNIX} \
