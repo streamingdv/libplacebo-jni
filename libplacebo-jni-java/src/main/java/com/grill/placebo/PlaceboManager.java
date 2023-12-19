@@ -43,17 +43,6 @@ public class PlaceboManager {
         }
     }
 
-    // Class to represent pl_vk_inst_params structure
-    public static class PlVkInstParams {
-        public boolean debug;
-        public boolean debugExtra;
-        public int maxApiVersion;
-        public String[] extensions;
-        public String[] optExtensions;
-        public String[] layers;
-        public String[] optLayers;
-    }
-
     public static final int API_VERSION = 342;
 
     /**
@@ -80,16 +69,29 @@ public class PlaceboManager {
     /**
      * Creates a Vulkan instance
      * @param plLog the logHandle
-     * @param params the params
      * @return the handle to the vk instance, placebo_vk_inst
      */
-    public native long plVkInstCreate(long plLog, PlVkInstParams params);
+    public native long plVkInstCreate(long plLog);
 
     /**
      * Deletes a vl inst
      * @param placebo_vk_inst the vk inst to be deleted, placebo_vk_inst
      */
     public native void plVkInstDestroy(long placebo_vk_inst);
+
+    /**
+     * Creates a vulkan device
+     * @param plLog the log handle
+     * @param vkInst the vk inst handle
+     * @return the vulkan device handle
+     */
+    public native long plVulkanCreate(long plLog, long vkInst);
+
+    /**
+     * Destroy the vulkan device
+     * @param vkInst vkInst the vk inst handle
+     */
+    public native void plVulkanDestroy(long vkInst);
 
     /************************/
     /*** load lib methods ***/
