@@ -52,6 +52,7 @@ jobs:
           path: 'glslang'
 
       - name: Checkout vulkan-loader repository
+        if: env.BUILD_VULKAN_LOADER == 'true'
         uses: actions/checkout@v2
         with:
           repository: 'KhronosGroup/Vulkan-Loader'
@@ -84,6 +85,7 @@ jobs:
             mingw-w64-${{ matrix.env }}-python
 
       - name: Build vulkan-loader
+        if: env.BUILD_VULKAN_LOADER == 'true'
         working-directory: ./vulkan-loader
         run: |
           cmake -S . -B build -D UPDATE_DEPS=On
@@ -91,6 +93,7 @@ jobs:
         shell: msys2 {0}
 
       - name: Upload vulkan-loader artefacts
+        if: env.BUILD_VULKAN_LOADER == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: vulkan-loader-artefacts-${{ matrix.arch }}
