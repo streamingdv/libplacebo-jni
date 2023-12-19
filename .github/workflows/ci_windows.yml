@@ -6,6 +6,10 @@ on:
         description: 'Build glslang (true/false)'
         required: true
         default: 'false' # to save time, actual build is already in libs folder
+      build_libplacebo:
+        description: 'Build libplacebo (true/false)'
+        required: true
+        default: 'false' # to save time, actual build is already in libs folder
 
 jobs:
   build-binaries-windows:
@@ -13,6 +17,7 @@ jobs:
     runs-on: windows-latest
     env:
       BUILD_GLSLANG: ${{ github.event.inputs.build_glslang }}
+      BUILD_LIBPLACEBO: ${{ github.event.inputs.build_libplacebo }}
     strategy:
       matrix:
         include:
@@ -88,6 +93,7 @@ jobs:
           path: ${{github.workspace}}/glslang/install
 
       - name: Build libplacebo
+        if: env.BUILD_LIBPLACEBO == 'true'
         working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
         run: |
           meson setup build --buildtype release --default-library=static -Ddemos=false -Dprefix=$PWD/install
@@ -96,6 +102,7 @@ jobs:
         shell: msys2 {0}
 
       - name: Upload libplacebo artefacts
+        if: env.BUILD_LIBPLACEBO == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: libplacebo-artefacts-${{ matrix.arch }}
@@ -120,8 +127,18 @@ jobs:
             GLSLANG_HEADERS_DIR_UNIX=$(cygpath "${{github.workspace}}/libs/glslang/windows/${{ matrix.archAltValue }}/include")
           fi
           
+          if [ "${{ env.BUILD_LIBPLACEBO }}" = "true" ]; then
+            LIBPLACEBO_LIB_PATH_UNIX=$(cygpath "${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/lib/libplacebo.a")
+            LIBPLACEBO_HEADERS_DIR_UNIX=$(cygpath "${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/include")
+          else
+            LIBPLACEBO_LIB_PATH_UNIX=$(cygpath "${{github.workspace}}/libs/libplacebo/windows/${{ matrix.archAltValue }}/lib/libplacebo.a")
+            LIBPLACEBO_HEADERS_DIR_UNIX=$(cygpath "${{github.workspace}}/libs/libplacebo/windows/${{ matrix.archAltValue }}/include")
+          fi
+          
           cmake -G "Ninja" -B build -S ./libplacebo-jni-native \
             -DCMAKE_BUILD_TYPE=Release \
+            -DLIBPLACEBO_LIB_PATH=${LIBPLACEBO_LIB_PATH_UNIX} \
+            -DLIBPLACEBO_HEADERS_DIR=${LIBPLACEBO_HEADERS_DIR} \
             -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${NATIVE_BINARIES_DIR_UNIX} \
             -DCMAKE_LIBRARY_OUTPUT_DIRECTORY=${NATIVE_BINARIES_DIR_UNIX} \
             -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=${NATIVE_BINARIES_DIR_UNIX} \

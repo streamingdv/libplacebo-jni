@@ -51,7 +51,8 @@ include_directories(${GLSLANG_HEADERS_DIR})
 # Inlcude JNI headers
 include_directories(${GENERATED_JNI_HEADERS_DIR})
 # Include libplacebo headers
-include_directories(3rdparty/libplacebo/install/include)
+set(LIBPLACEBO_HEADERS_DIR "${CMAKE_SOURCE_DIR}/3rdparty/libplacebo/install/include" CACHE STRING "Path to libplacebo headers")
+include_directories(${LIBPLACEBO_HEADERS_DIR})
 
 # Project sources
 set(SOURCES src/placebo_jni.cpp)
