@@ -57,7 +57,7 @@ jobs:
           mkdir -p build
           cd build
           cmake -D CMAKE_BUILD_TYPE=Debug \
-          -D VULKAN_HEADERS_INSTALL_DIR=${{github.workspace}}/build \
+          -D UPDATE_DEPS=ON \
           -D CMAKE_INSTALL_PREFIX=install ..
           cmake --build .
 
