@@ -5,13 +5,17 @@
 #include <vector>
 #include <jni.h>
 
-#include <windows.h>
+#ifdef _WIN32
+    #include <windows.h>
+#endif
 
 #include <libplacebo/log.h>
 #include <libplacebo/vulkan.h>
 
 #include <vulkan/vulkan.h>
 #include <vulkan/vulkan_win32.h>
+#include <vulkan/vulkan_xcb.h>
+#include <vulkan/vulkan_wayland.h>
 
 /*** define helper functions ***/
 
@@ -155,10 +159,17 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVkInstCreate(JNI
 
     return reinterpret_cast<jlong>(instance);*/
 
-    const char *vk_exts[] = {
-        VK_KHR_SURFACE_EXTENSION_NAME,
-        VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
-    };
+    #ifdef _WIN32
+        const char *vk_exts[] = {
+            VK_KHR_SURFACE_EXTENSION_NAME,
+            VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
+        };
+    #else
+        const char *vk_exts[] = {
+            VK_KHR_SURFACE_EXTENSION_NAME,
+            VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME,
+        };
+    #endif
 
     const char *opt_extensions[] = {
         VK_EXT_HDR_METADATA_EXTENSION_NAME,
