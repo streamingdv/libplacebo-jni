@@ -35,7 +35,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libavcodec-dev libavformat-dev libegl1-mesa-dev libsdl2-dev libxxhash-dev glslang-dev libvulkan-dev liblcms2-dev cmake
+          sudo apt-get install -y libavcodec-dev libavformat-dev libegl1-mesa-dev libsdl2-dev libxxhash-dev glslang-dev libvulkan-dev liblcms2-dev shaderc cmake
 
       - name: Install Meson and Ninja
         run: |
