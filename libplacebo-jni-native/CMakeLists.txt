@@ -70,22 +70,16 @@ target_compile_definitions(libplacebo-jni-native PRIVATE PL_STATIC)
 
 # Find packages using PkgConfig with static linking preference
 find_package(PkgConfig REQUIRED)
+
+pkg_check_modules(XCB REQUIRED xcb)
+include_directories(${XCB_INCLUDE_DIRS})
+link_directories(${XCB_LIBRARY_DIRS})
 #pkg_check_modules(VULKAN_STATIC REQUIRED vulkan)
 #link_directories(${VULKAN_STATIC_LIBRARY_DIRS})
 
 
 if(IS_RUNNING_ON_WINDOWS)
     pkg_check_modules(SHADERC_COMBINED_STATIC REQUIRED shaderc_combined)
-    message(STATUS "SHADERC_COMBINED_STATIC_INCLUDE_DIRS: ${SHADERC_COMBINED_STATIC_INCLUDE_DIRS}")
-
-    foreach(DIR ${SHADERC_COMBINED_STATIC_INCLUDE_DIRS})
-        file(GLOB FILES "${DIR}/*")
-        message(STATUS "Files in ${DIR}:")
-        foreach(FILE ${FILES})
-            message(STATUS "  ${FILE}")
-        endforeach()
-    endforeach()
-
     include_directories(
         ${SHADERC_COMBINED_STATIC_INCLUDE_DIRS}
     )
@@ -117,6 +111,7 @@ if(IS_RUNNING_ON_WINDOWS)
         shlwapi
     )
 else()
+    add_definitions(${XCB_CFLAGS_OTHER})
     target_link_libraries(libplacebo-jni-native PRIVATE
         ${LIBPLACEBO_LIB_PATH}
         ${JNI_LIBRARIES}

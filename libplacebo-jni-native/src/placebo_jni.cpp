@@ -8,6 +8,7 @@
 #ifdef _WIN32
     #include <windows.h>
 #endif
+#include <xcb/xcb.h>
 
 #include <libplacebo/log.h>
 #include <libplacebo/vulkan.h>
