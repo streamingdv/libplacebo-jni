@@ -74,7 +74,7 @@ jobs:
           ./utils/git-sync-deps
           mkdir -p build
           cd build
-          cmake $SOURCE_DIR
+          cmake ..
           cmake --build . --config Release
 
       - name: Upload shaderc artefacts
