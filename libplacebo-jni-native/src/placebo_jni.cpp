@@ -196,6 +196,38 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plGpuSetCache
        pl_cache cache = reinterpret_cast<pl_cache>(placebo_cache);
        pl_gpu_set_cache(vulkan->gpu, cache);
 }
+
+extern "C"
+JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plCacheLoadFile
+  (JNIEnv *env, jobject obj, jlong placebo_cache, jstring cache_filePath) {
+  const char *path = env->GetStringUTFChars(cache_filePath, nullptr);
+  if (path == nullptr) {
+      return;
+  }
+  FILE *file = fopen(path, "rb");
+  if (file) {
+      pl_cache_load_file(placebo_cache, file);
+      fclose(file);
+  }
+
+  env->ReleaseStringUTFChars(cache_filePath, path);
+}
+
+extern "C"
+JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plCacheSaveFile
+  (JNIEnv *env, jobject obj, jlong placebo_cache, jstring cache_filePath) {
+  const char *path = env->GetStringUTFChars(cache_filePath, nullptr);
+  if (path == nullptr) {
+      return;
+  }
+  FILE *file = fopen(path, "wb");
+  if (file) {
+      pl_cache_save_file(placebo_cache, file);
+      fclose(file);
+  }
+
+  env->ReleaseStringUTFChars(cache_filePath, path);
+}
 // ToDo next ->
 /*
      struct pl_cache_params cache_params = {

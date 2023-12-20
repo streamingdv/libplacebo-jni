@@ -10,6 +10,10 @@ on:
         description: 'Build libplacebo (true/false)'
         required: true
         default: 'false' # to save time, actual build is already in libs folder
+      build_shaderc:
+        description: 'Build shaderc (true/false)'
+        required: true
+        default: 'false' # not needed
       build_vulkan-loader:
         description: 'Build vulkan-loader (true/false)'
         required: true
@@ -22,6 +26,7 @@ jobs:
     env:
       BUILD_GLSLANG: ${{ github.event.inputs.build_glslang }}
       BUILD_LIBPLACEBO: ${{ github.event.inputs.build_libplacebo }}
+      BUILD_SHADERC: ${{ github.event.inputs.build_shaderc }}
       BUILD_VULKAN_LOADER: ${{ github.event.inputs.build_vulkan }}
 
     steps:
@@ -31,6 +36,7 @@ jobs:
       #    submodules: 'recursive'
 
       - name: Checkout shaderc repository
+        if: env.BUILD_SHADERC == 'true'
         uses: actions/checkout@v2
         with:
           repository: 'google/shaderc'
@@ -68,7 +74,7 @@ jobs:
           pip3 install --upgrade ninja==1.11.1
 
       - name: Build shaderc
-        #if: env.BUILD_VULKAN_LOADER == 'true'
+        if: env.BUILD_SHADERC == 'true'
         working-directory: ./shaderc
         run: |
           ./utils/git-sync-deps
@@ -78,7 +84,7 @@ jobs:
           cmake --build . --config Release
 
       - name: Upload shaderc artefacts
-        #if: env.BUILD_VULKAN_LOADER == 'true'
+        if: env.BUILD_SHADERC == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: shaderc-artefacts-${{ matrix.arch }}
