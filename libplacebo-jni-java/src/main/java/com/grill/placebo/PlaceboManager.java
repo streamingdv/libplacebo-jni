@@ -52,13 +52,13 @@ public class PlaceboManager {
      * @param callback the callback
      * @return the log handle, pl_log
      */
-    public native long createLog(int apiVersion, int logLevel, LogCallback callback);
+    public native long plLogCreate(int apiVersion, int logLevel, LogCallback callback);
 
     /**
-     * Deletes a logger with the log callback
+     * Destroys a logger with the log callback
      * @param logHandle the log handle to be deleted, pl_log
      */
-    public native void destroyLog(long logHandle);
+    public native void plLogDestroy(long logHandle);
 
     /**
      * Get the underlying windowing system. Please note: this is only supported on Unix systems
@@ -74,7 +74,7 @@ public class PlaceboManager {
     public native long plVkInstCreate(long plLog);
 
     /**
-     * Deletes a vl inst
+     * Destroys a vl inst
      * @param placebo_vk_inst the vk inst to be deleted, placebo_vk_inst
      */
     public native void plVkInstDestroy(long placebo_vk_inst);
@@ -88,10 +88,31 @@ public class PlaceboManager {
     public native long plVulkanCreate(long plLog, long vkInst);
 
     /**
-     * Destroy the vulkan device
-     * @param vkInst vkInst the vk inst handle
+     * Destroys the vulkan device
+     * @param vk the vulkan device handle
      */
-    public native void plVulkanDestroy(long vkInst);
+    public native void plVulkanDestroy(long vk);
+
+    /**
+     * Create placebo cache
+     * @param plLog the log handle
+     * @param maxSize the max cache size. Negative number are not allowed
+     * @return the cache handle
+     */
+    public native long plCacheCreate(long plLog, int maxSize);
+
+    /**
+     * Destroys the cache
+     * @param plCache the cache handle
+     */
+    public native void plCacheDestroy(long plCache);
+
+    /**
+     * Sets the gpu cache
+     * @param vk the vulkan device handle
+     * @param cache the cache handle
+     */
+    public native void plGpuSetCache(long vk, long cache);
 
     /************************/
     /*** load lib methods ***/

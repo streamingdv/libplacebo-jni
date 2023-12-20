@@ -14,6 +14,7 @@
 #include <libplacebo/vulkan.h>
 #include <libplacebo/log.h>
 #include <libplacebo/cache.h>
+#include <libplacebo/gpu.h>
 
 #include <vulkan/vulkan.h>
 #ifdef _WIN32
@@ -60,7 +61,7 @@ JNIEXPORT jstring JNICALL Java_com_grill_placebo_PlaceboManager_getWindowingSyst
 }
 
 extern "C"
-JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_createLog
+JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plLogCreate
   (JNIEnv *env, jobject obj, jint apiVersion, jint logLevel, jobject logCallback) {
 
     globalEnv = env;
@@ -82,7 +83,7 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_createLog
 }
 
 extern "C"
-JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_destroyLog
+JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plLogDestroy
   (JNIEnv *env, jobject obj, jlong placebo_log) {
      pl_log log = reinterpret_cast<pl_log>(placebo_log);
      if (log != nullptr) {
@@ -159,6 +160,42 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanDestroy
      }
 }
 
+
+extern "C"
+JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plCacheCreate
+  (JNIEnv *env, jobject obj, jlong placebo_log, jint max_size) {
+  pl_log log = reinterpret_cast<pl_log>(placebo_log);
+  size_t max_cache_size;
+  if (max_size >= 0) {
+      max_cache_size = static_cast<size_t>(max_size);
+  } else {
+      max_cache_size = 10 << 20; // default use 10 MB
+  }
+  struct pl_cache_params cache_params = {
+      .log = log,
+      .max_total_size = max_cache_size,
+  };
+
+  pl_cache placebo_cache = pl_cache_create(&cache_params);
+  return reinterpret_cast<jlong>(placebo_cache);
+}
+
+extern "C"
+JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plCacheDestroy
+  (JNIEnv *env, jobject obj, jlong placebo_cache) {
+     pl_cache cache = reinterpret_cast<pl_cache>(placebo_cache);
+     if (cache != nullptr) {
+         pl_cache_destroy(&cache);
+     }
+}
+
+extern "C"
+JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plGpuSetCache
+  (JNIEnv *env, jobject obj, jlong placebo_vulkan, jlong placebo_cache) {
+       pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
+       pl_cache cache = reinterpret_cast<pl_cache>(placebo_cache);
+       pl_gpu_set_cache(vulkan->gpu, cache);
+}
 // ToDo next ->
 /*
      struct pl_cache_params cache_params = {
