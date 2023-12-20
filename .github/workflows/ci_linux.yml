@@ -30,10 +30,10 @@ jobs:
       BUILD_VULKAN_LOADER: ${{ github.event.inputs.build_vulkan }}
 
     steps:
-      #- name: Checkout libplacebo-jni repository
-      #  uses: actions/checkout@v2
-      #  with:
-      #    submodules: 'recursive'
+      - name: Checkout libplacebo-jni repository
+        uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
 
       - name: Checkout shaderc repository
         if: env.BUILD_SHADERC == 'true'
@@ -80,7 +80,7 @@ jobs:
           ./utils/git-sync-deps
           mkdir -p build
           cd build
-          cmake ..
+          cmake -DSHADERC_SKIP_TESTS=ON ..
           cmake --build . --config Release
 
       - name: Upload shaderc artefacts
@@ -90,101 +90,101 @@ jobs:
           name: shaderc-artefacts-${{ matrix.arch }}
           path: ${{github.workspace}}/shaderc
 
-      #- name: Build vulkan-loader
-      #  if: env.BUILD_VULKAN_LOADER == 'true'
-      #  working-directory: ./vulkan-loader
-      #  run: |
-      #    cmake -S . -B build -D UPDATE_DEPS=On
-      #    cmake --build build --config Release
-#
-      #- name: Upload vulkan-loader artefacts
-      #  if: env.BUILD_VULKAN_LOADER == 'true'
-      #  uses: actions/upload-artifact@v4
-      #  with:
-      #    name: vulkan-loader-artefacts-x64
-      #    path: ${{github.workspace}}/vulkan-loader
-#
-      #- name: Update glslang sources
-      #  if: env.BUILD_GLSLANG == 'true'
-      #  working-directory: ./glslang
-      #  run: ./update_glslang_sources.py
-#
-      #- name: Build glslang
-      #  if: env.BUILD_GLSLANG == 'true'
-      #  working-directory: ./glslang
-      #  run: |
-      #    cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="$(pwd)/install" .
-      #    cmake --build . --config Release --target install
-#
-      #- name: Upload gslang artefacts
-      #  if: env.BUILD_GLSLANG == 'true'
-      #  uses: actions/upload-artifact@v4
-      #  with:
-      #    name: gslang-artefacts-x64
-      #    path: ${{github.workspace}}/glslang/install
-#
-      #- name: Build libplacebo
-      #  if: env.BUILD_LIBPLACEBO == 'true'
-      #  working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
-      #  run: |
-      #    meson setup build --buildtype release --default-library=static -Ddemos=false -Dprefix=$PWD/install
-      #    meson compile -vC build
-      #    meson install -C build
-#
-      #- name: Upload libplacebo artefacts
-      #  if: env.BUILD_LIBPLACEBO == 'true'
-      #  uses: actions/upload-artifact@v4
-      #  with:
-      #    name: libplacebo-artefacts-x64
-      #    path: ${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install
-#
-      #- name: Make gradlew executable
-      #  run: chmod +x ./gradlew
-#
-      #- name: Build libplacebo-jni-java compile java
-      #  run: |
-      #    ./gradlew clean
-      #    ./gradlew libplacebo-jni-java:compileJava
-#
-      #- name: Configure and Build libplacebo-jni with CMake
-      #  run: |
-      #    if [ "${{ env.BUILD_GLSLANG }}" = "true" ]; then
-      #      GLSLANG_LIBS_DIR=${{github.workspace}}/glslang/install/lib
-      #      GLSLANG_HEADERS_DIR=${{github.workspace}}/glslang/install/include
-      #    else
-      #      GLSLANG_LIBS_DIR=${{github.workspace}}/libs/glslang/linux/x64/lib
-      #      GLSLANG_HEADERS_DIR=${{github.workspace}}/libs/glslang/linux/x64/include
-      #    fi
-      #
-      #    if [ "${{ env.BUILD_LIBPLACEBO }}" = "true" ]; then
-      #      LIBPLACEBO_LIB_PATH=${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/lib/libplacebo.a
-      #      LIBPLACEBO_HEADERS_DIR=${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/include
-      #    else
-      #      LIBPLACEBO_LIB_PATH=${{github.workspace}}/libs/libplacebo/linux/x64/lib/x86_64-linux-gnu/libplacebo.a
-      #      LIBPLACEBO_HEADERS_DIR=${{github.workspace}}/libs/libplacebo/linux/x64/include
-      #    fi
-      #
-      #    cmake -G "Ninja" -B build -S ./libplacebo-jni-native \
-      #      -DCMAKE_BUILD_TYPE=Release \
-      #      -DVULKAN_LIB_DIR=${{github.workspace}}/libs/vulkan-loader/linux/x64 \
-      #      -DLIBPLACEBO_LIB_PATH=${LIBPLACEBO_LIB_PATH} \
-      #      -DLIBPLACEBO_HEADERS_DIR=${LIBPLACEBO_HEADERS_DIR} \
-      #      -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries \
-      #      -DCMAKE_LIBRARY_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries \
-      #      -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries \
-      #      -DGENERATED_JNI_HEADERS_DIR=${{ github.workspace }}/build/generatedHeaders \
-      #      -DGLSLANG_LIBS_DIR=${GLSLANG_LIBS_DIR} \
-      #      -DGLSLANG_HEADERS_DIR=${GLSLANG_HEADERS_DIR} \
-      #      -DIS_RUNNING_ON_WINDOWS=OFF
-      #    cmake --build build
-      #  shell: bash
-#
-#
-      #- name: Rename DLL file
-      #  run: mv ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native.so ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native-64.so
-#
-      #- name: Upload Artifact
-      #  uses: actions/upload-artifact@v4
-      #  with:
-      #    name: linux-libplacebo-jni-artifact-64bit
-      #    path: ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native-64.so
+      - name: Build vulkan-loader
+        if: env.BUILD_VULKAN_LOADER == 'true'
+        working-directory: ./vulkan-loader
+        run: |
+          cmake -S . -B build -D UPDATE_DEPS=On
+          cmake --build build --config Release
+
+      - name: Upload vulkan-loader artefacts
+        if: env.BUILD_VULKAN_LOADER == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: vulkan-loader-artefacts-x64
+          path: ${{github.workspace}}/vulkan-loader
+
+      - name: Update glslang sources
+        if: env.BUILD_GLSLANG == 'true'
+        working-directory: ./glslang
+        run: ./update_glslang_sources.py
+
+      - name: Build glslang
+        if: env.BUILD_GLSLANG == 'true'
+        working-directory: ./glslang
+        run: |
+          cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="$(pwd)/install" .
+          cmake --build . --config Release --target install
+
+      - name: Upload gslang artefacts
+        if: env.BUILD_GLSLANG == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: gslang-artefacts-x64
+          path: ${{github.workspace}}/glslang/install
+
+      - name: Build libplacebo
+        if: env.BUILD_LIBPLACEBO == 'true'
+        working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
+        run: |
+          meson setup build --buildtype release --default-library=static -Ddemos=false -Dprefix=$PWD/install
+          meson compile -vC build
+          meson install -C build
+
+      - name: Upload libplacebo artefacts
+        if: env.BUILD_LIBPLACEBO == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: libplacebo-artefacts-x64
+          path: ${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Build libplacebo-jni-java compile java
+        run: |
+          ./gradlew clean
+          ./gradlew libplacebo-jni-java:compileJava
+
+      - name: Configure and Build libplacebo-jni with CMake
+        run: |
+          if [ "${{ env.BUILD_GLSLANG }}" = "true" ]; then
+            GLSLANG_LIBS_DIR=${{github.workspace}}/glslang/install/lib
+            GLSLANG_HEADERS_DIR=${{github.workspace}}/glslang/install/include
+          else
+            GLSLANG_LIBS_DIR=${{github.workspace}}/libs/glslang/linux/x64/lib
+            GLSLANG_HEADERS_DIR=${{github.workspace}}/libs/glslang/linux/x64/include
+          fi
+      
+          if [ "${{ env.BUILD_LIBPLACEBO }}" = "true" ]; then
+            LIBPLACEBO_LIB_PATH=${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/lib/libplacebo.a
+            LIBPLACEBO_HEADERS_DIR=${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/include
+          else
+            LIBPLACEBO_LIB_PATH=${{github.workspace}}/libs/libplacebo/linux/x64/lib/x86_64-linux-gnu/libplacebo.a
+            LIBPLACEBO_HEADERS_DIR=${{github.workspace}}/libs/libplacebo/linux/x64/include
+          fi
+      
+          cmake -G "Ninja" -B build -S ./libplacebo-jni-native \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DVULKAN_LIB_DIR=${{github.workspace}}/libs/vulkan-loader/linux/x64 \
+            -DLIBPLACEBO_LIB_PATH=${LIBPLACEBO_LIB_PATH} \
+            -DLIBPLACEBO_HEADERS_DIR=${LIBPLACEBO_HEADERS_DIR} \
+            -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries \
+            -DCMAKE_LIBRARY_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries \
+            -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries \
+            -DGENERATED_JNI_HEADERS_DIR=${{ github.workspace }}/build/generatedHeaders \
+            -DGLSLANG_LIBS_DIR=${GLSLANG_LIBS_DIR} \
+            -DGLSLANG_HEADERS_DIR=${GLSLANG_HEADERS_DIR} \
+            -DIS_RUNNING_ON_WINDOWS=OFF
+          cmake --build build
+        shell: bash
+
+
+      - name: Rename DLL file
+        run: mv ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native.so ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native-64.so
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-libplacebo-jni-artifact-64bit
+          path: ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native-64.so

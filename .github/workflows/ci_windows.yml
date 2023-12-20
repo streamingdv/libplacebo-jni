@@ -104,9 +104,10 @@ jobs:
           ./utils/git-sync-deps
           mkdir -p build
           cd build
-          cmake ..
+          cmake -DSHADERC_SKIP_TESTS=ON ..
           cmake --build . --config Release
         shell: msys2 {0}
+
 
       - name: Upload shaderc artefacts
         #if: env.BUILD_SHADERC == 'true'
