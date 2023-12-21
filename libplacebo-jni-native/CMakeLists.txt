@@ -96,8 +96,7 @@ if(IS_RUNNING_ON_WINDOWS)
         PkgConfig::AVUTIL
         ${LIBPLACEBO_LIB_PATH}
         ${JNI_LIBRARIES}
-        ${SHADERC_COMBINED_STATIC_LIBRARIES}
-        "${SHADERC_LIB_DIR}/libshaderc_combined.a"
+        #"${SHADERC_LIB_DIR}/libshaderc_combined.a"
         "${VULKAN_LIB_DIR}/lib/libloader-opt.a"
         "${VULKAN_LIB_DIR}/lib/libvulkan-1.dll.a"
         "${GLSLANG_LIBS_DIR}/libMachineIndependent.a"
@@ -130,7 +129,7 @@ else()
         PkgConfig::AVUTIL
         ${LIBPLACEBO_LIB_PATH}
         ${JNI_LIBRARIES}
-        "${SHADERC_LIB_DIR}/libshaderc_combined.a"
+        #"${SHADERC_LIB_DIR}/libshaderc_combined.a"
         "${GLSLANG_LIBS_DIR}/libMachineIndependent.a"
         "${GLSLANG_LIBS_DIR}/libOSDependent.a"
         "${GLSLANG_LIBS_DIR}/libglslang.a"
