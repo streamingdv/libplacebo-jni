@@ -207,9 +207,10 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plCacheLoadFile
   if (path == nullptr) {
       return;
   }
+  pl_cache cache = reinterpret_cast<pl_cache>(placebo_cache);
   FILE *file = fopen(path, "rb");
   if (file) {
-      pl_cache_load_file(placebo_cache, file);
+      pl_cache_load_file(cache, file);
       fclose(file);
   }
 
@@ -223,9 +224,10 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plCacheSaveFile
   if (path == nullptr) {
       return;
   }
+  pl_cache cache = reinterpret_cast<pl_cache>(placebo_cache);
   FILE *file = fopen(path, "wb");
   if (file) {
-      pl_cache_save_file(placebo_cache, file);
+      pl_cache_save_file(cache, file);
       fclose(file);
   }
 
