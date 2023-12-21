@@ -157,7 +157,6 @@ jobs:
           ls -l shaderc_combined.zip
           file shaderc_combined.zip
 
-
       - name: Extract shaderc zip File
         run: |
           unzip shaderc_combined.zip -d ./
@@ -197,7 +196,7 @@ jobs:
             -DGLSLANG_LIBS_DIR=${GLSLANG_LIBS_DIR} \
             -DGLSLANG_HEADERS_DIR=${GLSLANG_HEADERS_DIR} \
             -DSHADERC_LIB_DIR=${{github.workspace}}/shaderc_combined/linux/x64 \
-            -DSHADERC_HEADERS_DIR=${{github.workspace}}/libs/shaderc/linux/x64/include
+            -DSHADERC_HEADERS_DIR=${{github.workspace}}/libs/shaderc/linux/x64/include \
             -DIS_RUNNING_ON_WINDOWS=OFF
           cmake --build build
         shell: bash
