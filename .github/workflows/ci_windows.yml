@@ -169,8 +169,14 @@ jobs:
 
       - name: Download shaderc release Asset
         run: |
-          asset_id=$(curl -H 'Authorization: token ${{ secrets.GH_PAT }}' "https://api.github.com/repos/streamingdv/libplacebo-jni/releases/tags/shaderc_combined_v1.0" | jq '.assets[] | select(.name == "shaderc_combined.zip") | .id')
-          curl -L -H 'Authorization: token ${{ secrets.GH_PAT }}' -H 'Accept: application/octet-stream' -o shaderc_combined.zip "https://api.github.com/repos/streamingdv/libplacebo-jni/releases/assets/$asset_id"
+          browser_download_url=$(curl "https://api.github.com/repos/streamingdv/shaderc_combined/releases/tags/shaderc_combined_v1.0" | jq -r '.assets[] | select(.name == "shaderc_combined.zip") | .browser_download_url')
+          if [ -z "$browser_download_url" ]; then
+            echo "Error: Browser download URL not found."
+            exit 1
+          fi
+          curl -L -o shaderc_combined.zip "$browser_download_url"
+          ls -l shaderc_combined.zip
+          file shaderc_combined.zip
         shell: msys2 {0}
 
       - name: Extract shaderc zip File
