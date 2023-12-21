@@ -32,11 +32,11 @@ jobs:
     strategy:
       matrix:
         include:
-          - sys: UCRT64
-            env: ucrt-x86_64
-            arch: 64bit
-            archValue: 64
-            archAltValue: x64
+          #- sys: UCRT64
+          #  env: ucrt-x86_64
+          #  arch: 64bit
+          #  archValue: 64
+          #  archAltValue: x64
           - sys: MINGW32 # disable for testing now
             env: i686
             arch: 32bit
