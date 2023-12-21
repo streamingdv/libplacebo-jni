@@ -16,6 +16,9 @@
 #include <libplacebo/cache.h>
 #include <libplacebo/gpu.h>
 
+#define PL_LIBAV_IMPLEMENTATION 0
+#include <libplacebo/utils/libav.h>
+
 #include <vulkan/vulkan.h>
 #ifdef _WIN32
     #include <vulkan/vulkan_win32.h>
