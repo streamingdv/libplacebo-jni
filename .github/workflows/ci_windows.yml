@@ -108,7 +108,6 @@ jobs:
           cmake --build . --config Release
         shell: msys2 {0}
 
-
       - name: Upload shaderc artefacts
         if: env.BUILD_SHADERC == 'true'
         uses: actions/upload-artifact@v4
@@ -170,7 +169,8 @@ jobs:
 
       - name: Download shaderc release Asset
         run: |
-          curl -L -H 'Authorization: token ${{ secrets.GH_PAT }}' -H 'Accept: application/octet-stream' -o shaderc_combined.zip "https://api.github.com/repos/streamingdv/libplacebo-jni/releases/assets/asset-id"
+          asset_id=$(curl -H 'Authorization: token ${{ secrets.GH_PAT }}' "https://api.github.com/repos/streamingdv/libplacebo-jni/releases/tags/shaderc_combined_v1.0" | jq '.assets[] | select(.name == "shaderc_combined.zip") | .id')
+          curl -L -H 'Authorization: token ${{ secrets.GH_PAT }}' -H 'Accept: application/octet-stream' -o shaderc_combined.zip "https://api.github.com/repos/streamingdv/libplacebo-jni/releases/assets/$asset_id"
         shell: msys2 {0}
 
       - name: Extract shaderc zip File

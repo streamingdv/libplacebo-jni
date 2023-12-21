@@ -141,9 +141,18 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
+      - name: Install jq if not present
+        run: |
+          if ! command -v jq &> /dev/null
+          then
+              sudo apt-get update
+              sudo apt-get install -y jq
+          fi
+
       - name: Download shaderc release Asset
         run: |
-          curl -L -H 'Authorization: token ${{ secrets.GH_PAT }}' -H 'Accept: application/octet-stream' -o shaderc_combined.zip "https://api.github.com/repos/streamingdv/libplacebo-jni/releases/assets/asset-id"
+          asset_id=$(curl -H 'Authorization: token ${{ secrets.GH_PAT }}' "https://api.github.com/repos/streamingdv/libplacebo-jni/releases/tags/shaderc_combined_v1.0" | jq '.assets[] | select(.name == "shaderc_combined.zip") | .id')
+          curl -L -H 'Authorization: token ${{ secrets.GH_PAT }}' -H 'Accept: application/octet-stream' -o shaderc_combined.zip "https://api.github.com/repos/streamingdv/libplacebo-jni/releases/assets/$asset_id"
 
       - name: Extract shaderc zip File
         run: |
