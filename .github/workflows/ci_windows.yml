@@ -79,6 +79,7 @@ jobs:
           install: >-
             base-devel
             git
+            unzip
             mingw-w64-${{ matrix.env }}-jq
             mingw-w64-${{ matrix.env }}-gcc
             mingw-w64-${{ matrix.env }}-pkg-config
