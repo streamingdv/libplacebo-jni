@@ -168,6 +168,16 @@ jobs:
           name: libplacebo-artefacts-${{ matrix.arch }}
           path: ${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install
 
+      - name: Download shaderc release Asset
+        run: |
+          curl -L -H 'Authorization: token ${{ secrets.GH_PAT }}' -H 'Accept: application/octet-stream' -o shaderc_combined.zip "https://api.github.com/repos/streamingdv/libplacebo-jni/releases/assets/asset-id"
+        shell: msys2 {0}
+
+      - name: Extract shaderc zip File
+        run: |
+          unzip shaderc_combined.zip -d ./
+        shell: msys2 {0}
+
       - name: Build libplacebo-jni-java compile java
         run: |
           ./gradlew clean
@@ -205,7 +215,9 @@ jobs:
             -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=${NATIVE_BINARIES_DIR_UNIX} \
             -DGENERATED_JNI_HEADERS_DIR=${GENERATED_HEADERS_DIR_UNIX} \
             -DGLSLANG_LIBS_DIR=${GLSLANG_LIBS_DIR_UNIX} \
-            -DGLSLANG_HEADERS_DIR=${GLSLANG_HEADERS_DIR_UNIX}
+            -DGLSLANG_HEADERS_DIR=${GLSLANG_HEADERS_DIR_UNIX} \
+            -DSHADERC_LIB_DIR=$(cygpath "${{github.workspace}}/shaderc_combined/windows/${{ matrix.archAltValue }}") \
+            -DSHADERC_HEADERS_DIR=$(cygpath "${{github.workspace}}/libs/shaderc/windows/${{ matrix.archAltValue }}/include")
           cmake --build build
         shell: msys2 {0}
 
