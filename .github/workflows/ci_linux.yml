@@ -36,12 +36,12 @@ jobs:
           submodules: 'recursive'
 
       - name: Checkout shaderc repository
-        #if: env.BUILD_SHADERC == 'true'
+        if: env.BUILD_SHADERC == 'true'
         uses: actions/checkout@v2
         with:
           repository: 'google/shaderc'
           path: 'shaderc'
-          ref: 'v2023.7'  # Specify the tag here
+          ref: 'v2023.7'
 
       - name: Checkout glslang repository
         if: env.BUILD_GLSLANG == 'true'
@@ -74,7 +74,7 @@ jobs:
           pip3 install --upgrade ninja==1.11.1
 
       - name: Build shaderc
-        #if: env.BUILD_SHADERC == 'true'
+        if: env.BUILD_SHADERC == 'true'
         working-directory: ./shaderc
         run: |
           ./utils/git-sync-deps
@@ -84,7 +84,7 @@ jobs:
           cmake --build . --config Release
 
       - name: Upload shaderc artefacts
-        #if: env.BUILD_SHADERC == 'true'
+        if: env.BUILD_SHADERC == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: shaderc-artefacts-${{ matrix.arch }}
@@ -146,20 +146,20 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y jq
 
-      - name: Download shaderc release Asset
-        run: |
-          browser_download_url=$(curl "https://api.github.com/repos/streamingdv/shaderc_combined/releases/tags/shaderc_combined_v1.0" | jq -r '.assets[] | select(.name == "shaderc_combined.zip") | .browser_download_url')
-          if [ -z "$browser_download_url" ]; then
-            echo "Error: Browser download URL not found."
-            exit 1
-          fi
-          curl -L -o shaderc_combined.zip "$browser_download_url"
-          ls -l shaderc_combined.zip
-          file shaderc_combined.zip
+      #- name: Download shaderc release Asset
+      #  run: |
+      #    browser_download_url=$(curl "https://api.github.com/repos/streamingdv/shaderc_combined/releases/tags/shaderc_combined_v1.0" | jq -r '.assets[] | select(.name == "shaderc_combined.zip") | .browser_download_url')
+      #    if [ -z "$browser_download_url" ]; then
+      #      echo "Error: Browser download URL not found."
+      #      exit 1
+      #    fi
+      #    curl -L -o shaderc_combined.zip "$browser_download_url"
+      #    ls -l shaderc_combined.zip
+      #    file shaderc_combined.zip
 
-      - name: Extract shaderc zip File
-        run: |
-          unzip shaderc_combined.zip -d ./
+      #- name: Extract shaderc zip File
+      #  run: |
+      #    unzip shaderc_combined.zip -d ./
 
       - name: Build libplacebo-jni-java compile java
         run: |

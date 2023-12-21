@@ -83,17 +83,9 @@ target_compile_definitions(libplacebo-jni-native PRIVATE PL_STATIC)
 # Find packages using PkgConfig with static linking preference
 find_package(PkgConfig REQUIRED)
 
-# Find FFmpeg components using pkg-config
-pkg_check_modules(AVFORMAT REQUIRED IMPORTED_TARGET libavformat)
-pkg_check_modules(AVCODEC REQUIRED IMPORTED_TARGET libavcodec)
-pkg_check_modules(AVUTIL REQUIRED IMPORTED_TARGET libavutil)
-
 if(IS_RUNNING_ON_WINDOWS)
     # Link libraries - Static versions
     target_link_libraries(libplacebo-jni-native PRIVATE
-        PkgConfig::AVFORMAT
-        PkgConfig::AVCODEC
-        PkgConfig::AVUTIL
         ${LIBPLACEBO_LIB_PATH}
         ${JNI_LIBRARIES}
         #"${SHADERC_LIB_DIR}/libshaderc_combined.a"
@@ -124,9 +116,6 @@ else()
     add_definitions(${XCB_CFLAGS_OTHER})
 
     target_link_libraries(libplacebo-jni-native PRIVATE
-        PkgConfig::AVFORMAT
-        PkgConfig::AVCODEC
-        PkgConfig::AVUTIL
         ${LIBPLACEBO_LIB_PATH}
         ${JNI_LIBRARIES}
         #"${SHADERC_LIB_DIR}/libshaderc_combined.a"
