@@ -93,6 +93,7 @@ if(IS_RUNNING_ON_WINDOWS)
         ${LIBPLACEBO_LIB_PATH}
         ${JNI_LIBRARIES}
         "${SHADERC_LIB_DIR}/libshaderc.a"
+        "${SHADERC_LIB_DIR}/libshaderc_util.a"
         "${FFMPEG_DIR}/libavcodec/libavcodec.a"
         "${FFMPEG_DIR}/libavformat/libavformat.a"
         "${FFMPEG_DIR}/libavutil/libavutil.a"
@@ -111,7 +112,6 @@ if(IS_RUNNING_ON_WINDOWS)
         "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-opt.a"
         "${GLSLANG_LIBS_DIR}/libSPIRV-Tools.a"
         "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-diff.a"
-        "${SHADERC_LIB_DIR}/libshaderc_util.a"
         shlwapi
     )
 else()
@@ -130,6 +130,7 @@ else()
         ${LIBPLACEBO_LIB_PATH}
         ${JNI_LIBRARIES}
         "${SHADERC_LIB_DIR}/libshaderc.a"
+        "${SHADERC_LIB_DIR}/libshaderc_util.a"
         "${FFMPEG_DIR}/libavcodec/libavcodec.a"
         "${FFMPEG_DIR}/libavformat/libavformat.a"
         "${FFMPEG_DIR}/libavutil/libavutil.a"
@@ -146,7 +147,6 @@ else()
         "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-opt.a"
         "${GLSLANG_LIBS_DIR}/libSPIRV-Tools.a"
         "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-diff.a"
-        "${SHADERC_LIB_DIR}/libshaderc_util.a"
     )
 endif()
 
