@@ -197,7 +197,7 @@ jobs:
             -DGLSLANG_HEADERS_DIR=${GLSLANG_HEADERS_DIR} \
             -DSHADERC_LIB_DIR=${{github.workspace}}/shaderc_combined/linux/x64 \
             -DSHADERC_HEADERS_DIR=${{github.workspace}}/libs/shaderc/linux/x64/include \
-            -DFFMPEG_DIR=${{github.workspace}}/libs/ffmpeg/linux/${{ matrix.archAltValue }} \
+            -DFFMPEG_DIR=${{github.workspace}}/libs/ffmpeg/linux/x64 \
             -DIS_RUNNING_ON_WINDOWS=OFF
           cmake --build build
         shell: bash
