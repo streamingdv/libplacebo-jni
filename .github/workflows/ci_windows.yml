@@ -59,11 +59,11 @@ jobs:
 
       - name: Checkout glslang repository
         #if: env.BUILD_GLSLANG == 'true'
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: 'KhronosGroup/glslang'
           path: 'glslang'
-          ref: 'c155f88'
+          ref: main/c155f88
 
 
       - name: Checkout vulkan-loader repository
