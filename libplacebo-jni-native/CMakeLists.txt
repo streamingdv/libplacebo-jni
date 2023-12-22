@@ -57,21 +57,28 @@ include_directories(${LIBPLACEBO_HEADERS_DIR})
 # Check for VULKAN_LIB_DIR
 set(VULKAN_LIB_DIR "" CACHE STRING "Path to vulkan headers")
 if(VULKAN_LIB_DIR STREQUAL "")
-    message(FATAL_ERROR "Please run CMake with -DVULKAN_LIB_DIR=/path/to/glslang/include")
+    message(FATAL_ERROR "Please run CMake with -DVULKAN_LIB_DIR=/path/to/vulkan/include")
 endif()
 include_directories(${VULKAN_LIB_DIR}/include)
 
 # Check for Shaderc
 set(SHADERC_HEADERS_DIR "" CACHE STRING "Path to shaderc headers")
 if(SHADERC_HEADERS_DIR STREQUAL "")
-    message(FATAL_ERROR "Please run CMake with -DSHADERC_HEADERS_DIR=/path/to/glslang/include")
+    message(FATAL_ERROR "Please run CMake with -DSHADERC_HEADERS_DIR=/path/to/shaderc/include")
 endif()
 include_directories(${SHADERC_HEADERS_DIR})
 
 set(SHADERC_LIB_DIR "" CACHE STRING "Path to shaderc lib")
 if(SHADERC_LIB_DIR STREQUAL "")
-    message(FATAL_ERROR "Please run CMake with -DSHADERC_LIB_DIR=/path/to/glslang/include")
+    message(FATAL_ERROR "Please run CMake with -DSHADERC_LIB_DIR=/path/to/shaderc/include")
 endif()
+
+# Check for FFMPEG
+set(FFMPEG_DIR "" CACHE STRING "Path to fffmpeg headers")
+if(FFMPEG_DIR STREQUAL "")
+    message(FATAL_ERROR "Please run CMake with -DFFMPEG_DIR=/path/to/ffmpeg/include")
+endif()
+include_directories(${FFMPEG_DIR})
 
 # Project sources
 set(SOURCES src/placebo_jni.cpp)
@@ -80,15 +87,15 @@ set(SOURCES src/placebo_jni.cpp)
 add_library(libplacebo-jni-native SHARED ${SOURCES})
 target_compile_definitions(libplacebo-jni-native PRIVATE PL_STATIC)
 
-# Find packages using PkgConfig with static linking preference
-find_package(PkgConfig REQUIRED)
-
 if(IS_RUNNING_ON_WINDOWS)
     # Link libraries - Static versions
     target_link_libraries(libplacebo-jni-native PRIVATE
         ${LIBPLACEBO_LIB_PATH}
         ${JNI_LIBRARIES}
         #"${SHADERC_LIB_DIR}/libshaderc_combined.a"
+        "${FFMPEG_DIR}/libavcodec/libavcodec.a"
+        "${FFMPEG_DIR}/libavformat/libavformat.a"
+        "${FFMPEG_DIR}/libavutil/libavutil.a"
         "${VULKAN_LIB_DIR}/lib/libloader-opt.a"
         "${VULKAN_LIB_DIR}/lib/libvulkan-1.dll.a"
         "${GLSLANG_LIBS_DIR}/libMachineIndependent.a"
@@ -107,6 +114,9 @@ if(IS_RUNNING_ON_WINDOWS)
         shlwapi
     )
 else()
+    # Find packages using PkgConfig with static linking preference
+    find_package(PkgConfig REQUIRED)
+
     pkg_check_modules(VULKAN REQUIRED vulkan)
     link_directories(${VULKAN_LIBRARY_DIRS})
 
@@ -119,6 +129,9 @@ else()
         ${LIBPLACEBO_LIB_PATH}
         ${JNI_LIBRARIES}
         #"${SHADERC_LIB_DIR}/libshaderc_combined.a"
+        "${FFMPEG_DIR}/libavcodec/libavcodec.a"
+        "${FFMPEG_DIR}/libavformat/libavformat.a"
+        "${FFMPEG_DIR}/libavutil/libavutil.a"
         "${GLSLANG_LIBS_DIR}/libMachineIndependent.a"
         "${GLSLANG_LIBS_DIR}/libOSDependent.a"
         "${GLSLANG_LIBS_DIR}/libglslang.a"

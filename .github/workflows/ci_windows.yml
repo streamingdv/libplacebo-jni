@@ -58,7 +58,7 @@ jobs:
           ref: 'v2023.7'  # Specify the tag here
 
       - name: Checkout glslang repository
-        if: env.BUILD_GLSLANG == 'true'
+        #if: env.BUILD_GLSLANG == 'true'
         uses: actions/checkout@v2
         with:
           repository: 'KhronosGroup/glslang'
@@ -133,13 +133,13 @@ jobs:
           path: ${{github.workspace}}/vulkan-loader
 
       - name: Update glslang sources
-        if: env.BUILD_GLSLANG == 'true'
+        #if: env.BUILD_GLSLANG == 'true'
         working-directory: ./glslang
         run: ./update_glslang_sources.py
         shell: msys2 {0}
 
       - name: Build glslang
-        if: env.BUILD_GLSLANG == 'true'
+        #if: env.BUILD_GLSLANG == 'true'
         working-directory: ./glslang
         run: |
           cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="$(pwd)/install" .
@@ -147,7 +147,7 @@ jobs:
         shell: msys2 {0}
 
       - name: Upload gslang artefacts
-        if: env.BUILD_GLSLANG == 'true'
+        #if: env.BUILD_GLSLANG == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: gslang-artefacts-${{ matrix.arch }}
@@ -225,7 +225,8 @@ jobs:
             -DGLSLANG_LIBS_DIR=${GLSLANG_LIBS_DIR_UNIX} \
             -DGLSLANG_HEADERS_DIR=${GLSLANG_HEADERS_DIR_UNIX} \
             -DSHADERC_LIB_DIR=$(cygpath "${{github.workspace}}/shaderc_combined/windows/${{ matrix.archAltValue }}") \
-            -DSHADERC_HEADERS_DIR=$(cygpath "${{github.workspace}}/libs/shaderc/windows/${{ matrix.archAltValue }}/include")
+            -DSHADERC_HEADERS_DIR=$(cygpath "${{github.workspace}}/libs/shaderc/windows/${{ matrix.archAltValue }}/include") \
+            -DFFMPEG_DIR=$(cygpath "${{github.workspace}}/libs/ffmpeg/windows/${{ matrix.archAltValue }}")
           cmake --build build
         shell: msys2 {0}
 
