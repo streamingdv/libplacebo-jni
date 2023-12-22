@@ -101,7 +101,6 @@ if(IS_RUNNING_ON_WINDOWS)
         "${GLSLANG_LIBS_DIR}/libMachineIndependent.a"
         "${GLSLANG_LIBS_DIR}/libOSDependent.a"
         "${GLSLANG_LIBS_DIR}/libglslang.a"
-        "${SHADERC_LIB_DIR}/libshaderc_util.a"
         "${GLSLANG_LIBS_DIR}/libSPIRV.a"
         "${GLSLANG_LIBS_DIR}/libSPVRemapper.a"
         "${GLSLANG_LIBS_DIR}/libglslang-default-resource-limits.a"
@@ -112,6 +111,7 @@ if(IS_RUNNING_ON_WINDOWS)
         "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-opt.a"
         "${GLSLANG_LIBS_DIR}/libSPIRV-Tools.a"
         "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-diff.a"
+        "${SHADERC_LIB_DIR}/libshaderc_util.a"
         shlwapi
     )
 else()
@@ -136,7 +136,6 @@ else()
         "${GLSLANG_LIBS_DIR}/libMachineIndependent.a"
         "${GLSLANG_LIBS_DIR}/libOSDependent.a"
         "${GLSLANG_LIBS_DIR}/libglslang.a"
-        "${SHADERC_LIB_DIR}/libshaderc_util.a"
         "${GLSLANG_LIBS_DIR}/libSPIRV.a"
         "${GLSLANG_LIBS_DIR}/libSPVRemapper.a"
         "${GLSLANG_LIBS_DIR}/libglslang-default-resource-limits.a"
@@ -147,6 +146,7 @@ else()
         "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-opt.a"
         "${GLSLANG_LIBS_DIR}/libSPIRV-Tools.a"
         "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-diff.a"
+        "${SHADERC_LIB_DIR}/libshaderc_util.a"
     )
 endif()
 
