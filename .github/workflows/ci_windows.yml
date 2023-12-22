@@ -63,7 +63,7 @@ jobs:
         with:
           repository: 'KhronosGroup/glslang'
           path: 'glslang'
-          ref: main/c155f88
+          ref: c155f881eed4001f8472bd3aa7037c3e37366d67
 
 
       - name: Checkout vulkan-loader repository
