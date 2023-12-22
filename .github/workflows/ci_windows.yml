@@ -63,6 +63,8 @@ jobs:
         with:
           repository: 'KhronosGroup/glslang'
           path: 'glslang'
+          ref: 'c155f88'
+
 
       - name: Checkout vulkan-loader repository
         if: env.BUILD_VULKAN_LOADER == 'true'
