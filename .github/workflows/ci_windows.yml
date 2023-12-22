@@ -58,13 +58,11 @@ jobs:
           ref: 'v2023.7'  # Specify the tag here
 
       - name: Checkout glslang repository
-        #if: env.BUILD_GLSLANG == 'true'
+        if: env.BUILD_GLSLANG == 'true'
         uses: actions/checkout@v4
         with:
           repository: 'KhronosGroup/glslang'
           path: 'glslang'
-          ref: c155f881eed4001f8472bd3aa7037c3e37366d67
-
 
       - name: Checkout vulkan-loader repository
         if: env.BUILD_VULKAN_LOADER == 'true'
@@ -135,13 +133,13 @@ jobs:
           path: ${{github.workspace}}/vulkan-loader
 
       - name: Update glslang sources
-        #if: env.BUILD_GLSLANG == 'true'
+        if: env.BUILD_GLSLANG == 'true'
         working-directory: ./glslang
         run: ./update_glslang_sources.py
         shell: msys2 {0}
 
       - name: Build glslang
-        #if: env.BUILD_GLSLANG == 'true'
+        if: env.BUILD_GLSLANG == 'true'
         working-directory: ./glslang
         run: |
           cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="$(pwd)/install" .
@@ -149,7 +147,7 @@ jobs:
         shell: msys2 {0}
 
       - name: Upload gslang artefacts
-        #if: env.BUILD_GLSLANG == 'true'
+        if: env.BUILD_GLSLANG == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: gslang-artefacts-${{ matrix.arch }}
@@ -170,23 +168,6 @@ jobs:
         with:
           name: libplacebo-artefacts-${{ matrix.arch }}
           path: ${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install
-
-      #- name: Download shaderc release Asset
-      #  run: |
-      #    browser_download_url=$(curl "https://api.github.com/repos/streamingdv/shaderc_combined/releases/tags/shaderc_combined_v1.0" | jq -r '.assets[] | select(.name == "shaderc_combined.zip") | .browser_download_url')
-      #    if [ -z "$browser_download_url" ]; then
-      #      echo "Error: Browser download URL not found."
-      #      exit 1
-      #    fi
-      #    curl -L -o shaderc_combined.zip "$browser_download_url"
-      #    ls -l shaderc_combined.zip
-      #    file shaderc_combined.zip
-      #  shell: msys2 {0}
-
-      #- name: Extract shaderc zip File
-      #  run: |
-      #    unzip shaderc_combined.zip -d ./
-      #  shell: msys2 {0}
 
       - name: Build libplacebo-jni-java compile java
         run: |
@@ -226,7 +207,7 @@ jobs:
             -DGENERATED_JNI_HEADERS_DIR=${GENERATED_HEADERS_DIR_UNIX} \
             -DGLSLANG_LIBS_DIR=${GLSLANG_LIBS_DIR_UNIX} \
             -DGLSLANG_HEADERS_DIR=${GLSLANG_HEADERS_DIR_UNIX} \
-            -DSHADERC_LIB_DIR=$(cygpath "${{github.workspace}}/shaderc_combined/windows/${{ matrix.archAltValue }}") \
+            -DSHADERC_LIB_DIR=$(cygpath "${{github.workspace}}/libs/shaderc/windows/${{ matrix.archAltValue }}/lib") \
             -DSHADERC_HEADERS_DIR=$(cygpath "${{github.workspace}}/libs/shaderc/windows/${{ matrix.archAltValue }}/include") \
             -DFFMPEG_DIR=$(cygpath "${{github.workspace}}/libs/ffmpeg/windows/${{ matrix.archAltValue }}")
           cmake --build build

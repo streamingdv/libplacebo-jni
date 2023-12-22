@@ -92,7 +92,7 @@ if(IS_RUNNING_ON_WINDOWS)
     target_link_libraries(libplacebo-jni-native PRIVATE
         ${LIBPLACEBO_LIB_PATH}
         ${JNI_LIBRARIES}
-        #"${SHADERC_LIB_DIR}/libshaderc_combined.a"
+        "${SHADERC_LIB_DIR}/libshaderc.a"
         "${FFMPEG_DIR}/libavcodec/libavcodec.a"
         "${FFMPEG_DIR}/libavformat/libavformat.a"
         "${FFMPEG_DIR}/libavutil/libavutil.a"
@@ -101,6 +101,7 @@ if(IS_RUNNING_ON_WINDOWS)
         "${GLSLANG_LIBS_DIR}/libMachineIndependent.a"
         "${GLSLANG_LIBS_DIR}/libOSDependent.a"
         "${GLSLANG_LIBS_DIR}/libglslang.a"
+        "${SHADERC_LIB_DIR}/libshaderc_util.a"
         "${GLSLANG_LIBS_DIR}/libSPIRV.a"
         "${GLSLANG_LIBS_DIR}/libSPVRemapper.a"
         "${GLSLANG_LIBS_DIR}/libglslang-default-resource-limits.a"
@@ -128,13 +129,14 @@ else()
     target_link_libraries(libplacebo-jni-native PRIVATE
         ${LIBPLACEBO_LIB_PATH}
         ${JNI_LIBRARIES}
-        #"${SHADERC_LIB_DIR}/libshaderc_combined.a"
+        "${SHADERC_LIB_DIR}/libshaderc.a"
         "${FFMPEG_DIR}/libavcodec/libavcodec.a"
         "${FFMPEG_DIR}/libavformat/libavformat.a"
         "${FFMPEG_DIR}/libavutil/libavutil.a"
         "${GLSLANG_LIBS_DIR}/libMachineIndependent.a"
         "${GLSLANG_LIBS_DIR}/libOSDependent.a"
         "${GLSLANG_LIBS_DIR}/libglslang.a"
+        "${SHADERC_LIB_DIR}/libshaderc_util.a"
         "${GLSLANG_LIBS_DIR}/libSPIRV.a"
         "${GLSLANG_LIBS_DIR}/libSPVRemapper.a"
         "${GLSLANG_LIBS_DIR}/libglslang-default-resource-limits.a"

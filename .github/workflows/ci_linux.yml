@@ -146,21 +146,6 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y jq
 
-      #- name: Download shaderc release Asset
-      #  run: |
-      #    browser_download_url=$(curl "https://api.github.com/repos/streamingdv/shaderc_combined/releases/tags/shaderc_combined_v1.0" | jq -r '.assets[] | select(.name == "shaderc_combined.zip") | .browser_download_url')
-      #    if [ -z "$browser_download_url" ]; then
-      #      echo "Error: Browser download URL not found."
-      #      exit 1
-      #    fi
-      #    curl -L -o shaderc_combined.zip "$browser_download_url"
-      #    ls -l shaderc_combined.zip
-      #    file shaderc_combined.zip
-
-      #- name: Extract shaderc zip File
-      #  run: |
-      #    unzip shaderc_combined.zip -d ./
-
       - name: Build libplacebo-jni-java compile java
         run: |
           ./gradlew clean
@@ -195,13 +180,12 @@ jobs:
             -DGENERATED_JNI_HEADERS_DIR=${{ github.workspace }}/build/generatedHeaders \
             -DGLSLANG_LIBS_DIR=${GLSLANG_LIBS_DIR} \
             -DGLSLANG_HEADERS_DIR=${GLSLANG_HEADERS_DIR} \
-            -DSHADERC_LIB_DIR=${{github.workspace}}/shaderc_combined/linux/x64 \
+            -DSHADERC_LIB_DIR=${{github.workspace}}/libs/shaderc/linux/x64/lib \
             -DSHADERC_HEADERS_DIR=${{github.workspace}}/libs/shaderc/linux/x64/include \
             -DFFMPEG_DIR=${{github.workspace}}/libs/ffmpeg/linux/x64 \
             -DIS_RUNNING_ON_WINDOWS=OFF
           cmake --build build
         shell: bash
-
 
       - name: Rename DLL file
         run: mv ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native.so ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native-64.so
