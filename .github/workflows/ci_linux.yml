@@ -34,10 +34,15 @@ jobs:
       BUILD_VULKAN_LOADER: ${{ github.event.inputs.build_vulkan }}
 
     steps:
+      - name: Install Git
+        run: |
+          apt-get update
+          apt-get install -y git  
+
       - name: Checkout libplacebo-jni repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v2
         with:
-          submodules: true
+          submodules: 'recursive'
 
       - name: Checkout shaderc repository
         if: env.BUILD_SHADERC == 'true'
