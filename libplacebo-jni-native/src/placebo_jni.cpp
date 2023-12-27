@@ -302,38 +302,74 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plDestroyRenderer
   pl_renderer_destroy(&placebo_renderer);
 }
 
-/*extern "C"
+pl_tex placebo_tex[4] = {nullptr, nullptr, nullptr, nullptr};
+
+extern "C"
 JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
-  (JNIEnv *env, jobject obj, jlong avframe, jlong swapchain) {
-  AVFrame placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
+  (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer) {
+  AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
+  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
   pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
+  pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
 
-  struct pl_frame target_frame = {0};
   struct pl_swapchain_frame sw_frame = {0};
-  struct pl_plane plane = {0};
+  struct pl_frame placebo_frame = {0};
+  struct pl_frame target_frame = {0};
 
-  //LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
+  struct pl_avframe_params avparams = {
+      .frame = frame,
+      .tex = placebo_tex,
+      .map_dovi = false,
+  };
+  bool mapped = pl_map_avframe_ex(vulkan->gpu, &placebo_frame, &avparams);
+  av_frame_free(&frame);
+  if (!mapped) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to map AVFrame to Placebo frame!");
+      return false;
+  }
+  // set colorspace hint
+  struct pl_color_space hint = placebo_frame.color;
+  pl_swapchain_colorspace_hint(placebo_swapchain, &hint);
 
-}*/
+  pl_rect2df crop;
 
-// ToDo next ->
-/*
-    Create swap chain
+  bool ret = false;
+  if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
+      goto cleanup;
+  }
 
-    1.
+  pl_frame_from_swapchain(&target_frame, &sw_frame);
 
-    struct pl_vulkan_swapchain_params swapchain_params = {
-        .surface = surface, <-- this must be created somehow with LJWGL
-        .present_mode = VK_PRESENT_MODE_FIFO_KHR,
-    };
-    placebo_swapchain = pl_vulkan_create_swapchain(placebo_vulkan, &swapchain_params);
+  crop = placebo_frame.crop;
+  /*switch (resolution_mode) {
+      case ResolutionMode::Normal:
+          pl_rect2df_aspect_copy(&target_frame.crop, &crop, 0.0);
+          break;
+      case ResolutionMode::Stretch:
+          // Nothing to do, target.crop already covers the full image
+          break;
+      case ResolutionMode::Zoom:
+          pl_rect2df_aspect_copy(&target_frame.crop, &crop, 1.0);
+          break;
+  }*/
 
+  pl_render_params render_params = pl_render_fast_params; // pl_render_high_quality_params, pl_render_default_params
+  if (!pl_render_image(placebo_renderer, &placebo_frame, &target_frame,
+                       &render_params)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to render Placebo frame!");
+      goto cleanup;
+  }
 
-    2.
+  if (!pl_swapchain_submit_frame(placebo_swapchain)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to submit Placebo frame!");
+      goto cleanup;
+  }
+  pl_swapchain_swap_buffers(placebo_swapchain);
+  ret = true;
 
-    placebo_renderer = pl_renderer_create(
-        placebo_log,
-        placebo_vulkan->gpu
-    );
+cleanup:
+  pl_unmap_avframe(vulkan->gpu, &placebo_frame);
 
-*/
+  return ret;
+}
