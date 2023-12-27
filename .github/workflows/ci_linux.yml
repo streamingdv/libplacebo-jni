@@ -23,6 +23,10 @@ jobs:
   build-binaries-unix:
     name: Build unix lib
     runs-on: ubuntu-latest
+
+    container:
+      image: ubuntu:latest
+
     env:
       BUILD_GLSLANG: ${{ github.event.inputs.build_glslang }}
       BUILD_LIBPLACEBO: ${{ github.event.inputs.build_libplacebo }}
