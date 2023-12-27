@@ -237,7 +237,7 @@ jobs:
             -DGLSLANG_HEADERS_DIR=${GLSLANG_HEADERS_DIR_UNIX} \
             -DSHADERC_LIB_DIR=$(cygpath "${{github.workspace}}/libs/shaderc/windows/${{ matrix.archAltValue }}/lib") \
             -DSHADERC_HEADERS_DIR=$(cygpath "${{github.workspace}}/libs/shaderc/windows/${{ matrix.archAltValue }}/include") \
-            -DFFMPEG_DIR=$(cygpath "${{github.workspace}}/libs/ffmpeg/windows/${{ matrix.archAltValue }}")
+            -DFFMPEG_DIR=$(cygpath "${{github.workspace}}/libs/ffmpeg/windows/${{ matrix.archAltValue }}") \
             -DLCMS2_DIR=$(cygpath "${{github.workspace}}/libs/lcms2/windows/${{ matrix.archAltValue }}")
           cmake --build build
         shell: msys2 {0}
