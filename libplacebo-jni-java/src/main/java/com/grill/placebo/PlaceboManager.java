@@ -142,6 +142,41 @@ public class PlaceboManager {
      */
     public native long plGetWin32SurfaceFunctionPointer(long vkInst);
 
+    /**
+     * Destroys and releases the native surface
+     * @param vkInst the vk inst handle
+     * @param surface the surface handle
+     */
+    public native void plDestroySurface(long vkInst, long surface);
+
+    /**
+     * Creates the swapchain and returns the handle
+     * @param vk the vulkan device handle
+     * @param surface the surface handle
+     * @return the swapchain handle
+     */
+    public native long plCreateSwapchain(long vk, long surface);
+
+    /**
+     * Destroys and releases the swapchain
+     * @param swapchain the swapchain handle
+     */
+    public native void plDestroySwapchain(long swapchain);
+
+    /**
+     * Creates the renderer and retunrs the handle
+     * @param vk the vulkan device handle
+     * @param plLog the log handle
+     * @return the renderer handle
+     */
+    public native long plCreateRenderer(long vk, long plLog);
+
+    /**
+     * Destroys and releases the renderer
+     * @param renderer the renderer handle
+     */
+    public native void plDestroyRenderer(long renderer);
+
     /************************/
     /*** load lib methods ***/
     /************************/
