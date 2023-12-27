@@ -258,7 +258,7 @@ extern "C"
 JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plDestroySurface
   (JNIEnv *env, jobject obj, jlong placebo_vk_inst, jlong surface) {
   pl_vk_inst instance = reinterpret_cast<pl_vk_inst>(placebo_vk_inst);
-  VkSurfaceKHR vkSurfaceKHR = = reinterpret_cast<VkSurfaceKHR>(surface);
+  VkSurfaceKHR vkSurfaceKHR = reinterpret_cast<VkSurfaceKHR>(surface);
   PFN_vkDestroySurfaceKHR destroySurface = reinterpret_cast<PFN_vkDestroySurfaceKHR>(
           instance->get_proc_addr(instance->instance, "vkDestroySurfaceKHR"));
   destroySurface(instance->instance, vkSurfaceKHR, nullptr);
@@ -268,7 +268,7 @@ extern "C"
 JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plCreateSwapchain
   (JNIEnv *env, jobject obj, jlong placebo_vulkan, jlong surface) {
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
-  VkSurfaceKHR vkSurfaceKHR = = reinterpret_cast<VkSurfaceKHR>(surface);
+  VkSurfaceKHR vkSurfaceKHR = reinterpret_cast<VkSurfaceKHR>(surface);
 
   struct pl_vulkan_swapchain_params swapchain_params = {
       .surface = vkSurfaceKHR,
