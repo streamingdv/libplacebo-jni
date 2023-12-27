@@ -88,9 +88,9 @@ jobs:
         #if: env.BUILD_LIBPLACEBO == 'true'
         working-directory: ./Little-CMS
         run: |
-          sudo meson setup build --buildtype release --default-library=static
-          sudo meson compile -C build
-          sudo meson install -C build
+          meson setup build --buildtype release --default-library=static
+          meson compile -C build
+          meson install -C build
 
       - name: Upload Little-CMS
         #if: env.BUILD_SHADERC == 'true'
