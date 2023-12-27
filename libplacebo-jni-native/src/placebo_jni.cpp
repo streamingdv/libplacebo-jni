@@ -304,7 +304,15 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plDestroyRenderer
 
 /*extern "C"
 JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
-  (JNIEnv *env, jobject obj, jlong renderer) {
+  (JNIEnv *env, jobject obj, jlong avframe, jlong swapchain) {
+  AVFrame placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
+  pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
+
+  struct pl_frame target_frame = {0};
+  struct pl_swapchain_frame sw_frame = {0};
+  struct pl_plane plane = {0};
+
+  //LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
 
 }*/
 
