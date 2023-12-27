@@ -11,8 +11,10 @@
     #include <xcb/xcb.h>
 #endif
 
+#include <libplacebo/options.h>
 #include <libplacebo/vulkan.h>
 #include <libplacebo/log.h>
+#include <libplacebo/renderer.h>
 #include <libplacebo/cache.h>
 #include <libplacebo/gpu.h>
 
@@ -334,6 +336,8 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   pl_rect2df crop;
 
   bool ret = false;
+  pl_render_params render_params = pl_render_fast_params; // pl_render_high_quality_params, pl_render_default_params
+
   if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
       goto cleanup;
@@ -354,9 +358,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
           break;
   }*/
 
-  pl_render_params render_params = pl_render_fast_params; // pl_render_high_quality_params, pl_render_default_params
-  if (!pl_render_image(placebo_renderer, &placebo_frame, &target_frame,
-                       &render_params)) {
+  if (!pl_render_image(placebo_renderer, &placebo_frame, &target_frame, &render_params)) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to render Placebo frame!");
       goto cleanup;
   }
