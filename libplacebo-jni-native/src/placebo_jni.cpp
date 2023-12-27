@@ -233,17 +233,46 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plCacheSaveFile
 
   env->ReleaseStringUTFChars(cache_filePath, path);
 }
+
+extern "C"
+JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plGetVkInstance
+  (JNIEnv *env, jobject obj, jlong placebo_vk_inst) {
+     pl_vk_inst instance = reinterpret_cast<pl_vk_inst>(placebo_vk_inst);
+     VkInstance vk_instance = instance->instance;
+     return reinterpret_cast<jlong>(vk_instance);
+}
+
+extern "C"
+JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plGetWin32SurfaceFunctionPointer
+  (JNIEnv *env, jobject obj, jlong placebo_vk_inst) {
+  #ifdef _WIN32
+       pl_vk_inst instance = reinterpret_cast<pl_vk_inst>(placebo_vk_inst);
+       PFN_vkCreateWin32SurfaceKHR createSurface = reinterpret_cast<PFN_vkCreateWin32SurfaceKHR>(
+               instance->get_proc_addr(instance->instance, "vkCreateWin32SurfaceKHR"));
+       return reinterpret_cast<jlong>(createSurface);
+  #endif
+
+  return 0;
+}
+
 // ToDo next ->
 /*
-     struct pl_cache_params cache_params = {
-         .log = placebo_log,
-         .max_total_size = 10 << 20, // 10 MB
-     };
-     placebo_cache = pl_cache_create(&cache_params);
-     pl_gpu_set_cache(placebo_vulkan->gpu, placebo_cache);
-     FILE *file = fopen(qPrintable(GetShaderCacheFile()), "rb");
-     if (file) {
-         pl_cache_load_file(placebo_cache, file);
-         fclose(file);
-     }
+    Create swap chain
+
+    1.
+
+    struct pl_vulkan_swapchain_params swapchain_params = {
+        .surface = surface, <-- this must be created somehow with LJWGL
+        .present_mode = VK_PRESENT_MODE_FIFO_KHR,
+    };
+    placebo_swapchain = pl_vulkan_create_swapchain(placebo_vulkan, &swapchain_params);
+
+
+    2.
+
+    placebo_renderer = pl_renderer_create(
+        placebo_log,
+        placebo_vulkan->gpu
+    );
+
 */

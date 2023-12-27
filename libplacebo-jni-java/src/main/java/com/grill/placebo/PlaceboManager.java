@@ -114,6 +114,34 @@ public class PlaceboManager {
      */
     public native void plGpuSetCache(long vk, long cache);
 
+    /**
+     * Loads the shader cache file
+     * @param cache the cache handle
+     * @param filePath the file path to the shader cache file
+     */
+    public native void plCacheLoadFile(long cache, String filePath);
+
+    /**
+     * Saved the shader cache file
+     * @param cache the cache handle
+     * @param filePath the file path to the shader cache file
+     */
+    public native void plCacheSaveFile(long cache, String filePath);
+
+    /**
+     * Gets the handle to the vulkan instance
+     * @param vkInst the vk inst handle
+     * @return the vulkan instance
+     */
+    public native long plGetVkInstance(long vkInst);
+
+    /**
+     * Gets the handle to the vkCreateWin32SurfaceKHR function
+     * @param vkInst the vk inst handle
+     * @return the handle to the vkCreateWin32SurfaceKHR function
+     */
+    public native long plGetWin32SurfaceFunctionPointer(long vkInst);
+
     /************************/
     /*** load lib methods ***/
     /************************/
