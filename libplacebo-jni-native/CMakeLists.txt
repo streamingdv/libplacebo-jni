@@ -74,11 +74,17 @@ if(SHADERC_LIB_DIR STREQUAL "")
 endif()
 
 # Check for FFMPEG
-set(FFMPEG_DIR "" CACHE STRING "Path to fffmpeg headers")
+set(FFMPEG_DIR "" CACHE STRING "Path to fffmpeg dir")
 if(FFMPEG_DIR STREQUAL "")
-    message(FATAL_ERROR "Please run CMake with -DFFMPEG_DIR=/path/to/ffmpeg/include")
+    message(FATAL_ERROR "Please run CMake with -DFFMPEG_DIR=/path/to/ffmpeg")
 endif()
 include_directories(${FFMPEG_DIR})
+
+set(LCMS2_DIR "" CACHE STRING "Path to lcms2 dir")
+if(LCMS2_DIR STREQUAL "")
+    message(FATAL_ERROR "Please run CMake with -DLCMS2_DIR=/path/to/lcms2")
+endif()
+include_directories(${LCMS2_DIR}/inlcude)
 
 # Project sources
 set(SOURCES src/placebo_jni.cpp)
@@ -92,6 +98,7 @@ if(IS_RUNNING_ON_WINDOWS)
     target_link_libraries(libplacebo-jni-native PRIVATE
         ${LIBPLACEBO_LIB_PATH}
         ${JNI_LIBRARIES}
+        "${LCMS2_DIR}/lib/liblcms2.a"
         "${SHADERC_LIB_DIR}/libshaderc.a"
         "${SHADERC_LIB_DIR}/libshaderc_util.a"
         "${FFMPEG_DIR}/libavcodec/libavcodec.a"
@@ -129,6 +136,7 @@ else()
     target_link_libraries(libplacebo-jni-native PRIVATE
         ${LIBPLACEBO_LIB_PATH}
         ${JNI_LIBRARIES}
+        "${LCMS2_DIR}/lib/liblcms2.a"
         "${SHADERC_LIB_DIR}/libshaderc.a"
         "${SHADERC_LIB_DIR}/libshaderc_util.a"
         "${FFMPEG_DIR}/libavcodec/libavcodec.a"

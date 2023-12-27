@@ -210,6 +210,7 @@ jobs:
             -DSHADERC_LIB_DIR=${{github.workspace}}/libs/shaderc/linux/x64/lib \
             -DSHADERC_HEADERS_DIR=${{github.workspace}}/libs/shaderc/linux/x64/include \
             -DFFMPEG_DIR=${{github.workspace}}/libs/ffmpeg/linux/x64 \
+            -DLCMS2_DIR=${{github.workspace}}/libs/lcms2/linux/x64 \
             -DIS_RUNNING_ON_WINDOWS=OFF
           cmake --build build
         shell: bash
