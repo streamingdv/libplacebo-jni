@@ -81,7 +81,7 @@ jobs:
       - name: Install xbxc dependencies
         run: |
           apt-get update
-          apt-get install libxcb1-dev libxcb-randr0-dev libxcb-keysyms1-dev libxcb-icccm4-dev libxcb-image0-dev libxcb-xkb-dev
+          apt-get install -y libxcb1-dev libxcb-randr0-dev libxcb-keysyms1-dev libxcb-icccm4-dev libxcb-image0-dev libxcb-xkb-dev
 
       - name: Install Meson and Ninja
         run: |
