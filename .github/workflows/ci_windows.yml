@@ -9,7 +9,7 @@ on:
       build_libplacebo:
         description: 'Build libplacebo (true/false)'
         required: true
-        default: 'true' # to save time, actual build is already in libs folder
+        default: 'false' # to save time, actual build is already in libs folder
       build_shaderc:
         description: 'Build shaderc (true/false)'
         required: true
@@ -182,7 +182,7 @@ jobs:
           path: ${{github.workspace}}/glslang/install
 
       - name: Build libplacebo
-        #if: env.BUILD_LIBPLACEBO == 'true'
+        if: env.BUILD_LIBPLACEBO == 'true'
         working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
         run: |
           meson setup build --buildtype release --default-library=static -Ddemos=false -Dprefix=$PWD/install
@@ -191,7 +191,7 @@ jobs:
         shell: msys2 {0}
 
       - name: Upload libplacebo artefacts
-        #if: env.BUILD_LIBPLACEBO == 'true'
+        if: env.BUILD_LIBPLACEBO == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: libplacebo-artefacts-${{ matrix.arch }}
