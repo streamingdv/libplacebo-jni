@@ -624,7 +624,7 @@
 @c @set config-memory-poisoning no
 @c @set config-neon-clobber-test no
 @c @set config-ossfuzz no
-@c @set config-pic no
+@set config-pic yes
 @set config-ptx-compression yes
 @c @set config-thumb no
 @c @set config-valgrind-backtrace no
