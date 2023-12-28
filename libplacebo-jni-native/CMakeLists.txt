@@ -124,6 +124,7 @@ if(IS_RUNNING_ON_WINDOWS)
         "${GLSLANG_LIBS_DIR}/libSPIRV-Tools.a"
         "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-diff.a"
         shlwapi
+        bcrypt
     )
 else()
     # Find packages using PkgConfig with static linking preference
