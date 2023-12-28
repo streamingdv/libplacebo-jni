@@ -547,7 +547,7 @@
 @c @set config-avfoundation no
 @set config-bzlib yes
 @c @set config-coreimage no
-@set config-iconv yes
+@c @set config-iconv no
 @c @set config-libxcb no
 @c @set config-libxcb-shm no
 @c @set config-libxcb-shape no
