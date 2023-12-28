@@ -9,7 +9,7 @@ on:
       build_libplacebo:
         description: 'Build libplacebo (true/false)'
         required: true
-        default: 'false' # to save time, actual build is already in libs folder
+        default: 'true' # to save time, actual build is already in libs folder
       build_shaderc:
         description: 'Build shaderc (true/false)'
         required: true
@@ -42,11 +42,11 @@ jobs:
             arch: 64bit
             archValue: 64
             archAltValue: x64
-          #- sys: MINGW32 # disable for testing now
-          #  env: i686
-          #  arch: 32bit
-          #  archValue: 32
-          #  archAltValue: x32
+          - sys: MINGW32 # disable for testing now
+            env: i686
+            arch: 32bit
+            archValue: 32
+            archAltValue: x32
 
     steps:
       - name: Checkout libplacebo-jni repository
