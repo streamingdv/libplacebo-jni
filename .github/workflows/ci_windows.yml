@@ -9,7 +9,7 @@ on:
       build_libplacebo:
         description: 'Build libplacebo (true/false)'
         required: true
-        default: 'true' # to save time, actual build is already in libs folder
+        default: 'false' # to save time, actual build is already in libs folder
       build_shaderc:
         description: 'Build shaderc (true/false)'
         required: true
@@ -103,7 +103,6 @@ jobs:
             mingw-w64-${{ matrix.env }}-vulkan
             mingw-w64-${{ matrix.env }}-vulkan-headers
             mingw-w64-${{ matrix.env }}-vulkan-loader
-            mingw-w64-${{ matrix.env }}-libdovi
             mingw-w64-${{ matrix.env }}-lcms2
             mingw-w64-${{ matrix.env }}-shaderc
             mingw-w64-${{ matrix.env }}-glslang
