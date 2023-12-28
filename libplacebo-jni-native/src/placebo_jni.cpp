@@ -14,7 +14,6 @@
 #include <libplacebo/options.h>
 #include <libplacebo/vulkan.h>
 #include <libplacebo/renderer.h>
-#include <libplacebo/utils/frame_queue.h>
 #include <libplacebo/log.h>
 #include <libplacebo/cache.h>
 #include <libplacebo/gpu.h>

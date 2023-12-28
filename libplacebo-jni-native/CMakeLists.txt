@@ -87,7 +87,10 @@ endif()
 include_directories(${LCMS2_DIR}/inlcude)
 
 # Project sources
-set(SOURCES src/placebo_jni.cpp)
+set(SOURCES
+    src/libav_impl.c
+    src/placebo_jni.cpp
+)
 
 # Add shared library target
 add_library(libplacebo-jni-native SHARED ${SOURCES})
