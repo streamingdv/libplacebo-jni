@@ -323,6 +323,9 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
   pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
 
+  if (frame == nullptr) {
+      return false;
+  }
   return true;
 }
 
@@ -344,6 +347,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
       .map_dovi = false,
   };
   bool mapped = pl_map_avframe_ex(vulkan->gpu, &placebo_frame, &avparams);
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 1!");
   av_frame_free(&frame);
   if (!mapped) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to map AVFrame to Placebo frame!");
