@@ -177,6 +177,24 @@ public class PlaceboManager {
      */
     public native void plDestroyRenderer(long renderer);
 
+    /**
+     * Resizes the swapchain
+     * @param swapchain the swapchain handle
+     * @param width the new width
+     * @param height the new height
+     */
+    public native void plSwapchainResize(long swapchain, int width, int height);
+
+    /**
+     * Renders an avframe
+     * @param avframe the handle to the avframe
+     * @param vk the vulkan device handle
+     * @param swapchain the swapchain handle
+     * @param renderer the renderer handle
+     * @return true if successfully rendered, false otherwise
+     */
+    public native boolean plRenderAvFrame(long avframe, long vk, long swapchain, long renderer);
+
     /************************/
     /*** load lib methods ***/
     /************************/
