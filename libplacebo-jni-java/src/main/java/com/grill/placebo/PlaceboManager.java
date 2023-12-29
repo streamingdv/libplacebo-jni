@@ -185,6 +185,8 @@ public class PlaceboManager {
      */
     public native void plSwapchainResize(long swapchain, int width, int height);
 
+    public native boolean plRenderAvFrameTest(long avframe, long vk, long swapchain, long renderer);
+
     /**
      * Renders an avframe
      * @param avframe the handle to the avframe

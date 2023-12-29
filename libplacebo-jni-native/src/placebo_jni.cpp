@@ -316,6 +316,17 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plSwapchainResi
 pl_tex placebo_tex[4] = {nullptr, nullptr, nullptr, nullptr};
 
 extern "C"
+JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrameTest
+  (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer) {
+  AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
+  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
+  pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
+  pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
+
+  return true;
+}
+
+extern "C"
 JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer) {
   AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
