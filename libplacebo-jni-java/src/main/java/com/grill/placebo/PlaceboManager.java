@@ -199,8 +199,6 @@ public class PlaceboManager {
 
     public native boolean plRenderAvFrame2(long avframe, long vk, long swapchain, long renderer);
 
-    public native boolean plRenderAvFrame3(long avframe, long vk, long swapchain, long renderer);
-
     /************************/
     /*** load lib methods ***/
     /************************/
