@@ -514,7 +514,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   std::string msgStr = oss.str();
   // Get the C-style string if needed
   const char* msg = msgStr.c_str();
-  LogCallbackFunction(nullptr, PL_LOG_ERR, msgStr);
+  LogCallbackFunction(nullptr, PL_LOG_ERR, msg);
 
   if (!mapped) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to map AVFrame to Placebo frame!");
