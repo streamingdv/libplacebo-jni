@@ -305,7 +305,7 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plDestroyRenderer
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plSwapchainResize
+JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plSwapchainResize
   (JNIEnv *env, jobject obj, jlong swapchain, jint width, jint height) {
   pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
   int int_width = static_cast<int>(width);
