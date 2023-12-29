@@ -362,11 +362,13 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   bool ret = false;
   pl_render_params render_params = pl_render_fast_params; // pl_render_high_quality_params, pl_render_default_params
 
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 2!");
   if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
       goto cleanup;
   }
 
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 3!");
   pl_frame_from_swapchain(&target_frame, &sw_frame);
 
   crop = placebo_frame.crop;
@@ -382,19 +384,22 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
           break;
   }*/
 
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 4!");
   if (!pl_render_image(placebo_renderer, &placebo_frame, &target_frame, &render_params)) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to render Placebo frame!");
       goto cleanup;
   }
-
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 5!");
   if (!pl_swapchain_submit_frame(placebo_swapchain)) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to submit Placebo frame!");
       goto cleanup;
   }
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 6!");
   pl_swapchain_swap_buffers(placebo_swapchain);
   ret = true;
 
 cleanup:
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 7!");
   pl_unmap_avframe(vulkan->gpu, &placebo_frame);
 
   return ret;
