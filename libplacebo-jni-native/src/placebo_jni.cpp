@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <string>
 #include <vector>
+#include <sstream>
 #include <jni.h>
 
 #ifdef _WIN32
@@ -355,6 +356,170 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
       return false;
   }
   av_frame_free(&frame);
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 1.1!");
+  // set colorspace hint
+  struct pl_color_space hint = placebo_frame.color;
+  pl_swapchain_colorspace_hint(placebo_swapchain, &hint);
+
+  pl_rect2df crop;
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 1.2!");
+  bool ret = false;
+  pl_render_params render_params = pl_render_fast_params; // pl_render_high_quality_params, pl_render_default_params
+
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 2!");
+  if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
+      goto cleanup;
+  }
+
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 3!");
+  pl_frame_from_swapchain(&target_frame, &sw_frame);
+
+  crop = placebo_frame.crop;
+  /*switch (resolution_mode) {
+      case ResolutionMode::Normal:
+          pl_rect2df_aspect_copy(&target_frame.crop, &crop, 0.0);
+          break;
+      case ResolutionMode::Stretch:
+          // Nothing to do, target.crop already covers the full image
+          break;
+      case ResolutionMode::Zoom:
+          pl_rect2df_aspect_copy(&target_frame.crop, &crop, 1.0);
+          break;
+  }*/
+
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 4!");
+  if (!pl_render_image(placebo_renderer, &placebo_frame, &target_frame, &render_params)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to render Placebo frame!");
+      goto cleanup;
+  }
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 5!");
+  if (!pl_swapchain_submit_frame(placebo_swapchain)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to submit Placebo frame!");
+      goto cleanup;
+  }
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 6!");
+  pl_swapchain_swap_buffers(placebo_swapchain);
+  ret = true;
+
+cleanup:
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 7!");
+  pl_unmap_avframe(vulkan->gpu, &placebo_frame);
+
+  return ret;
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame2
+  (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer) {
+  AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
+  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
+  pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
+  pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
+
+  pl_tex placebo_tex[4] = {nullptr, nullptr, nullptr, nullptr};
+  struct pl_swapchain_frame sw_frame = {0};
+  struct pl_frame placebo_frame = {0};
+  struct pl_frame target_frame = {0};
+
+  struct pl_avframe_params avparams = {
+      .frame = frame,
+      .tex = placebo_tex,
+      .map_dovi = false,
+  };
+  bool mapped = pl_map_avframe_ex(vulkan->gpu, &placebo_frame, &avparams);
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 1!");
+
+  if (!mapped) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to map AVFrame to Placebo frame!");
+      return false;
+  }
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 1.1!");
+  // set colorspace hint
+  struct pl_color_space hint = placebo_frame.color;
+  pl_swapchain_colorspace_hint(placebo_swapchain, &hint);
+
+  pl_rect2df crop;
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 1.2!");
+  bool ret = false;
+  pl_render_params render_params = pl_render_fast_params; // pl_render_high_quality_params, pl_render_default_params
+
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 2!");
+  if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
+      goto cleanup;
+  }
+
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 3!");
+  pl_frame_from_swapchain(&target_frame, &sw_frame);
+
+  crop = placebo_frame.crop;
+  /*switch (resolution_mode) {
+      case ResolutionMode::Normal:
+          pl_rect2df_aspect_copy(&target_frame.crop, &crop, 0.0);
+          break;
+      case ResolutionMode::Stretch:
+          // Nothing to do, target.crop already covers the full image
+          break;
+      case ResolutionMode::Zoom:
+          pl_rect2df_aspect_copy(&target_frame.crop, &crop, 1.0);
+          break;
+  }*/
+
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 4!");
+  if (!pl_render_image(placebo_renderer, &placebo_frame, &target_frame, &render_params)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to render Placebo frame!");
+      goto cleanup;
+  }
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 5!");
+  if (!pl_swapchain_submit_frame(placebo_swapchain)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to submit Placebo frame!");
+      goto cleanup;
+  }
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 6!");
+  pl_swapchain_swap_buffers(placebo_swapchain);
+  ret = true;
+
+cleanup:
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 7!");
+  pl_unmap_avframe(vulkan->gpu, &placebo_frame);
+
+  return ret;
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame3
+  (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer) {
+  AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
+  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
+  pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
+  pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
+
+  pl_tex placebo_tex[4] = {nullptr, nullptr, nullptr, nullptr};
+  struct pl_swapchain_frame sw_frame = {0};
+  struct pl_frame placebo_frame = {0};
+  struct pl_frame target_frame = {0};
+
+  struct pl_avframe_params avparams = {
+      .frame = frame,
+      .tex = placebo_tex,
+      .map_dovi = false,
+  };
+  bool mapped = pl_map_avframe_ex(vulkan->gpu, &placebo_frame, &avparams);
+  int frameWidth = frame->width;
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 1!");
+  std::ostringstream oss;
+  oss << "DEBUG LOG frame width: " << frameWidth;
+  // Convert the ostringstream to a string
+  std::string msgStr = oss.str();
+  // Get the C-style string if needed
+  const char* msg = msgStr.c_str();
+  LogCallbackFunction(nullptr, PL_LOG_ERR, msgStr);
+
+  if (!mapped) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to map AVFrame to Placebo frame!");
+      return false;
+  }
   LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 1.1!");
   // set colorspace hint
   struct pl_color_space hint = placebo_frame.color;
