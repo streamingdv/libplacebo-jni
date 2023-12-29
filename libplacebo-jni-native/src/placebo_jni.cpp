@@ -313,8 +313,6 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plSwapchainResize
   pl_swapchain_resize(placebo_swapchain, &int_width, &int_height);
 }
 
-pl_tex placebo_tex[4] = {nullptr, nullptr, nullptr, nullptr};
-
 extern "C"
 JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrameTest
   (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer) {
@@ -329,6 +327,8 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   return true;
 }
 
+
+
 extern "C"
 JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer) {
@@ -337,6 +337,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
   pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
 
+  pl_tex placebo_tex[4] = {nullptr, nullptr, nullptr, nullptr};
   struct pl_swapchain_frame sw_frame = {0};
   struct pl_frame placebo_frame = {0};
   struct pl_frame target_frame = {0};
