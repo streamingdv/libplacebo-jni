@@ -348,17 +348,18 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   };
   bool mapped = pl_map_avframe_ex(vulkan->gpu, &placebo_frame, &avparams);
   LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 1!");
-  av_frame_free(&frame);
+  //av_frame_free(&frame);
   if (!mapped) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to map AVFrame to Placebo frame!");
       return false;
   }
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 1.1!");
   // set colorspace hint
   struct pl_color_space hint = placebo_frame.color;
   pl_swapchain_colorspace_hint(placebo_swapchain, &hint);
 
   pl_rect2df crop;
-
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 1.2!");
   bool ret = false;
   pl_render_params render_params = pl_render_fast_params; // pl_render_high_quality_params, pl_render_default_params
 
