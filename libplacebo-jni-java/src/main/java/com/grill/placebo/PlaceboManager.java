@@ -203,6 +203,12 @@ public class PlaceboManager {
     public native void plActivateDefaultRendering();
 
     /**
+     * Set the rendering format
+     * @param format 0 for Normal, 1 for Stretched, 2 for Zoomed. (other values will be ignored)
+     */
+    public native void plSetRenderingFormat(int format);
+
+    /**
      * Renders an avframe
      * @param avframe the handle to the avframe
      * @param vk the vulkan device handle
@@ -211,12 +217,6 @@ public class PlaceboManager {
      * @return true if successfully rendered, false otherwise
      */
     public native boolean plRenderAvFrame(long avframe, long vk, long swapchain, long renderer);
-
-    public native boolean plRenderAvFrame2(long avframe, long vk, long swapchain, long renderer);
-
-    public native boolean plRenderAvFrame3(long avframe, long vk, long swapchain, long renderer);
-
-    public native long getInstanceFromHWND(long hwnd);
 
     /************************/
     /*** load lib methods ***/
