@@ -564,3 +564,14 @@ cleanup:
 
   return ret;
 }
+
+extern "C"
+JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_getInstanceFromHWND(JNIEnv *env, jobject obj, jlong hwnd) {
+    #ifdef _WIN32
+        HWND hwndWindow = reinterpret_cast<HWND>(hwnd);
+        HINSTANCE hInstance = (HINSTANCE)GetWindowLongPtr(hwndWindow, GWLP_HINSTANCE);
+        return reinterpret_cast<jlong>(hInstance);
+    #else
+        return 0;
+    #endif
+}

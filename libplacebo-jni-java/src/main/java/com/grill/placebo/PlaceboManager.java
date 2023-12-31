@@ -201,6 +201,8 @@ public class PlaceboManager {
 
     public native boolean plRenderAvFrame3(long avframe, long vk, long swapchain, long renderer);
 
+    public native long getInstanceFromHWND(long hwnd);
+
     /************************/
     /*** load lib methods ***/
     /************************/
