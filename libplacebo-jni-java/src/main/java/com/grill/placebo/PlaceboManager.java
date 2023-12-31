@@ -188,6 +188,21 @@ public class PlaceboManager {
     public native boolean plRenderAvFrameTest(long avframe, long vk, long swapchain, long renderer);
 
     /**
+     * Activates fast rendering
+     */
+    public native void plActivateFastRendering();
+
+    /**
+     * Activates high quality rendering
+     */
+    public native void plActivateHighQualityRendering();
+
+    /**
+     * Activate default rendering
+     */
+    public native void plActivateDefaultRendering();
+
+    /**
      * Renders an avframe
      * @param avframe the handle to the avframe
      * @param vk the vulkan device handle

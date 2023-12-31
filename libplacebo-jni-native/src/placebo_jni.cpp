@@ -408,6 +408,26 @@ cleanup:
   return ret;
 }
 
+pl_render_params render_params = pl_render_fast_params; // default params, others -> pl_render_high_quality_params, pl_render_default_params
+
+extern "C"
+JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plActivateFastRendering
+  (JNIEnv *env, jobject obj) {
+  render_params = pl_render_fast_params;
+}
+
+extern "C"
+JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plActivateHighQualityRendering
+  (JNIEnv *env, jobject obj) {
+  render_params = pl_render_high_quality_params;
+}
+
+extern "C"
+JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plActivateDefaultRendering
+  (JNIEnv *env, jobject obj) {
+  render_params = pl_render_default_params;
+}
+
 extern "C"
 JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame2
   (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer) {
@@ -441,7 +461,6 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   pl_rect2df crop;
   LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 1.2!");
   bool ret = false;
-  pl_render_params render_params = pl_render_fast_params; // pl_render_high_quality_params, pl_render_default_params
 
   LogCallbackFunction(nullptr, PL_LOG_ERR, "DEBUG LOG 2!");
   if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
