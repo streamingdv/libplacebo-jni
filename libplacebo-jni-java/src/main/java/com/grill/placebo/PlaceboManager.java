@@ -219,6 +219,19 @@ public class PlaceboManager {
      */
     public native boolean plRenderAvFrame(long avframe, long vk, long swapchain, long renderer);
 
+    /**
+     * Creates and inits the nuklear ui stuff
+     * @param vk the vulkan device handle
+     * @return the ui handle
+     */
+    public native long nkCreateUI(long vk);
+
+    /**
+     * Destroys the nuklear ui stuff
+     * @param ui the ui handle
+     */
+    public native void nkDestroyUI(long ui);
+
     /************************/
     /*** load lib methods ***/
     /************************/
