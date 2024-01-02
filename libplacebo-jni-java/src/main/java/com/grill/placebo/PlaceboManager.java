@@ -153,9 +153,10 @@ public class PlaceboManager {
      * Creates the swapchain and returns the handle
      * @param vk the vulkan device handle
      * @param surface the surface handle
+     * @param vkPresentModeKHR the presentation mode supported for a surface (must be either be a value from 0-3)
      * @return the swapchain handle
      */
-    public native long plCreateSwapchain(long vk, long surface);
+    public native long plCreateSwapchain(long vk, long surface, int vkPresentModeKHR);
 
     /**
      * Destroys and releases the swapchain

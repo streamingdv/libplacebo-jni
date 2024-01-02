@@ -268,13 +268,29 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plDestroySurface
 
 extern "C"
 JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plCreateSwapchain
-  (JNIEnv *env, jobject obj, jlong placebo_vulkan, jlong surface) {
+  (JNIEnv *env, jobject obj, jlong placebo_vulkan, jlong surface, jint vkPresentModeKHR ) {
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
   VkSurfaceKHR vkSurfaceKHR = reinterpret_cast<VkSurfaceKHR>(static_cast<uint64_t>(surface));
+  VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR; // Default mode
+
+  switch (vkPresentModeKHR) {
+      case 0: // VK_PRESENT_MODE_IMMEDIATE_KHR
+          present_mode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+          break;
+      case 1: // VK_PRESENT_MODE_MAILBOX_KHR
+          present_mode = VK_PRESENT_MODE_MAILBOX_KHR;
+          break;
+      case 2: // VK_PRESENT_MODE_FIFO_KHR
+          present_mode = VK_PRESENT_MODE_FIFO_KHR;
+          break;
+      case 3: // VK_PRESENT_MODE_FIFO_RELAXED_KHR
+          present_mode = VK_PRESENT_MODE_FIFO_RELAXED_KHR;
+          break;
+  }
 
   struct pl_vulkan_swapchain_params swapchain_params = {
       .surface = vkSurfaceKHR,
-      .present_mode = VK_PRESENT_MODE_FIFO_KHR,
+      .present_mode = present_mode,
   };
 
   pl_swapchain placebo_swapchain = pl_vulkan_create_swapchain(vulkan, &swapchain_params);
