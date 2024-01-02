@@ -590,8 +590,8 @@ void render_ui(struct ui *ui) {
        nk_layout_space_begin(ctx, NK_STATIC, bounds.w, bounds.h );
        // draw in screen coordinates
 
-       nk_layout_row_static(&ctx, 30, 80, 1);
-       if (nk_button_label(&ctx, "PS")) {
+       nk_layout_row_static(ctx, 30, 80, 1);
+       if (nk_button_label(ctx, "PS")) {
            // event handling
        }
 
