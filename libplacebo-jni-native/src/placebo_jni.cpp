@@ -62,6 +62,7 @@ void LogCallbackFunction(void *log_priv, enum pl_log_level level, const char *ms
 }
 
 void render_ui(struct ui *ui);
+bool ui_draw(struct ui *ui, const struct pl_swapchain_frame *frame);
 
 /*** define JNI methods ***/
 
@@ -444,6 +445,13 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to submit Placebo frame!");
       goto cleanup;
   }
+   if (ui != 0) {
+      struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
+      if (!ui_draw(ui_instance, sw_frame)) {
+         LogCallbackFunction(nullptr, PL_LOG_ERR, "Could not draw UI!");
+      }
+   }
+
   pl_swapchain_swap_buffers(placebo_swapchain);
   ret = true;
 
@@ -569,6 +577,83 @@ struct ui *ui_create(pl_gpu gpu)
 error:
     ui_destroy(ui);
     return NULL;
+}
+
+bool ui_draw(struct ui *ui, const struct pl_swapchain_frame *frame)
+{
+    if (nk_convert(&ui->nk, &ui->cmds, &ui->verts, &ui->idx, &ui->convert_cfg) != NK_CONVERT_SUCCESS) {
+        LogCallbackFunction(nullptr, PL_LOG_ERR, "NK: failed converting draw commands!");
+        return false;
+    }
+
+    const struct nk_draw_command *cmd = NULL;
+    const uint8_t *vertices = nk_buffer_memory(&ui->verts);
+    const nk_draw_index *indices = nk_buffer_memory(&ui->idx);
+    nk_draw_foreach(cmd, &ui->nk, &ui->cmds) {
+        if (!cmd->elem_count)
+            continue;
+
+        pl_shader sh = pl_dispatch_begin(ui->dp);
+        pl_shader_custom(sh, &(struct pl_custom_shader) {
+            .description = "nuklear UI",
+            .body = "color = textureLod(ui_tex, coord, 0.0).r * vcolor;",
+            .output = PL_SHADER_SIG_COLOR,
+            .num_descriptors = 1,
+            .descriptors = &(struct pl_shader_desc) {
+                .desc = {
+                    .name = "ui_tex",
+                    .type = PL_DESC_SAMPLED_TEX,
+                },
+                .binding = {
+                    .object = cmd->texture.ptr,
+                    .sample_mode = PL_TEX_SAMPLE_NEAREST,
+                },
+            },
+        });
+
+        struct pl_color_repr repr = frame->color_repr;
+        pl_shader_color_map_ex(sh, NULL, pl_color_map_args(
+            .src = pl_color_space_srgb,
+            .dst = frame->color_space,
+        ));
+        pl_shader_encode_color(sh, &repr);
+
+        bool ok = pl_dispatch_vertex(ui->dp, pl_dispatch_vertex_params(
+            .shader = &sh,
+            .target = frame->fbo,
+            .blend_params = &pl_alpha_overlay,
+            .scissors = {
+                .x0 = cmd->clip_rect.x,
+                .y0 = cmd->clip_rect.y,
+                .x1 = cmd->clip_rect.x + cmd->clip_rect.w,
+                .y1 = cmd->clip_rect.y + cmd->clip_rect.h,
+            },
+            .vertex_attribs = ui->attribs_pl,
+            .num_vertex_attribs = NUM_VERTEX_ATTRIBS,
+            .vertex_stride = sizeof(struct ui_vertex),
+            .vertex_position_idx = 0,
+            .vertex_coords = PL_COORDS_ABSOLUTE,
+            .vertex_flipped = frame->flipped,
+            .vertex_type = PL_PRIM_TRIANGLE_LIST,
+            .vertex_count = cmd->elem_count,
+            .vertex_data = vertices,
+            .index_data = indices,
+            .index_fmt = PL_INDEX_UINT32,
+        ));
+
+        if (!ok) {
+            LogCallbackFunction(nullptr, PL_LOG_ERR, "placebo: failed rendering UI!");
+            return false;
+        }
+
+        indices += cmd->elem_count;
+    }
+
+    nk_clear(&ui->nk);
+    nk_buffer_clear(&ui->cmds);
+    nk_buffer_clear(&ui->verts);
+    nk_buffer_clear(&ui->idx);
+    return true;
 }
 
 struct nk_context *ui_get_context(struct ui *ui)
