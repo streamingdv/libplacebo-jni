@@ -186,8 +186,6 @@ public class PlaceboManager {
      */
     public native void plSwapchainResize(long swapchain, int width, int height);
 
-    public native boolean plRenderAvFrameTest(long avframe, long vk, long swapchain, long renderer);
-
     /**
      * Activates fast rendering
      */
@@ -215,9 +213,10 @@ public class PlaceboManager {
      * @param vk the vulkan device handle
      * @param swapchain the swapchain handle
      * @param renderer the renderer handle
+     * @param renderUI true if UI should be rendered
      * @return true if successfully rendered, false otherwise
      */
-    public native boolean plRenderAvFrame(long avframe, long vk, long swapchain, long renderer);
+    public native boolean plRenderAvFrame(long avframe, long vk, long swapchain, long renderer, boolean renderUI);
 
     /**
      * Creates and inits the nuklear ui stuff

@@ -61,6 +61,8 @@ void LogCallbackFunction(void *log_priv, enum pl_log_level level, const char *ms
   }
 }
 
+void render_ui(struct ui *ui);
+
 /*** define JNI methods ***/
 
 extern "C"
@@ -347,20 +349,6 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plSwapchainResize
   pl_swapchain_resize(placebo_swapchain, &int_width, &int_height);
 }
 
-extern "C"
-JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrameTest
-  (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer) {
-  AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
-  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
-  pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
-  pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
-
-  if (frame == nullptr) {
-      return false;
-  }
-  return true;
-}
-
 pl_render_params render_params = pl_render_fast_params; // default params, others -> pl_render_high_quality_params, pl_render_default_params
 
 extern "C"
@@ -395,7 +383,7 @@ pl_tex placebo_tex_global[4] = {nullptr, nullptr, nullptr, nullptr};
 
 extern "C"
 JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
-  (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer) {
+  (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer, jlong ui) {
   AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
   pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
@@ -427,11 +415,15 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
       goto cleanup;
   }
   pl_frame_from_swapchain(&target_frame, &sw_frame);
-  crop = placebo_frame.crop;
 
+  if(ui != 0){
+      struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
+      render_ui(ui);
+  }
   // ToDo play around with overlay
   // https://github.com/streetpea/chiaki4deck/pull/131/files#diff-97d713e6fd9e11d627febb01474852d6b9a5b32917e683fcbba39a305f532fafR739
 
+  crop = placebo_frame.crop;
   switch (renderingFormat) {
       case 0: // normal
           pl_rect2df_aspect_copy(&target_frame.crop, &crop, 0.0);
@@ -577,6 +569,37 @@ struct ui *ui_create(pl_gpu gpu)
 error:
     ui_destroy(ui);
     return NULL;
+}
+
+struct nk_context *ui_get_context(struct ui *ui)
+{
+    return &ui->nk;
+}
+
+void render_ui(struct ui *ui) {
+    if (!ui)
+        return;
+
+    struct nk_context *ctx = ui_get_context(ui);
+    //const struct nk_rect bounds = nk_rect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT);
+    const struct nk_rect bounds = nk_rect(0, 0, 1920, 1080); // ToDo get real window size
+    // hide background
+    nk_style_push_style_item(ctx, &ctx->style.window.fixed_background, nk_style_item_hide());
+    if (nk_begin(ctx, "FULLSCREEN", bounds, NK_WINDOW_NO_SCROLLBAR))
+    {
+       nk_layout_space_begin(ctx, NK_STATIC, bounds.w, bounds.h );
+       // draw in screen coordinates
+
+       nk_layout_row_static(&ctx, 30, 80, 1);
+       if (nk_button_label(&ctx, "PS")) {
+           // event handling
+       }
+
+       nk_layout_space_end(ctx);
+    }
+    nk_end(ctx);
+    // restore background
+    nk_style_pop_style_item(ctx);
 }
 
 extern "C"
