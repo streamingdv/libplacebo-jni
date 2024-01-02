@@ -97,7 +97,6 @@ include_directories(${NUKLEAR_DIR})
 # Project sources
 set(SOURCES
     src/libav_impl.c
-    src/nuklear_impl.cpp
     src/placebo_jni.cpp
 )
 

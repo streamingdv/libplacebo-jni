@@ -29,6 +29,7 @@
     #include <vulkan/vulkan_wayland.h>
 #endif
 
+#define NK_INCLUDE_FIXED_TYPES
 #define NK_IMPLEMENTATION
 #include <nuklear.h>
 
