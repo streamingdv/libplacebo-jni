@@ -418,7 +418,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
 
   if(ui != 0){
       struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
-      render_ui(ui);
+      render_ui(ui_instance);
   }
   // ToDo play around with overlay
   // https://github.com/streetpea/chiaki4deck/pull/131/files#diff-97d713e6fd9e11d627febb01474852d6b9a5b32917e683fcbba39a305f532fafR739
