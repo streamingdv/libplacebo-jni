@@ -29,9 +29,23 @@
     #include <vulkan/vulkan_wayland.h>
 #endif
 
+/*** imports related to UI stuff ***/
+
 #define NK_INCLUDE_FIXED_TYPES
+#define NK_INCLUDE_FIXED_TYPES
+#define NK_INCLUDE_DEFAULT_ALLOCATOR
+#define NK_INCLUDE_STANDARD_IO
+#define NK_INCLUDE_STANDARD_BOOL
+#define NK_INCLUDE_STANDARD_VARARGS
+#define NK_INCLUDE_VERTEX_BUFFER_OUTPUT
+#define NK_INCLUDE_FONT_BAKING
+#define NK_INCLUDE_DEFAULT_FONT
+#define NK_UINT_DRAW_INDEX
 #define NK_IMPLEMENTATION
 #include <nuklear.h>
+
+#include <libplacebo/dispatch.h>
+#include <libplacebo/shaders/custom.h>
 
 /*** define helper functions ***/
 
@@ -445,4 +459,132 @@ cleanup:
   pl_unmap_avframe(vulkan->gpu, &placebo_frame);
 
   return ret;
+}
+
+/**** create UI methods ****/
+
+struct ui_vertex {
+    float pos[2];
+    float coord[2];
+    uint8_t color[4];
+};
+
+#define NUM_VERTEX_ATTRIBS 3
+
+struct ui {
+    pl_gpu gpu;
+    pl_dispatch dp;
+    struct nk_context nk;
+    struct nk_font_atlas atlas;
+    struct nk_buffer cmds, verts, idx;
+    pl_tex font_tex;
+    struct pl_vertex_attrib attribs_pl[NUM_VERTEX_ATTRIBS];
+    struct nk_draw_vertex_layout_element attribs_nk[NUM_VERTEX_ATTRIBS+1];
+    struct nk_convert_config convert_cfg;
+};
+
+struct ui *ui_create(pl_gpu gpu)
+{
+    struct ui *ui = malloc(sizeof(struct ui));
+    if (!ui)
+        return NULL;
+
+    *ui = (struct ui) {
+        .gpu = gpu,
+        .dp = pl_dispatch_create(gpu->log, gpu),
+        .attribs_pl = {
+            {
+                .name = "pos",
+                .offset = offsetof(struct ui_vertex, pos),
+                .fmt = pl_find_vertex_fmt(gpu, PL_FMT_FLOAT, 2),
+            }, {
+                .name = "coord",
+                .offset = offsetof(struct ui_vertex, coord),
+                .fmt = pl_find_vertex_fmt(gpu, PL_FMT_FLOAT, 2),
+            }, {
+                .name = "vcolor",
+                .offset = offsetof(struct ui_vertex, color),
+                .fmt = pl_find_named_fmt(gpu, "rgba8"),
+            }
+        },
+        .attribs_nk = {
+            {NK_VERTEX_POSITION, NK_FORMAT_FLOAT, offsetof(struct ui_vertex, pos)},
+            {NK_VERTEX_TEXCOORD, NK_FORMAT_FLOAT, offsetof(struct ui_vertex, coord)},
+            {NK_VERTEX_COLOR, NK_FORMAT_R8G8B8A8, offsetof(struct ui_vertex, color)},
+            {NK_VERTEX_LAYOUT_END}
+        },
+        .convert_cfg = {
+            .vertex_layout = ui->attribs_nk,
+            .vertex_size = sizeof(struct ui_vertex),
+            .vertex_alignment = NK_ALIGNOF(struct ui_vertex),
+            .shape_AA = NK_ANTI_ALIASING_ON,
+            .line_AA = NK_ANTI_ALIASING_ON,
+            .circle_segment_count = 22,
+            .curve_segment_count = 22,
+            .arc_segment_count = 22,
+            .global_alpha = 1.0f,
+        },
+    };
+
+    // Initialize font atlas using built-in font
+    nk_font_atlas_init_default(&ui->atlas);
+    nk_font_atlas_begin(&ui->atlas);
+    struct nk_font *font = nk_font_atlas_add_default(&ui->atlas, 20, NULL);
+    struct pl_tex_params tparams = {
+        .format = pl_find_named_fmt(gpu, "r8"),
+        .sampleable = true,
+        .initial_data = nk_font_atlas_bake(&ui->atlas, &tparams.w, &tparams.h,
+                                           NK_FONT_ATLAS_ALPHA8),
+        .debug_tag = PL_DEBUG_TAG,
+    };
+    ui->font_tex = pl_tex_create(gpu, &tparams);
+    nk_font_atlas_end(&ui->atlas, nk_handle_ptr((void *) ui->font_tex),
+                      &ui->convert_cfg.tex_null);
+    nk_font_atlas_cleanup(&ui->atlas);
+
+    if (!ui->font_tex)
+        goto error;
+
+    // Initialize nuklear state
+    if (!nk_init_default(&ui->nk, &font->handle)) {
+        fprintf(stderr, "NK: failed initializing UI!\n");
+        goto error;
+    }
+
+    nk_buffer_init_default(&ui->cmds);
+    nk_buffer_init_default(&ui->verts);
+    nk_buffer_init_default(&ui->idx);
+
+    return ui;
+
+error:
+    ui_destroy(&ui);
+    return NULL;
+}
+
+extern "C"
+JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_nkCreateUI
+  (JNIEnv *env, jobject obj, jlong placebo_vulkan) {
+  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
+  struct ui *ui_instance = ui_create(vulkan->gpu);
+  if (ui_instance == NULL) {
+      return 0L;
+  }
+  return reinterpret_cast<jlong>(ui_instance);
+}
+
+extern "C"
+JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkDestroyUI
+  (JNIEnv *env, jobject obj, jlong ui) {
+    struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
+
+    nk_buffer_free(&ui_instance->cmds);
+    nk_buffer_free(&ui_instance->verts);
+    nk_buffer_free(&ui_instance->idx);
+    nk_free(&ui_instance->nk);
+    nk_font_atlas_clear(&ui_instance->atlas);
+    pl_tex_destroy(ui_instance->gpu, &ui_instance->font_tex);
+    pl_dispatch_destroy(&ui_instance->dp);
+
+    free(ui_instance);
 }
