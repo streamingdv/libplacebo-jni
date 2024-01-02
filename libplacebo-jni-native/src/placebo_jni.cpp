@@ -483,6 +483,22 @@ struct ui {
     struct nk_convert_config convert_cfg;
 };
 
+void ui_destroy(struct ui *ui)
+{
+    if (!ui)
+        return;
+
+    nk_buffer_free(&ui->cmds);
+    nk_buffer_free(&ui->verts);
+    nk_buffer_free(&ui->idx);
+    nk_free(&ui->nk);
+    nk_font_atlas_clear(&ui->atlas);
+    pl_tex_destroy(ui->gpu, &ui->font_tex);
+    pl_dispatch_destroy(&ui->dp);
+
+    delete ui;
+}
+
 struct ui *ui_create(pl_gpu gpu)
 {
     struct ui *ui = new struct ui;
@@ -514,16 +530,17 @@ struct ui *ui_create(pl_gpu gpu)
             {NK_VERTEX_LAYOUT_END}
         },
         .convert_cfg = {
+            .global_alpha = 1.0f,
+            .line_AA = NK_ANTI_ALIASING_ON,
+            .shape_AA = NK_ANTI_ALIASING_ON,
+            .circle_segment_count = 22,
+            .arc_segment_count = 22,
+            .curve_segment_count = 22,
             .vertex_layout = ui->attribs_nk,
             .vertex_size = sizeof(struct ui_vertex),
             .vertex_alignment = NK_ALIGNOF(struct ui_vertex),
-            .shape_AA = NK_ANTI_ALIASING_ON,
-            .line_AA = NK_ANTI_ALIASING_ON,
-            .circle_segment_count = 22,
-            .curve_segment_count = 22,
-            .arc_segment_count = 22,
-            .global_alpha = 1.0f,
-        },
+        }
+,
     };
 
     // Initialize font atlas using built-in font
@@ -578,22 +595,6 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkDestroyUI
   (JNIEnv *env, jobject obj, jlong ui) {
     struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
     ui_destroy(ui_instance);
-}
-
-void ui_destroy(struct ui *ui)
-{
-    if (!ui)
-        return;
-
-    nk_buffer_free(&ui->cmds);
-    nk_buffer_free(&ui->verts);
-    nk_buffer_free(&ui->idx);
-    nk_free(&ui->nk);
-    nk_font_atlas_clear(&ui->atlas);
-    pl_tex_destroy(ui->gpu, &ui->font_tex);
-    pl_dispatch_destroy(&ui->dp);
-
-    delete ui;
 }
 
 
