@@ -29,6 +29,9 @@
     #include <vulkan/vulkan_wayland.h>
 #endif
 
+#define NK_IMPLEMENTATION
+#include <nuklear.h>
+
 /*** define helper functions ***/
 
 JNIEnv *globalEnv;
@@ -410,6 +413,9 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   }
   pl_frame_from_swapchain(&target_frame, &sw_frame);
   crop = placebo_frame.crop;
+
+  // ToDo play around with overlay
+  // https://github.com/streetpea/chiaki4deck/pull/131/files#diff-97d713e6fd9e11d627febb01474852d6b9a5b32917e683fcbba39a305f532fafR739
 
   switch (renderingFormat) {
       case 0: // normal

@@ -54,13 +54,20 @@ jobs:
         with:
           submodules: 'recursive'
 
+      - name: Checkout Nuklear library
+        uses: actions/checkout@v2
+        with:
+          repository: 'Immediate-Mode-UI/Nuklear'
+          path: 'Nuklear'
+          ref: '4.10.7'
+
       - name: Checkout shaderc repository
         if: env.BUILD_SHADERC == 'true'
         uses: actions/checkout@v2
         with:
           repository: 'google/shaderc'
           path: 'shaderc'
-          ref: 'v2023.7'  # Specify the tag here
+          ref: 'v2023.7'
 
       - name: Checkout glslang repository
         if: env.BUILD_GLSLANG == 'true'
@@ -238,7 +245,8 @@ jobs:
             -DSHADERC_LIB_DIR=$(cygpath "${{github.workspace}}/libs/shaderc/windows/${{ matrix.archAltValue }}/lib") \
             -DSHADERC_HEADERS_DIR=$(cygpath "${{github.workspace}}/libs/shaderc/windows/${{ matrix.archAltValue }}/include") \
             -DFFMPEG_DIR=$(cygpath "${{github.workspace}}/libs/ffmpeg/windows/${{ matrix.archAltValue }}") \
-            -DLCMS2_DIR=$(cygpath "${{github.workspace}}/libs/lcms2/windows/${{ matrix.archAltValue }}")
+            -DLCMS2_DIR=$(cygpath "${{github.workspace}}/libs/lcms2/windows/${{ matrix.archAltValue }}") \
+            -DNUKLEAR_DIR=$(cygpath "${{github.workspace}}/Nuklear")
           cmake --build build
         shell: msys2 {0}
 

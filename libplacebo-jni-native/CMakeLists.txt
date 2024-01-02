@@ -87,9 +87,17 @@ if(LCMS2_DIR STREQUAL "")
 endif()
 include_directories(${LCMS2_DIR}/inlcude)
 
+# Check for NUKLEAR_DIR
+set(NUKLEAR_DIR "" CACHE STRING "Path to nuklear headers")
+if(NUKLEAR_DIR STREQUAL "")
+    message(FATAL_ERROR "Please run CMake with -DNUKLEAR_DIR=/path/to/nuklear/include")
+endif()
+include_directories(${NUKLEAR_DIR})
+
 # Project sources
 set(SOURCES
     src/libav_impl.c
+    src/nuklear_impl.cpp
     src/placebo_jni.cpp
 )
 
