@@ -562,22 +562,6 @@ error:
     return NULL;
 }
 
-void ui_destroy(struct ui *ui)
-{
-    if (!ui)
-        return;
-
-    nk_buffer_free(&ui->cmds);
-    nk_buffer_free(&ui->verts);
-    nk_buffer_free(&ui->idx);
-    nk_free(&ui->nk);
-    nk_font_atlas_clear(&ui->atlas);
-    pl_tex_destroy(ui->gpu, &ui->font_tex);
-    pl_dispatch_destroy(&ui->dp);
-
-    delete ui;
-}
-
 extern "C"
 JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_nkCreateUI
   (JNIEnv *env, jobject obj, jlong placebo_vulkan) {
@@ -594,6 +578,22 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkDestroyUI
   (JNIEnv *env, jobject obj, jlong ui) {
     struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
     ui_destroy(ui_instance);
+}
+
+void ui_destroy(struct ui *ui)
+{
+    if (!ui)
+        return;
+
+    nk_buffer_free(&ui->cmds);
+    nk_buffer_free(&ui->verts);
+    nk_buffer_free(&ui->idx);
+    nk_free(&ui->nk);
+    nk_font_atlas_clear(&ui->atlas);
+    pl_tex_destroy(ui->gpu, &ui->font_tex);
+    pl_dispatch_destroy(&ui->dp);
+
+    delete ui;
 }
 
 
