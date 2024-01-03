@@ -607,27 +607,28 @@ bool ui_draw(struct ui *ui, const struct pl_swapchain_frame *frame)
             .description = "nuklear UI",
             .body = "color = textureLod(ui_tex, coord, 0.0).r * vcolor;",
             .output = PL_SHADER_SIG_COLOR,
-            .num_descriptors = 1,
             .descriptors = &shader_desc,
+            .num_descriptors = 1,
         };
         pl_shader_custom(sh, &custom_shader);
 
 
         struct pl_color_repr repr = frame->color_repr;
-        pl_shader_color_map_ex(sh, NULL, pl_color_map_args(
+        struct pl_color_map_args cmap_args = {
             .src = pl_color_space_srgb,
-            .dst = frame->color_space,
-        ));
+            .dst = frame->color_space
+        };
+        pl_shader_color_map_ex(sh, NULL, &cmap_args);
         pl_shader_encode_color(sh, &repr);
 
-        bool ok = pl_dispatch_vertex(ui->dp, pl_dispatch_vertex_params(
+        struct pl_dispatch_vertex_params vertex_params = {
             .shader = &sh,
             .target = frame->fbo,
             .scissors = {
-                .x0 = cmd->clip_rect.x,
-                .y0 = cmd->clip_rect.y,
-                .x1 = cmd->clip_rect.x + cmd->clip_rect.w,
-                .y1 = cmd->clip_rect.y + cmd->clip_rect.h,
+                .x0 = static_cast<int>(cmd->clip_rect.x),
+                .y0 = static_cast<int>(cmd->clip_rect.y),
+                .x1 = static_cast<int>(cmd->clip_rect.x + cmd->clip_rect.w),
+                .y1 = static_cast<int>(cmd->clip_rect.y + cmd->clip_rect.h),
             },
             .blend_params = &pl_alpha_overlay,
             .vertex_attribs = ui->attribs_pl,
@@ -637,12 +638,12 @@ bool ui_draw(struct ui *ui, const struct pl_swapchain_frame *frame)
             .vertex_coords = PL_COORDS_ABSOLUTE,
             .vertex_flipped = frame->flipped,
             .vertex_type = PL_PRIM_TRIANGLE_LIST,
-            .vertex_count = cmd->elem_count,
+            .vertex_count = static_cast<int>(cmd->elem_count),
             .vertex_data = vertices,
             .index_data = indices,
             .index_fmt = PL_INDEX_UINT32,
-        ));
-
+        };
+        bool ok = pl_dispatch_vertex(ui->dp, &vertex_params);
         if (!ok) {
             LogCallbackFunction(nullptr, PL_LOG_ERR, "placebo: failed rendering UI!");
             return false;
