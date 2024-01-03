@@ -460,6 +460,42 @@ cleanup:
   return ret;
 }
 
+extern "C"
+JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUI
+  (JNIEnv *env, jobject obj, jlong swapchain, jlong ui) {
+  pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
+  bool ret = false;
+  struct pl_swapchain_frame sw_frame = {0};
+
+  if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
+      goto cleanup;
+  }
+
+  if(ui != 0){
+      struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
+      render_ui(ui_instance);
+  }
+
+  if (ui != 0) {
+     struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
+     if (!ui_draw(ui_instance, &sw_frame)) {
+        LogCallbackFunction(nullptr, PL_LOG_ERR, "Could not draw UI!");
+     }
+  }
+  if (!pl_swapchain_submit_frame(placebo_swapchain)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to submit Placebo frame!");
+      goto cleanup;
+  }
+
+  pl_swapchain_swap_buffers(placebo_swapchain);
+  ret = true;
+
+cleanup:
+
+  return ret;
+}
+
 /**** create UI methods ****/
 
 struct ui_vertex {
@@ -551,7 +587,6 @@ struct ui *ui_create(pl_gpu gpu)
         .sampleable = true,
         .initial_data = nk_font_atlas_bake(&ui->atlas, &tparams.w, &tparams.h,
                                            NK_FONT_ATLAS_ALPHA8),
-        .debug_tag = PL_DEBUG_TAG,
     };
     ui->font_tex = pl_tex_create(gpu, &tparams);
     nk_font_atlas_end(&ui->atlas, nk_handle_ptr((void *) ui->font_tex),
@@ -581,7 +616,6 @@ error:
 bool ui_draw(struct ui *ui, const struct pl_swapchain_frame *frame)
 {
     if (nk_convert(&ui->nk, &ui->cmds, &ui->verts, &ui->idx, &ui->convert_cfg) != NK_CONVERT_SUCCESS) {
-        LogCallbackFunction(nullptr, PL_LOG_ERR, "NK: failed converting draw commands!");
         return false;
     }
 
@@ -645,7 +679,6 @@ bool ui_draw(struct ui *ui, const struct pl_swapchain_frame *frame)
         };
         bool ok = pl_dispatch_vertex(ui->dp, &vertex_params);
         if (!ok) {
-            LogCallbackFunction(nullptr, PL_LOG_ERR, "placebo: failed rendering UI!");
             return false;
         }
 

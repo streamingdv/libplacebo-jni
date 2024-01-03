@@ -218,6 +218,8 @@ public class PlaceboManager {
      */
     public native boolean plRenderAvFrame(long avframe, long vk, long swapchain, long renderer, long ui);
 
+    public native boolean plRenderUI(long swapchain, long ui);
+
     /**
      * Creates and inits the nuklear ui stuff
      * @param vk the vulkan device handle
