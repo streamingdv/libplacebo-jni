@@ -32,7 +32,6 @@
 /*** imports related to UI stuff ***/
 
 #define NK_INCLUDE_FIXED_TYPES
-#define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_DEFAULT_ALLOCATOR
 #define NK_INCLUDE_STANDARD_IO
 #define NK_INCLUDE_STANDARD_BOOL
@@ -447,7 +446,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   }
    if (ui != 0) {
       struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
-      if (!ui_draw(ui_instance, sw_frame)) {
+      if (!ui_draw(ui_instance, &sw_frame)) {
          LogCallbackFunction(nullptr, PL_LOG_ERR, "Could not draw UI!");
       }
    }
@@ -587,29 +586,32 @@ bool ui_draw(struct ui *ui, const struct pl_swapchain_frame *frame)
     }
 
     const struct nk_draw_command *cmd = NULL;
-    const uint8_t *vertices = nk_buffer_memory(&ui->verts);
-    const nk_draw_index *indices = nk_buffer_memory(&ui->idx);
+    const uint8_t* vertices = reinterpret_cast<const uint8_t*>(nk_buffer_memory(&ui->verts));
+    const nk_draw_index* indices = reinterpret_cast<const nk_draw_index*>(nk_buffer_memory(&ui->idx));
     nk_draw_foreach(cmd, &ui->nk, &ui->cmds) {
         if (!cmd->elem_count)
             continue;
 
         pl_shader sh = pl_dispatch_begin(ui->dp);
-        pl_shader_custom(sh, &(struct pl_custom_shader) {
+        struct pl_shader_desc shader_desc = {
+            .desc = {
+                .name = "ui_tex",
+                .type = PL_DESC_SAMPLED_TEX,
+            },
+            .binding = {
+                .object = cmd->texture.ptr,
+                .sample_mode = PL_TEX_SAMPLE_NEAREST,
+            },
+        };
+        struct pl_custom_shader custom_shader = {
             .description = "nuklear UI",
             .body = "color = textureLod(ui_tex, coord, 0.0).r * vcolor;",
             .output = PL_SHADER_SIG_COLOR,
             .num_descriptors = 1,
-            .descriptors = &(struct pl_shader_desc) {
-                .desc = {
-                    .name = "ui_tex",
-                    .type = PL_DESC_SAMPLED_TEX,
-                },
-                .binding = {
-                    .object = cmd->texture.ptr,
-                    .sample_mode = PL_TEX_SAMPLE_NEAREST,
-                },
-            },
-        });
+            .descriptors = &shader_desc,
+        };
+        pl_shader_custom(sh, &custom_shader);
+
 
         struct pl_color_repr repr = frame->color_repr;
         pl_shader_color_map_ex(sh, NULL, pl_color_map_args(
@@ -621,13 +623,13 @@ bool ui_draw(struct ui *ui, const struct pl_swapchain_frame *frame)
         bool ok = pl_dispatch_vertex(ui->dp, pl_dispatch_vertex_params(
             .shader = &sh,
             .target = frame->fbo,
-            .blend_params = &pl_alpha_overlay,
             .scissors = {
                 .x0 = cmd->clip_rect.x,
                 .y0 = cmd->clip_rect.y,
                 .x1 = cmd->clip_rect.x + cmd->clip_rect.w,
                 .y1 = cmd->clip_rect.y + cmd->clip_rect.h,
             },
+            .blend_params = &pl_alpha_overlay,
             .vertex_attribs = ui->attribs_pl,
             .num_vertex_attribs = NUM_VERTEX_ATTRIBS,
             .vertex_stride = sizeof(struct ui_vertex),
