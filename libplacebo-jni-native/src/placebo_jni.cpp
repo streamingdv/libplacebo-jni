@@ -440,16 +440,16 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to render Placebo frame!");
       goto cleanup;
   }
+  if (ui != 0) {
+     struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
+     if (!ui_draw(ui_instance, &sw_frame)) {
+        LogCallbackFunction(nullptr, PL_LOG_ERR, "Could not draw UI!");
+     }
+  }
   if (!pl_swapchain_submit_frame(placebo_swapchain)) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to submit Placebo frame!");
       goto cleanup;
   }
-   if (ui != 0) {
-      struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
-      if (!ui_draw(ui_instance, &sw_frame)) {
-         LogCallbackFunction(nullptr, PL_LOG_ERR, "Could not draw UI!");
-      }
-   }
 
   pl_swapchain_swap_buffers(placebo_swapchain);
   ret = true;
