@@ -676,9 +676,8 @@ void render_ui(struct ui *ui) {
     if (nk_begin(ctx, "FULLSCREEN", bounds, NK_WINDOW_NO_SCROLLBAR))
     {
        nk_layout_space_begin(ctx, NK_STATIC, bounds.w, bounds.h );
+       nk_layout_space_push(ctx, nk_rect(100, 0, 100, 30));
        // draw in screen coordinates
-
-       nk_layout_row_static(ctx, 30, 80, 1);
        if (nk_button_label(ctx, "PS")) {
            // event handling
        }
