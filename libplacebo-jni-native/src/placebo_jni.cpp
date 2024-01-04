@@ -597,7 +597,7 @@ cleanup:
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRedrawUI2
+JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUI2
   (JNIEnv *env, jobject obj, jlong swapchain, jlong ui) {
 
   pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
