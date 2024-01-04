@@ -96,14 +96,16 @@ public class PlaceboManager {
     /**
      * Get device handle
      * @param vk the vulkan device handle
+     * @return the vk device handle
      */
-    public native void plGetVkDevice(long vk);
+    public native long plGetVkDevice(long vk);
 
     /**
      * Get Physical device handle
      * @param vk the vulkan device handle
+     * @return the vk physical device handle
      */
-    public native void plGetVkPhysicalDevice(long vk);
+    public native long plGetVkPhysicalDevice(long vk);
 
     /**
      * Create placebo cache
