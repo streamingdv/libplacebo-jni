@@ -94,6 +94,18 @@ public class PlaceboManager {
     public native void plVulkanDestroy(long vk);
 
     /**
+     * Get device handle
+     * @param vk the vulkan device handle
+     */
+    public native void plGetVkDevice(long vk);
+
+    /**
+     * Get Physical device handle
+     * @param vk the vulkan device handle
+     */
+    public native void plGetVkPhysicalDevice(long vk);
+
+    /**
      * Create placebo cache
      * @param plLog the log handle
      * @param maxSize the max cache size. Negative number are not allowed
@@ -217,8 +229,6 @@ public class PlaceboManager {
      * @return true if successfully rendered, false otherwise
      */
     public native boolean plRenderAvFrame(long avframe, long vk, long swapchain, long renderer, long ui);
-
-    public native boolean plRenderAvFrame2(long avframe, long vk, long swapchain, long renderer, long ui);
 
     public native boolean plRenderUI(long swapchain, long ui);
 

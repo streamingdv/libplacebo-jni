@@ -185,6 +185,22 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanDestroy
 }
 
 extern "C"
+JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plGetVkDevice
+  (JNIEnv *env, jobject obj, jlong placebo_vulkan) {
+  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
+  VkPhysicalDevice device = vulkan->device;
+  return reinterpret_cast<jlong>(device);
+}
+
+extern "C"
+JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plGetVkPhysicalDevice
+  (JNIEnv *env, jobject obj, jlong placebo_vulkan) {
+  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
+  VkPhysicalDevice phys_device = vulkan->phys_device;
+  return reinterpret_cast<jlong>(phys_device);
+}
+
+extern "C"
 JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plCacheCreate
   (JNIEnv *env, jobject obj, jlong placebo_log, jint max_size) {
   pl_log log = reinterpret_cast<pl_log>(placebo_log);
@@ -276,6 +292,16 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plGetWin32SurfaceF
 }
 
 extern "C"
+JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plGetVkCreateImageFunctionPointer
+  (JNIEnv *env, jobject obj, jlong placebo_vk_inst) {
+  pl_vk_inst instance = reinterpret_cast<pl_vk_inst>(placebo_vk_inst);
+  PFN_vkCreateImage vkCreateImage = reinterpret_cast<PFN_vkCreateImage>(
+          instance->get_proc_addr(instance->instance, "vkCreateImage"));
+
+  return reinterpret_cast<jlong>(vkCreateImage);
+}
+
+extern "C"
 JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plDestroySurface
   (JNIEnv *env, jobject obj, jlong placebo_vk_inst, jlong surface) {
   pl_vk_inst instance = reinterpret_cast<pl_vk_inst>(placebo_vk_inst);
@@ -348,7 +374,7 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plSwapchainResize
   pl_swapchain_resize(placebo_swapchain, &int_width, &int_height);
 }
 
-/*extern "C"
+extern "C"
 JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plTextRecreate
   (JNIEnv *env, jobject obj, jlong swapchain, jlong placebo_vulkan, jint width, jint height) {
   pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
@@ -372,7 +398,7 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plTextRecreate
   VkFormat vk_format;
   VkImage vk_image = pl_vulkan_unwrap(vulkan->gpu, tex, &vk_format, nullptr);
 
-}*/ // ?????
+} // ?????
 
 pl_render_params render_params = pl_render_fast_params; // default params, others -> pl_render_high_quality_params, pl_render_default_params
 
@@ -469,83 +495,6 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
         LogCallbackFunction(nullptr, PL_LOG_ERR, "Could not draw UI!");
      }
   }
-  if (!pl_swapchain_submit_frame(placebo_swapchain)) {
-      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to submit Placebo frame!");
-      goto cleanup;
-  }
-
-  pl_swapchain_swap_buffers(placebo_swapchain);
-  ret = true;
-
-cleanup:
-  pl_unmap_avframe(vulkan->gpu, &placebo_frame);
-
-  return ret;
-}
-
-extern "C"
-JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame2
-  (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer, jlong ui) {
-  AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
-  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
-  pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
-  pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
-  bool ret = false;
-
-  struct pl_swapchain_frame sw_frame = {0};
-  struct pl_frame placebo_frame = {0};
-  struct pl_frame target_frame = {0};
-
-  struct pl_avframe_params avparams = {
-      .frame = frame,
-      .tex = placebo_tex_global,
-      .map_dovi = false,
-  };
-  bool mapped = pl_map_avframe_ex(vulkan->gpu, &placebo_frame, &avparams);
-  if (!mapped) {
-      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to map AVFrame to Placebo frame!");
-      av_frame_free(&frame);
-      return ret;
-  }
-  // set colorspace hint
-  struct pl_color_space hint = placebo_frame.color;
-  pl_swapchain_colorspace_hint(placebo_swapchain, &hint);
-  pl_rect2df crop;
-
-  if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
-      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
-      goto cleanup;
-  }
-  pl_frame_from_swapchain(&target_frame, &sw_frame);
-
-  if(ui != 0){
-      struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
-      render_ui(ui_instance);
-  }
-
-  crop = placebo_frame.crop;
-  switch (renderingFormat) {
-      case 0: // normal
-          pl_rect2df_aspect_copy(&target_frame.crop, &crop, 0.0);
-          break;
-      case 1: // stretched
-          // Nothing to do, target.crop already covers the full image
-          break;
-      case 2: // zoomed
-          pl_rect2df_aspect_copy(&target_frame.crop, &crop, 1.0);
-          break;
-  }
-
-  if (!pl_render_image(placebo_renderer, &placebo_frame, &target_frame, &render_params)) {
-      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to render Placebo frame!");
-      goto cleanup;
-  }
-  /*if (ui != 0) {
-     struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
-     if (!ui_draw(ui_instance, &sw_frame)) {
-        LogCallbackFunction(nullptr, PL_LOG_ERR, "Could not draw UI!");
-     }
-  }*/
   if (!pl_swapchain_submit_frame(placebo_swapchain)) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to submit Placebo frame!");
       goto cleanup;
