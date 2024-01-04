@@ -247,7 +247,7 @@ jobs:
             -DFFMPEG_DIR=$(cygpath "${{github.workspace}}/libs/ffmpeg/windows/${{ matrix.archAltValue }}") \
             -DLCMS2_DIR=$(cygpath "${{github.workspace}}/libs/lcms2/windows/${{ matrix.archAltValue }}") \
             -DNUKLEAR_DIR=$(cygpath "${{github.workspace}}/Nuklear") \
-            -DVKMEMALLOC_HEADERS=$(cygpath "${{github.workspace}}/vulkan-memory-allocator/include")
+            -DVKMEMALLOC_HEADERS=$(cygpath "${{github.workspace}}/libs/vulkan-memory-allocator/include")
           cmake --build build
         shell: msys2 {0}
 
