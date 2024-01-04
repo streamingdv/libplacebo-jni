@@ -94,6 +94,13 @@ if(NUKLEAR_DIR STREQUAL "")
 endif()
 include_directories(${NUKLEAR_DIR})
 
+# Check for Vulkan-Memory-Allocator header
+set(VKMEMALLOC_HEADERS "" CACHE STRING "Path to shaderc headers")
+if(VKMEMALLOC_HEADERS STREQUAL "")
+    message(FATAL_ERROR "Please run CMake with -DVKMEMALLOC_HEADERS=/path/to/vulkanMemAllocator/include")
+endif()
+include_directories(${VKMEMALLOC_HEADERS})
+
 # Project sources
 set(SOURCES
     src/libav_impl.c

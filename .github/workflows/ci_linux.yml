@@ -219,6 +219,7 @@ jobs:
             -DFFMPEG_DIR=${{github.workspace}}/libs/ffmpeg/linux/x64 \
             -DLCMS2_DIR=${{github.workspace}}/libs/lcms2/linux/x64 \
             -DNUKLEAR_DIR=${{github.workspace}}/Nuklear \
+            -DVKMEMALLOC_HEADERS=${{github.workspace}}/vulkan-memory-allocator/include \
             -DIS_RUNNING_ON_WINDOWS=OFF
           cmake --build build
         shell: bash

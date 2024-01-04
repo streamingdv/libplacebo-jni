@@ -45,6 +45,7 @@
 
 #include <libplacebo/dispatch.h>
 #include <libplacebo/shaders/custom.h>
+#include <vk_mem_alloc.h>
 
 /*** define helper functions ***/
 
