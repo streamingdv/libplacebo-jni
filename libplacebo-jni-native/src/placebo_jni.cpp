@@ -602,7 +602,7 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plTextDestroy
     pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
     for (int i = 0; i < 4; i++) {
         if (placebo_tex_global[i])
-            pl_tex_destroy(placebo_vulkan->gpu, &placebo_tex_global[i]);
+            pl_tex_destroy(vulkan->gpu, &placebo_tex_global[i]);
     }
 }
 
