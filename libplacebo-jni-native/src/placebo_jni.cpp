@@ -232,15 +232,15 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plSetVmaVulkanFunct
     vmaVulkanFunctions->vkDestroyImage = reinterpret_cast<PFN_vkDestroyImage>(vkGetDeviceProcAddr(device, "vkDestroyImage"));
     vmaVulkanFunctions->vkCmdCopyBuffer = reinterpret_cast<PFN_vkCmdCopyBuffer>(vkGetDeviceProcAddr(device, "vkCmdCopyBuffer"));
 
-    vmaVulkanFunctions->vkGetBufferMemoryRequirements2KHR = device->vkGetBufferMemoryRequirements2KHR ? reinterpret_cast<PFN_vkGetBufferMemoryRequirements2KHR>(vkGetDeviceProcAddr(device, "vkGetBufferMemoryRequirements2KHR")) : nullptr;
-    vmaVulkanFunctions->vkGetImageMemoryRequirements2KHR = device->vkGetImageMemoryRequirements2KHR ? reinterpret_cast<PFN_vkGetImageMemoryRequirements2KHR>(vkGetDeviceProcAddr(device, "vkGetImageMemoryRequirements2KHR")) : nullptr;
-    vmaVulkanFunctions->vkBindBufferMemory2KHR = device->vkBindBufferMemory2KHR ? reinterpret_cast<PFN_vkBindBufferMemory2KHR>(vkGetDeviceProcAddr(device, "vkBindBufferMemory2KHR")) : nullptr;
-    vmaVulkanFunctions->vkBindImageMemory2KHR = device->vkBindImageMemory2KHR ? reinterpret_cast<PFN_vkBindImageMemory2KHR>(vkGetDeviceProcAddr(device, "vkBindImageMemory2KHR")) : nullptr;
-    vmaVulkanFunctions->vkGetPhysicalDeviceMemoryProperties2KHR = instance->vkGetPhysicalDeviceMemoryProperties2KHR ? reinterpret_cast<PFN_vkGetPhysicalDeviceMemoryProperties2KHR>(vkGetInstanceProcAddr(vk_instance, "vkGetPhysicalDeviceMemoryProperties2KHR")) : nullptr;
-    vmaVulkanFunctions->vkGetDeviceBufferMemoryRequirements = device->vkGetDeviceBufferMemoryRequirements ? reinterpret_cast<PFN_vkGetDeviceBufferMemoryRequirements>(vkGetDeviceProcAddr(device, "vkGetDeviceBufferMemoryRequirements")) : nullptr;
-    vmaVulkanFunctions->vkGetDeviceImageMemoryRequirements = device->vkGetDeviceImageMemoryRequirements ? reinterpret_cast<PFN_vkGetDeviceImageMemoryRequirements>(vkGetDeviceProcAddr(device, "vkGetDeviceImageMemoryRequirements")) : nullptr;
+    // Extension functions
+    vmaVulkanFunctions->vkGetBufferMemoryRequirements2KHR = reinterpret_cast<PFN_vkGetBufferMemoryRequirements2KHR>(vkGetDeviceProcAddr(device, "vkGetBufferMemoryRequirements2KHR"));
+    vmaVulkanFunctions->vkGetImageMemoryRequirements2KHR = reinterpret_cast<PFN_vkGetImageMemoryRequirements2KHR>(vkGetDeviceProcAddr(device, "vkGetImageMemoryRequirements2KHR"));
+    vmaVulkanFunctions->vkBindBufferMemory2KHR = reinterpret_cast<PFN_vkBindBufferMemory2KHR>(vkGetDeviceProcAddr(device, "vkBindBufferMemory2KHR"));
+    vmaVulkanFunctions->vkBindImageMemory2KHR = reinterpret_cast<PFN_vkBindImageMemory2KHR>(vkGetDeviceProcAddr(device, "vkBindImageMemory2KHR"));
+    vmaVulkanFunctions->vkGetPhysicalDeviceMemoryProperties2KHR = reinterpret_cast<PFN_vkGetPhysicalDeviceMemoryProperties2KHR>(vkGetInstanceProcAddr(vk_instance, "vkGetPhysicalDeviceMemoryProperties2KHR"));
+    vmaVulkanFunctions->vkGetDeviceBufferMemoryRequirements = reinterpret_cast<PFN_vkGetDeviceBufferMemoryRequirements>(vkGetDeviceProcAddr(device, "vkGetDeviceBufferMemoryRequirements"));
+    vmaVulkanFunctions->vkGetDeviceImageMemoryRequirements = reinterpret_cast<PFN_vkGetDeviceImageMemoryRequirements>(vkGetDeviceProcAddr(device, "vkGetDeviceImageMemoryRequirements"));
 }
-
 
 extern "C"
 JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plCacheCreate
