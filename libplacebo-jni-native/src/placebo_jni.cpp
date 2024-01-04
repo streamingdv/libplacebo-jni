@@ -597,38 +597,6 @@ cleanup:
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUI2
-  (JNIEnv *env, jobject obj, jlong swapchain, jlong ui) {
-
-  pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
-  struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
-  bool ret = false;
-
-  // Assuming the AVFrame is already rendered in the background and
-  // we just want to update the UI layer.
-  // Here, we don't start a new frame, but update the existing one.
-
-  // Check if UI instance is valid
-  if (!ui_instance) {
-      LogCallbackFunction(nullptr, PL_LOG_ERR, "UI instance is null!");
-      return ret;
-  }
-
-  // Redraw the UI part. Ensure this function only updates the UI layer
-  // without clearing or overwriting the existing AVFrame.
-  if (!ui_draw(ui_instance, /* pass necessary parameters for UI drawing */)) {
-      LogCallbackFunction(nullptr, PL_LOG_ERR, "Could not redraw UI!");
-      return ret;
-  }
-
-  // Since we're only updating the UI layer, there's no need to submit the frame again.
-  // The existing AVFrame should remain as is.
-  ret = true;
-
-  return ret;
-}
-
-extern "C"
 JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plTextDestroy(jlong placebo_vulkan)
   (JNIEnv *env, jobject obj, jlong ui) {
     pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
