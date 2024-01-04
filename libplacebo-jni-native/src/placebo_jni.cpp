@@ -188,7 +188,7 @@ extern "C"
 JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plGetVkDevice
   (JNIEnv *env, jobject obj, jlong placebo_vulkan) {
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
-  VkPhysicalDevice device = vulkan->device;
+  VkDevice device = vulkan->device;
   return reinterpret_cast<jlong>(device);
 }
 
