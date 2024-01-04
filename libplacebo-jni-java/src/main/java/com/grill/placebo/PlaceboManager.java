@@ -108,6 +108,14 @@ public class PlaceboManager {
     public native long plGetVkPhysicalDevice(long vk);
 
     /**
+     * Fill the necessary vulkan functions
+     * @param vkInst the vk inst handle
+     * @param vk the vulkan device handle
+     * @param vmaVulkanFunctions the vulkan functions handle
+     */
+    public native void plSetVmaVulkanFunctions(long vkInst, long vk, long vmaVulkanFunctions);
+
+    /**
      * Create placebo cache
      * @param plLog the log handle
      * @param maxSize the max cache size. Negative number are not allowed
