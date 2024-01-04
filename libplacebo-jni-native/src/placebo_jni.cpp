@@ -597,8 +597,8 @@ cleanup:
 }
 
 extern "C"
-JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plTextDestroy(jlong placebo_vulkan)
-  (JNIEnv *env, jobject obj, jlong ui) {
+JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plTextDestroy
+  (JNIEnv *env, jobject obj, jlong placebo_vulkan) {
     pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
     for (int i = 0; i < 4; i++) {
         if (placebo_tex_global[i])
