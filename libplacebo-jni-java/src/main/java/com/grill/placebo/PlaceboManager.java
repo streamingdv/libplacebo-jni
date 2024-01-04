@@ -218,7 +218,17 @@ public class PlaceboManager {
      */
     public native boolean plRenderAvFrame(long avframe, long vk, long swapchain, long renderer, long ui);
 
+    public native boolean plRenderAvFrame2(long avframe, long vk, long swapchain, long renderer, long ui);
+
     public native boolean plRenderUI(long swapchain, long ui);
+
+    public native boolean plRenderUI2(long swapchain, long ui);
+
+    /**
+     * Destroy the global saved textures
+     * @param vk the vulkan device handle
+     */
+    public native void plTextDestroy(long vk);
 
     /**
      * Creates and inits the nuklear ui stuff

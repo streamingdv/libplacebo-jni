@@ -184,7 +184,6 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanDestroy
   }
 }
 
-
 extern "C"
 JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plCacheCreate
   (JNIEnv *env, jobject obj, jlong placebo_log, jint max_size) {
@@ -349,6 +348,32 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plSwapchainResize
   pl_swapchain_resize(placebo_swapchain, &int_width, &int_height);
 }
 
+/*extern "C"
+JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plTextRecreate
+  (JNIEnv *env, jobject obj, jlong swapchain, jlong placebo_vulkan, jint width, jint height) {
+  pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
+  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
+  int int_width = static_cast<int>(width);
+  int int_height = static_cast<int>(height);
+  pl_tex tex = {0};
+
+  struct pl_tex_params tex_params = {
+      .w = int_width,
+      .h = int_height,
+      .format = pl_find_fmt(vulkan->gpu, PL_FMT_UNORM, 4, 0, 0, PL_FMT_CAP_RENDERABLE),
+      .sampleable = true,
+      .renderable = true,
+  };
+  if (!pl_tex_recreate(vulkan->gpu, &tex, &tex_params)) {
+    LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to create placebo texture");
+    return;
+  }
+
+  VkFormat vk_format;
+  VkImage vk_image = pl_vulkan_unwrap(vulkan->gpu, tex, &vk_format, nullptr);
+
+}*/ // ?????
+
 pl_render_params render_params = pl_render_fast_params; // default params, others -> pl_render_high_quality_params, pl_render_default_params
 
 extern "C"
@@ -420,8 +445,6 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
       struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
       render_ui(ui_instance);
   }
-  // ToDo play around with overlay
-  // https://github.com/streetpea/chiaki4deck/pull/131/files#diff-97d713e6fd9e11d627febb01474852d6b9a5b32917e683fcbba39a305f532fafR739
 
   crop = placebo_frame.crop;
   switch (renderingFormat) {
@@ -461,6 +484,83 @@ cleanup:
 }
 
 extern "C"
+JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame2
+  (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer, jlong ui) {
+  AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
+  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
+  pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
+  pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
+  bool ret = false;
+
+  struct pl_swapchain_frame sw_frame = {0};
+  struct pl_frame placebo_frame = {0};
+  struct pl_frame target_frame = {0};
+
+  struct pl_avframe_params avparams = {
+      .frame = frame,
+      .tex = placebo_tex_global,
+      .map_dovi = false,
+  };
+  bool mapped = pl_map_avframe_ex(vulkan->gpu, &placebo_frame, &avparams);
+  if (!mapped) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to map AVFrame to Placebo frame!");
+      av_frame_free(&frame);
+      return ret;
+  }
+  // set colorspace hint
+  struct pl_color_space hint = placebo_frame.color;
+  pl_swapchain_colorspace_hint(placebo_swapchain, &hint);
+  pl_rect2df crop;
+
+  if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
+      goto cleanup;
+  }
+  pl_frame_from_swapchain(&target_frame, &sw_frame);
+
+  if(ui != 0){
+      struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
+      render_ui(ui_instance);
+  }
+
+  crop = placebo_frame.crop;
+  switch (renderingFormat) {
+      case 0: // normal
+          pl_rect2df_aspect_copy(&target_frame.crop, &crop, 0.0);
+          break;
+      case 1: // stretched
+          // Nothing to do, target.crop already covers the full image
+          break;
+      case 2: // zoomed
+          pl_rect2df_aspect_copy(&target_frame.crop, &crop, 1.0);
+          break;
+  }
+
+  if (!pl_render_image(placebo_renderer, &placebo_frame, &target_frame, &render_params)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to render Placebo frame!");
+      goto cleanup;
+  }
+  /*if (ui != 0) {
+     struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
+     if (!ui_draw(ui_instance, &sw_frame)) {
+        LogCallbackFunction(nullptr, PL_LOG_ERR, "Could not draw UI!");
+     }
+  }*/
+  if (!pl_swapchain_submit_frame(placebo_swapchain)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to submit Placebo frame!");
+      goto cleanup;
+  }
+
+  pl_swapchain_swap_buffers(placebo_swapchain);
+  ret = true;
+
+cleanup:
+  pl_unmap_avframe(vulkan->gpu, &placebo_frame);
+
+  return ret;
+}
+
+extern "C"
 JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUI
   (JNIEnv *env, jobject obj, jlong swapchain, jlong ui) {
   pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
@@ -472,10 +572,10 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUI
       goto cleanup;
   }
 
-  if(ui != 0){
+  /*if(ui != 0){
       struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
       render_ui(ui_instance);
-  }
+  }*/
 
   if (ui != 0) {
      struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
@@ -494,6 +594,48 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUI
 cleanup:
 
   return ret;
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRedrawUI2
+  (JNIEnv *env, jobject obj, jlong swapchain, jlong ui) {
+
+  pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
+  struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
+  bool ret = false;
+
+  // Assuming the AVFrame is already rendered in the background and
+  // we just want to update the UI layer.
+  // Here, we don't start a new frame, but update the existing one.
+
+  // Check if UI instance is valid
+  if (!ui_instance) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "UI instance is null!");
+      return ret;
+  }
+
+  // Redraw the UI part. Ensure this function only updates the UI layer
+  // without clearing or overwriting the existing AVFrame.
+  if (!ui_draw(ui_instance, /* pass necessary parameters for UI drawing */)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Could not redraw UI!");
+      return ret;
+  }
+
+  // Since we're only updating the UI layer, there's no need to submit the frame again.
+  // The existing AVFrame should remain as is.
+  ret = true;
+
+  return ret;
+}
+
+extern "C"
+JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plTextDestroy(jlong placebo_vulkan)
+  (JNIEnv *env, jobject obj, jlong ui) {
+    pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
+    for (int i = 0; i < 4; i++) {
+        if (placebo_tex_global[i])
+            pl_tex_destroy(placebo_vulkan->gpu, &placebo_tex_global[i]);
+    }
 }
 
 /**** create UI methods ****/
