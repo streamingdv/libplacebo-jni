@@ -800,7 +800,7 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_nkCreateUI
 extern "C"
 JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkStoreImageView
   (JNIEnv *env, jobject obj, jlong imageView, jint btnType, jlong placebo_vulkan) {
-  VkImageView vkImageView = reinterpret_cast<VkImageView>(imageView);
+  VkImageView vkImageView = reinterpret_cast<VkImageView>(static_cast<uintptr_t>(imageView));
   ButtonType buttonType = static_cast<ButtonType>(btnType);
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
 
