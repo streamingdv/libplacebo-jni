@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <string>
 #include <vector>
+#include <map>
 #include <jni.h>
 
 #ifdef _WIN32
@@ -63,6 +64,8 @@ void LogCallbackFunction(void *log_priv, enum pl_log_level level, const char *ms
 
 void render_ui(struct ui *ui);
 bool ui_draw(struct ui *ui, const struct pl_swapchain_frame *frame);
+
+std::map<ButtonType, VkImageView> imageViewMap;
 
 /*** define JNI methods ***/
 
@@ -347,13 +350,13 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plGetWin32SurfaceF
 }
 
 extern "C"
-JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plGetVkCreateImageFunctionPointer
+JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plGetVkCreateImageViewFunctionPointer
   (JNIEnv *env, jobject obj, jlong placebo_vk_inst) {
   pl_vk_inst instance = reinterpret_cast<pl_vk_inst>(placebo_vk_inst);
-  PFN_vkCreateImage vkCreateImage = reinterpret_cast<PFN_vkCreateImage>(
-          instance->get_proc_addr(instance->instance, "vkCreateImage"));
+  PFN_vkCreateImageView vkCreateImageView = reinterpret_cast<PFN_vkCreateImageView>(
+          instance->get_proc_addr(instance->instance, "vkCreateImageView"));
 
-  return reinterpret_cast<jlong>(vkCreateImage);
+  return reinterpret_cast<jlong>(vkCreateImageView);
 }
 
 extern "C"
@@ -428,32 +431,6 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plSwapchainResize
   int int_height = static_cast<int>(height);
   pl_swapchain_resize(placebo_swapchain, &int_width, &int_height);
 }
-
-extern "C"
-JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plTextRecreate
-  (JNIEnv *env, jobject obj, jlong swapchain, jlong placebo_vulkan, jint width, jint height) {
-  pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
-  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
-  int int_width = static_cast<int>(width);
-  int int_height = static_cast<int>(height);
-  pl_tex tex = {0};
-
-  struct pl_tex_params tex_params = {
-      .w = int_width,
-      .h = int_height,
-      .format = pl_find_fmt(vulkan->gpu, PL_FMT_UNORM, 4, 0, 0, PL_FMT_CAP_RENDERABLE),
-      .sampleable = true,
-      .renderable = true,
-  };
-  if (!pl_tex_recreate(vulkan->gpu, &tex, &tex_params)) {
-    LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to create placebo texture");
-    return;
-  }
-
-  VkFormat vk_format;
-  VkImage vk_image = pl_vulkan_unwrap(vulkan->gpu, tex, &vk_format, nullptr);
-
-} // ?????
 
 pl_render_params render_params = pl_render_fast_params; // default params, others -> pl_render_high_quality_params, pl_render_default_params
 
@@ -560,42 +537,6 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
 
 cleanup:
   pl_unmap_avframe(vulkan->gpu, &placebo_frame);
-
-  return ret;
-}
-
-extern "C"
-JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUI
-  (JNIEnv *env, jobject obj, jlong swapchain, jlong ui) {
-  pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
-  bool ret = false;
-  struct pl_swapchain_frame sw_frame = {0};
-
-  if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
-      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
-      goto cleanup;
-  }
-
-  /*if(ui != 0){
-      struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
-      render_ui(ui_instance);
-  }*/
-
-  if (ui != 0) {
-     struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
-     if (!ui_draw(ui_instance, &sw_frame)) {
-        LogCallbackFunction(nullptr, PL_LOG_ERR, "Could not draw UI!");
-     }
-  }
-  if (!pl_swapchain_submit_frame(placebo_swapchain)) {
-      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to submit Placebo frame!");
-      goto cleanup;
-  }
-
-  pl_swapchain_swap_buffers(placebo_swapchain);
-  ret = true;
-
-cleanup:
 
   return ret;
 }
@@ -822,7 +763,7 @@ void render_ui(struct ui *ui) {
     nk_style_push_style_item(ctx, &ctx->style.window.fixed_background, nk_style_item_hide());
     if (nk_begin(ctx, "FULLSCREEN", bounds, NK_WINDOW_NO_SCROLLBAR))
     {
-       nk_layout_space_begin(ctx, NK_STATIC, bounds.w, bounds.h );
+       nk_layout_space_begin(ctx, NK_DYNAMIC, bounds.w, bounds.h );
        nk_layout_space_push(ctx, nk_rect(100, 0, 100, 30));
        // draw in screen coordinates
        if (nk_button_label(ctx, "PS")) {
@@ -847,11 +788,47 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_nkCreateUI
   return reinterpret_cast<jlong>(ui_instance);
 }
 
+enum class ButtonType {
+  MIC,
+  OPTIONS,
+  PS,
+  SHARE,
+  FULLSCREEN,
+  CLOSE
+};
+
+extern "C"
+JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkStoreImageView
+  (JNIEnv *env, jobject obj, jlong vkImageView, jint buttonType, jlong placebo_vulkan) {
+  VkImageView vkImageView = reinterpret_cast<VkImageView>(vkImageView);
+  ButtonType buttonType = static_cast<ButtonType>(buttonType);
+  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
+
+  auto it = imageViewMap.find(buttonType);
+  if (it != imageViewMap.end()) {
+      // If an entry exists, destroy the old VkImageView
+      vkDestroyImageView(vulkan->device, it->second, nullptr);
+  }
+  imageViewMap[buttonType] = *pVkImageView;
+}
+
+extern "C"
+JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkDestroyStoredImageViews
+  (JNIEnv *env, jobject obj, jlong placebo_vulkan) {
+  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
+  for (const auto& pair : imageViewMap) {
+      if (pair.second != VK_NULL_HANDLE) {
+          vkDestroyImageView(vulkan->device, pair.second, nullptr);
+      }
+  }
+  imageViewMap.clear();
+}
+
 extern "C"
 JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkDestroyUI
   (JNIEnv *env, jobject obj, jlong ui) {
-    struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
-    ui_destroy(ui_instance);
+  struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
+  ui_destroy(ui_instance);
 }
 
 

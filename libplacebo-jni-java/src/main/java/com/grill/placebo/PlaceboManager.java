@@ -75,9 +75,9 @@ public class PlaceboManager {
 
     /**
      * Destroys a vl inst
-     * @param placebo_vk_inst the vk inst to be deleted, placebo_vk_inst
+     * @param vkInst the vk inst to be deleted
      */
-    public native void plVkInstDestroy(long placebo_vk_inst);
+    public native void plVkInstDestroy(long vkInst);
 
     /**
      * Creates a vulkan device
@@ -109,7 +109,7 @@ public class PlaceboManager {
 
     /**
      * Fill the necessary vulkan functions
-     * @param vkInst the vk inst handle
+     * @param vkInst the handle to the vk instance, placebo_vk_inst
      * @param vk the vulkan device handle
      * @param vmaVulkanFunctions the vulkan functions handle
      */
@@ -163,6 +163,13 @@ public class PlaceboManager {
      * @return the handle to the vkCreateWin32SurfaceKHR function
      */
     public native long plGetWin32SurfaceFunctionPointer(long vkInst);
+
+    /**
+     * Gets the handle to the vkCreateImageView function
+     * @param vkInst the vk inst handle
+     * @return the handle to the vkCreateImageView function
+     */
+    public native long plGetVkCreateImageViewFunctionPointer(long vkInst);
 
     /**
      * Destroys and releases the native surface
@@ -240,8 +247,6 @@ public class PlaceboManager {
      */
     public native boolean plRenderAvFrame(long avframe, long vk, long swapchain, long renderer, long ui);
 
-    public native boolean plRenderUI(long swapchain, long ui);
-
     /**
      * Destroy the global saved textures
      * @param vk the vulkan device handle
@@ -260,6 +265,20 @@ public class PlaceboManager {
      * @param ui the ui handle
      */
     public native void nkDestroyUI(long ui);
+
+    /**
+     * Stores the vkImageView and caches it for the given buttonType. The images can later be used for the UI
+     * @param vkImageView the image view
+     * @param buttonType the button type
+     * @param vk the vulkan device handle
+     */
+    public native void nkStoreImageView(long vkImageView, int buttonType, long vk);
+
+    /**
+     * Destroy all the stored vkImageView references and releases the cache
+     * @param vk the vulkan device handle
+     */
+    public native void nkDestroyStoredImageViews(long vk);
 
     /************************/
     /*** load lib methods ***/
