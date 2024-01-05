@@ -799,9 +799,9 @@ enum class ButtonType {
 
 extern "C"
 JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkStoreImageView
-  (JNIEnv *env, jobject obj, jlong vkImageView, jint buttonType, jlong placebo_vulkan) {
-  VkImageView vkImageView = reinterpret_cast<VkImageView>(vkImageView);
-  ButtonType buttonType = static_cast<ButtonType>(buttonType);
+  (JNIEnv *env, jobject obj, jlong imageView, jint btnType, jlong placebo_vulkan) {
+  VkImageView vkImageView = reinterpret_cast<VkImageView>(imageView);
+  ButtonType buttonType = static_cast<ButtonType>(btnType);
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
 
   auto it = imageViewMap.find(buttonType);
@@ -809,7 +809,7 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkStoreImageView
       // If an entry exists, destroy the old VkImageView
       vkDestroyImageView(vulkan->device, it->second, nullptr);
   }
-  imageViewMap[buttonType] = *pVkImageView;
+  imageViewMap[buttonType] = vkImageView;
 }
 
 extern "C"
