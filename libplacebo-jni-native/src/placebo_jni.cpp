@@ -65,6 +65,15 @@ void LogCallbackFunction(void *log_priv, enum pl_log_level level, const char *ms
 void render_ui(struct ui *ui);
 bool ui_draw(struct ui *ui, const struct pl_swapchain_frame *frame);
 
+enum class ButtonType {
+  MIC,
+  OPTIONS,
+  PS,
+  SHARE,
+  FULLSCREEN,
+  CLOSE
+};
+
 std::map<ButtonType, VkImageView> imageViewMap;
 
 /*** define JNI methods ***/
@@ -787,15 +796,6 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_nkCreateUI
   }
   return reinterpret_cast<jlong>(ui_instance);
 }
-
-enum class ButtonType {
-  MIC,
-  OPTIONS,
-  PS,
-  SHARE,
-  FULLSCREEN,
-  CLOSE
-};
 
 extern "C"
 JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkStoreImageView
