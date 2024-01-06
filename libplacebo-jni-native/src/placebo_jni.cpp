@@ -75,7 +75,7 @@ enum class ButtonType {
   CLOSE
 };
 
-const std::array<ButtonType, 3> buttonTypes = {
+const std::array<ButtonType, 6> buttonTypes = {
     ButtonType::MIC,
     ButtonType::OPTIONS,
     ButtonType::PS,
@@ -788,7 +788,7 @@ void render_ui(struct ui *ui) {
          auto it = imageViewMap.find(buttonType);
          if (it != imageViewMap.end()) {
              VkImageView imageView = it->second;
-             nk_image btnImage = nk_image_ptr(imageView)
+             nk_image btnImage = nk_image_ptr(imageView);
 
              nk_layout_space_push(ctx, nk_rect(100, 600, 64, 64));
              nk_button_image(ctx, btnImage);
@@ -831,7 +831,7 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_nkCreateUI
 extern "C"
 JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkStoreImageView
   (JNIEnv *env, jobject obj, jlong imageView, jint btnType, jlong placebo_vulkan) {
-  VkImageView* pVkImageView = reinterpret_cast<VkImageView*>(static_cast<uint64_t>(imageViewPtr));
+  VkImageView* pVkImageView = reinterpret_cast<VkImageView*>(static_cast<uint64_t>(imageView));
   ButtonType buttonType = static_cast<ButtonType>(btnType);
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
 
