@@ -811,7 +811,7 @@ void render_ui(struct ui *ui) {
      if (imageViewMap.find(key) != imageViewMap.end()) {
          imageView = imageViewMap[key];
          struct nk_image btnImage = nk_image_ptr((void*) &imageView);
-         nk_layout_space_push(ctx, nk_rect(100, 600, 64, 64));
+         nk_layout_space_push(ctx, nk_rect(100, 600, 150, 150));
 
          nk_button_image(ctx, btnImage);
 
@@ -820,7 +820,7 @@ void render_ui(struct ui *ui) {
          LogCallbackFunction(nullptr, PL_LOG_ERR, "NK: NO image");
      }
 
-     nk_layout_space_push(ctx, nk_rect(100, 0, 100, 30));
+     nk_layout_space_push(ctx, nk_rect(100, 0, 150, 30));
      // draw in screen coordinates
      if (nk_button_label(ctx, "Test render button")) {
          // event handling
