@@ -865,20 +865,6 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkDestroyStoredImag
 }
 
 extern "C"
-JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkDestroyStoredImageViews2
-  (JNIEnv *env, jobject obj, jlong placebo_vulkan) {
-  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
-  for (const auto& pair : imageViewMap) {
-      if (pair.second != VK_NULL_HANDLE) {
-          LogCallbackFunction(nullptr, PL_LOG_ERR, "Call vkDestroyImageView");
-          vkDestroyImageView(vulkan->device, &pair.second, nullptr);
-          LogCallbackFunction(nullptr, PL_LOG_ERR, "Called vkDestroyImageView");
-      }
-  }
-  imageViewMap.clear();
-}
-
-extern "C"
 JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkDestroyStoredImageViews3
   (JNIEnv *env, jobject obj, jlong placebo_vulkan) {
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
@@ -889,27 +875,6 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkDestroyStoredImag
           LogCallbackFunction(nullptr, PL_LOG_ERR, "Called vkDestroyImageView");
       }
   }
-}
-
-extern "C"
-JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkDestroyStoredImageViews4
-  (JNIEnv *env, jobject obj, jlong placebo_vulkan) {
-  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
-  for (const auto& pair : imageViewMap) {
-      if (pair.second != VK_NULL_HANDLE) {
-          LogCallbackFunction(nullptr, PL_LOG_ERR, "Call vkDestroyImageView");
-          vkDestroyImageView(vulkan->device, &pair.second, nullptr);
-          LogCallbackFunction(nullptr, PL_LOG_ERR, "Called vkDestroyImageView");
-      }
-  }
-}
-
-extern "C"
-JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkDestroyImageView
-  (JNIEnv *env, jobject obj, jlong placebo_vulkan, jlong imageView) {
-  VkImageView *pVkImageView = reinterpret_cast<VkImageView*>(static_cast<uint64_t>(imageView));
-  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
-  vkDestroyImageView(vulkan->device, pVkImageView, nullptr);
 }
 
 extern "C"

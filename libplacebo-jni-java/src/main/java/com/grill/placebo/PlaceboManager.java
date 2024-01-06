@@ -280,12 +280,7 @@ public class PlaceboManager {
      */
     public native void nkDestroyStoredImageViews(long vk);
 
-    public native void nkDestroyStoredImageViews2(long vk);
-
     public native void nkDestroyStoredImageViews3(long vk);
-
-    public native void nkDestroyStoredImageViews4(long vk);
-    public native void nkDestroyImageView(long vk, long vkImageView);
 
     public native void nkDestroyImageView2(long vk, long vkImageView);
 
