@@ -64,6 +64,7 @@ void LogCallbackFunction(void *log_priv, enum pl_log_level level, const char *ms
 }
 
 void render_ui(struct ui *ui);
+void render_ui2(struct ui *ui);
 bool ui_draw(struct ui *ui, const struct pl_swapchain_frame *frame);
 
 enum class ButtonType {
@@ -893,7 +894,7 @@ void render_ui(struct ui *ui) {
   nk_style_pop_style_item(ctx);
 }
 
-void render_ui2(struct ui *ui, nk_image btnImage) {
+void render_ui2(struct ui *ui, struct nk_image btnImage) {
   if (!ui)
       return;
 
