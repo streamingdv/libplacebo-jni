@@ -813,7 +813,7 @@ void render_ui(struct ui *ui) {
          struct nk_image btnImage = nk_image_ptr(reinterpret_cast<void*>(imageView));
          nk_layout_space_push(ctx, nk_rect(100, 600, 64, 64));
 
-         k_button_image(ctx, btnImage);
+         nk_button_image(ctx, btnImage);
 
          nk_layout_space_end(ctx);
      } else {
