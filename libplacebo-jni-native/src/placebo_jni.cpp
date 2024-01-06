@@ -789,7 +789,7 @@ void render_ui(struct ui *ui) {
          if (it != imageViewMap.end()) {
              VkImageView imageView = it->second;
              //struct nk_image btnImage = nk_image_ptr(imageView);
-             struct nk_image btnImage = nk_image_ptr(reinterpret_cast<void*>(static_cast<uint64_t>(imageView)));
+             struct nk_image btnImage = nk_image_ptr(reinterpret_cast<void*>(static_cast<uint64_t>(&imageView)));
 
              nk_layout_space_push(ctx, nk_rect(100, 600, 64, 64));
              nk_button_image(ctx, btnImage);
