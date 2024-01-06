@@ -810,7 +810,7 @@ void render_ui(struct ui *ui) {
 
      if (imageViewMap.find(key) != imageViewMap.end()) {
          imageView = imageViewMap[key];
-         struct nk_image btnImage = nk_image_ptr(&imageView);
+         struct nk_image btnImage = nk_image_ptr((void*) &imageView);
          nk_layout_space_push(ctx, nk_rect(100, 600, 64, 64));
 
          nk_button_image(ctx, btnImage);
