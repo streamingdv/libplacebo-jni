@@ -784,21 +784,15 @@ void render_ui(struct ui *ui) {
   {
      nk_layout_space_begin(ctx, NK_STATIC, bounds.w, bounds.h );
 
-     for (const auto& buttonType : buttonTypes) {
+     /*for (const auto& buttonType : buttonTypes) {
          auto it = imageViewMap.find(buttonType);
          if (it != imageViewMap.end()) {
              VkImageView imageView = it->second;
              struct nk_image btnImage = nk_image_ptr(reinterpret_cast<void*>(imageView));
 
-             /*nk_layout_space_push(ctx, nk_rect(100, 600, 64, 64));
-             nk_button_image(ctx, btnImage);
-             nk_layout_space_end(ctx);*/
+             nk_layout_space_push(ctx, nk_rect(100, 600, 64, 64));
 
-             /*nk_layout_space_push(ctx, nk_rect(100, 600, 64, 64));
-             // draw in screen coordinates
-             if (nk_button_label(ctx, "PS")) {
-                 // event handling
-             }*/
+             nk_button_image(ctx, btnImage);
 
              nk_layout_space_end(ctx);
          } else {
@@ -810,6 +804,20 @@ void render_ui(struct ui *ui) {
 
               nk_layout_space_end(ctx);
          }
+     }*/
+     ButtonType key = ButtonType::PS; // Replace with the actual enum value for "PS"
+     VkImageView imageView;
+
+     if (imageViewMap.find(key) != imageViewMap.end()) {
+         imageView = imageViewMap[key];
+         struct nk_image btnImage = nk_image_ptr(reinterpret_cast<void*>(imageView));
+         nk_layout_space_push(ctx, nk_rect(100, 600, 64, 64));
+
+         k_button_image(ctx, btnImage);
+
+         nk_layout_space_end(ctx);
+     } else {
+         LogCallbackFunction(nullptr, PL_LOG_ERR, "NK: NO image");
      }
 
      nk_layout_space_push(ctx, nk_rect(100, 0, 100, 30));
