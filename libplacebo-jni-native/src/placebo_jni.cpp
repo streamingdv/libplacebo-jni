@@ -838,7 +838,7 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_nkCreateUI
 extern "C"
 JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkStoreImageView
   (JNIEnv *env, jobject obj, jlong imageView, jint btnType, jlong placebo_vulkan) {
-  VkImageView *pVkImageView = reinterpret_cast<VkImageView*>(static_cast<uint64_t>(imageView));
+  VkImageView pVkImageView = reinterpret_cast<VkImageView>(static_cast<uint64_t>(imageView));
   ButtonType buttonType = static_cast<ButtonType>(btnType);
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
 
@@ -847,7 +847,7 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkStoreImageView
       // If an entry exists, destroy the old VkImageView
       vkDestroyImageView(vulkan->device, it->second, nullptr);
   }
-  imageViewMap[buttonType] = *pVkImageView;
+  imageViewMap[buttonType] = pVkImageView;
 }
 
 extern "C"
@@ -865,28 +865,7 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkDestroyStoredImag
 }
 
 extern "C"
-JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkDestroyStoredImageViews3
-  (JNIEnv *env, jobject obj, jlong placebo_vulkan) {
-  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
-  for (const auto& pair : imageViewMap) {
-      if (pair.second != VK_NULL_HANDLE) {
-          LogCallbackFunction(nullptr, PL_LOG_ERR, "Call vkDestroyImageView");
-          vkDestroyImageView(vulkan->device, pair.second, nullptr);
-          LogCallbackFunction(nullptr, PL_LOG_ERR, "Called vkDestroyImageView");
-      }
-  }
-}
-
-extern "C"
-JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkDestroyImageView2
-  (JNIEnv *env, jobject obj, jlong placebo_vulkan, jlong imageView) {
-  VkImageView *pVkImageView = reinterpret_cast<VkImageView*>(static_cast<uint64_t>(imageView));
-  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
-  vkDestroyImageView(vulkan->device, *pVkImageView, nullptr);
-}
-
-extern "C"
-JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkDestroyImageView3
+JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkDestroyImageView
   (JNIEnv *env, jobject obj, jlong placebo_vulkan, jlong imageView) {
   VkImageView pVkImageView = reinterpret_cast<VkImageView>(static_cast<uint64_t>(imageView));
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
