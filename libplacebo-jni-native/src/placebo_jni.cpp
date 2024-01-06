@@ -907,7 +907,7 @@ void render_ui(struct ui *ui, int width, int height) {
       float buttonSize = 64;
       float centerPosition = (bounds.w / 2) - 32;
 
-      nk_layout_space_push(ctx, nk_rect(centerPosition, bounds.h - buttonSize, buttonSize,buttonSize30));
+      nk_layout_space_push(ctx, nk_rect(centerPosition, bounds.h - buttonSize, buttonSize,buttonSize));
       // draw in screen coordinates
       if (nk_button_label(ctx, "PS")) {
           // event handling
