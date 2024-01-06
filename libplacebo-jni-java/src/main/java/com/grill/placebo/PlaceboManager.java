@@ -245,7 +245,7 @@ public class PlaceboManager {
      * @param ui the ui handle
      * @return true if successfully rendered, false otherwise
      */
-    public native boolean plRenderAvFrame(long avframe, long vk, long swapchain, long renderer, long ui, int width, int height);
+    public native boolean plRenderAvFrame(long avframe, long vk, long swapchain, long renderer, long ui);
 
     public native boolean plRenderAvFrame2(long avframe, long vk, long swapchain, long renderer, long ui, int width, int height);
 
