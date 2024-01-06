@@ -247,6 +247,8 @@ public class PlaceboManager {
      */
     public native boolean plRenderAvFrame(long avframe, long vk, long swapchain, long renderer, long ui);
 
+    public native boolean plRenderAvFrame2(long avframe, long vk, long swapchain, long renderer, long ui, long vkImageView);
+
     /**
      * Destroy the global saved textures
      * @param vk the vulkan device handle

@@ -561,6 +561,85 @@ cleanup:
 }
 
 extern "C"
+JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame2
+  (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer, jlong ui, jlong imageView) {
+  AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
+  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
+  pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
+  pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
+  VkImageView pVkImageView = reinterpret_cast<VkImageView>(static_cast<uint64_t>(imageView));
+  bool ret = false;
+
+  struct pl_swapchain_frame sw_frame = {0};
+  struct pl_frame placebo_frame = {0};
+  struct pl_frame target_frame = {0};
+
+  struct pl_avframe_params avparams = {
+      .frame = frame,
+      .tex = placebo_tex_global,
+      .map_dovi = false,
+  };
+  bool mapped = pl_map_avframe_ex(vulkan->gpu, &placebo_frame, &avparams);
+  if (!mapped) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to map AVFrame to Placebo frame!");
+      av_frame_free(&frame);
+      return ret;
+  }
+  // set colorspace hint
+  struct pl_color_space hint = placebo_frame.color;
+  pl_swapchain_colorspace_hint(placebo_swapchain, &hint);
+  pl_rect2df crop;
+
+  if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
+      goto cleanup;
+  }
+  pl_frame_from_swapchain(&target_frame, &sw_frame);
+
+  if(ui != 0){
+      struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
+      struct nk_image btnImage = nk_image_ptr(&pVkImageView);
+      render_ui2(ui_instance, btnImage);
+  }
+
+  crop = placebo_frame.crop;
+  switch (renderingFormat) {
+      case 0: // normal
+          pl_rect2df_aspect_copy(&target_frame.crop, &crop, 0.0);
+          break;
+      case 1: // stretched
+          // Nothing to do, target.crop already covers the full image
+          break;
+      case 2: // zoomed
+          pl_rect2df_aspect_copy(&target_frame.crop, &crop, 1.0);
+          break;
+  }
+
+  if (!pl_render_image(placebo_renderer, &placebo_frame, &target_frame, &render_params)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to render Placebo frame!");
+      goto cleanup;
+  }
+  if (ui != 0) {
+     struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
+     if (!ui_draw(ui_instance, &sw_frame)) {
+        LogCallbackFunction(nullptr, PL_LOG_ERR, "Could not draw UI!");
+     }
+  }
+  if (!pl_swapchain_submit_frame(placebo_swapchain)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to submit Placebo frame!");
+      goto cleanup;
+  }
+
+  pl_swapchain_swap_buffers(placebo_swapchain);
+  ret = true;
+
+cleanup:
+  pl_unmap_avframe(vulkan->gpu, &placebo_frame);
+
+  return ret;
+}
+
+extern "C"
 JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plTextDestroy
   (JNIEnv *env, jobject obj, jlong placebo_vulkan) {
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
@@ -790,7 +869,7 @@ void render_ui(struct ui *ui) {
       if (it == buttonImageMap.end()) {
           // Button image does not exist, create it
           if (imageViewMap.find(key) != imageViewMap.end()) {
-              VkImageView imageView = imageViewMap[key];
+              VkImageView& imageView = imageViewMap[key];
               struct nk_image btnImage = nk_image_ptr(&imageView);
 
               // Store the created btnImage in the global map
@@ -803,12 +882,31 @@ void render_ui(struct ui *ui) {
       }
 
       // Use the btnImage from the map
-      struct nk_image btnImage = buttonImageMap[key];
+      struct nk_image& btnImage = buttonImageMap[key];
       nk_layout_space_push(ctx, nk_rect(100, 600, 64, 64));
       nk_button_image(ctx, btnImage);
       nk_layout_space_end(ctx);
 
       // ... rest of your code ...
+  }
+  nk_end(ctx);
+  nk_style_pop_style_item(ctx);
+}
+
+void render_ui2(struct ui *ui, nk_image btnImage) {
+  if (!ui)
+      return;
+
+  struct nk_context *ctx = ui_get_context(ui);
+  const struct nk_rect bounds = nk_rect(0, 0, 1920, 1080); // ToDo: get real window size
+
+  nk_style_push_style_item(ctx, &ctx->style.window.fixed_background, nk_style_item_hide());
+  if (nk_begin(ctx, "FULLSCREEN", bounds, NK_WINDOW_NO_SCROLLBAR)) {
+      nk_layout_space_begin(ctx, NK_STATIC, bounds.w, bounds.h);
+
+      nk_layout_space_push(ctx, nk_rect(100, 600, 64, 64));
+      nk_button_image(ctx, btnImage);
+      nk_layout_space_end(ctx);
   }
   nk_end(ctx);
   nk_style_pop_style_item(ctx);
