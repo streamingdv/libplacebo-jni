@@ -788,22 +788,23 @@ void render_ui(struct ui *ui) {
          auto it = imageViewMap.find(buttonType);
          if (it != imageViewMap.end()) {
              VkImageView imageView = it->second;
-             /*struct nk_image btnImage = nk_image_ptr(reinterpret_cast<void*>(static_cast<uint64_t>(&imageView)));
+             struct nk_image btnImage = nk_image_ptr(reinterpret_cast<void*>(static_cast<uint64_t>(&imageView)));
 
              nk_layout_space_push(ctx, nk_rect(100, 600, 64, 64));
              nk_button_image(ctx, btnImage);
-             nk_layout_space_end(ctx);*/
-             nk_layout_space_push(ctx, nk_rect(100, 600, 64, 64));
+             nk_layout_space_end(ctx);
+
+             /*nk_layout_space_push(ctx, nk_rect(100, 600, 64, 64));
              // draw in screen coordinates
              if (nk_button_label(ctx, "PS")) {
                  // event handling
-             }
+             }*/
 
              nk_layout_space_end(ctx);
          } else {
               nk_layout_space_push(ctx, nk_rect(100, 600, 64, 64));
               // draw in screen coordinates
-              if (nk_button_label(ctx, "PS")) {
+              if (nk_button_label(ctx, "PS no")) {
                   // event handling
               }
 
@@ -856,9 +857,7 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkDestroyStoredImag
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
   for (const auto& pair : imageViewMap) {
       if (pair.second != VK_NULL_HANDLE) {
-          LogCallbackFunction(nullptr, PL_LOG_ERR, "Call vkDestroyImageView");
           vkDestroyImageView(vulkan->device, pair.second, nullptr);
-          LogCallbackFunction(nullptr, PL_LOG_ERR, "Called vkDestroyImageView");
       }
   }
   imageViewMap.clear();
