@@ -249,6 +249,8 @@ public class PlaceboManager {
 
     public native boolean plRenderAvFrame2(long avframe, long vk, long swapchain, long renderer, long ui, long vkImageView);
 
+    public native boolean plRenderAvFrame3(long avframe, long vk, long swapchain, long renderer, long ui);
+
     /**
      * Destroy the global saved textures
      * @param vk the vulkan device handle
@@ -275,6 +277,8 @@ public class PlaceboManager {
      * @param vk the vulkan device handle
      */
     public native void nkStoreImageView(long vkImageView, int buttonType, long vk);
+
+    public native void nkStoreImageView2(long vkImageView);
 
     /**
      * Destroy all the stored vkImageView references and releases the cache
