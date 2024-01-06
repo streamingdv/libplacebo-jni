@@ -803,7 +803,7 @@ void render_ui(struct ui *ui) {
       }
 
       // Use the btnImage from the map
-      struct nk_image& btnImage = buttonImageMap[key];
+      struct nk_image btnImage = buttonImageMap[key];
       nk_layout_space_push(ctx, nk_rect(100, 600, 64, 64));
       nk_button_image(ctx, btnImage);
       nk_layout_space_end(ctx);
