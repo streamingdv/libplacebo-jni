@@ -790,9 +790,9 @@ void render_ui(struct ui *ui) {
              VkImageView imageView = it->second;
              struct nk_image btnImage = nk_image_ptr(reinterpret_cast<void*>(imageView));
 
-             nk_layout_space_push(ctx, nk_rect(100, 600, 64, 64));
+             /*nk_layout_space_push(ctx, nk_rect(100, 600, 64, 64));
              nk_button_image(ctx, btnImage);
-             nk_layout_space_end(ctx);
+             nk_layout_space_end(ctx);*/
 
              /*nk_layout_space_push(ctx, nk_rect(100, 600, 64, 64));
              // draw in screen coordinates
