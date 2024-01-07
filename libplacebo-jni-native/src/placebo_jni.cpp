@@ -48,6 +48,8 @@
 #include <libplacebo/dispatch.h>
 #include <libplacebo/shaders/custom.h>
 #include <vk_mem_alloc.h>
+#include <roboto_font.h>
+#include <gui_font.h>
 
 /*** define helper functions ***/
 
@@ -665,6 +667,7 @@ struct ui {
   pl_dispatch dp;
   struct nk_context nk;
   struct nk_font_atlas atlas;
+  //struct nk_font_atlas atlas_icon;
   struct nk_buffer cmds, verts, idx;
   pl_tex font_tex;
   struct pl_vertex_attrib attribs_pl[NUM_VERTEX_ATTRIBS];
@@ -682,6 +685,7 @@ void ui_destroy(struct ui *ui)
   nk_buffer_free(&ui->idx);
   nk_free(&ui->nk);
   nk_font_atlas_clear(&ui->atlas);
+  //nk_font_atlas_clear(&ui->atlas_icon);
   pl_tex_destroy(ui->gpu, &ui->font_tex);
   pl_dispatch_destroy(&ui->dp);
 
@@ -729,13 +733,16 @@ struct ui *ui_create(pl_gpu gpu)
           .vertex_size = sizeof(struct ui_vertex),
           .vertex_alignment = NK_ALIGNOF(struct ui_vertex),
       }
-
   };
 
   // Initialize font atlas using built-in font
   nk_font_atlas_init_default(&ui->atlas);
   nk_font_atlas_begin(&ui->atlas);
-  struct nk_font *font = nk_font_atlas_add_default(&ui->atlas, 20, NULL);
+
+  //struct nk_font *font = nk_font_atlas_add_default(&ui->atlas, 20, NULL);
+  struct nk_font_config fconfig = nk_font_config(20);
+  fconfig.range = nk_font_default_glyph_ranges();
+  struct nk_font *font =  nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 20, &fconfig);
   struct pl_tex_params tparams = {
       .format = pl_find_named_fmt(gpu, "r8"),
       .sampleable = true,
