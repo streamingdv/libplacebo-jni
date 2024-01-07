@@ -905,7 +905,7 @@ void render_ui(struct ui *ui, int width, int height) {
   if (nk_begin(ctx, "FULLSCREEN", bounds, NK_WINDOW_NO_SCROLLBAR)) {
       nk_layout_space_begin(ctx, NK_STATIC, bounds.w, bounds.h); // use whole window space
 
-      float buttonSize = 64;
+      float buttonSize = 48;
       float centerPosition = (bounds.w / 2) - 32;
       float bottomPadding = 12;
       float edgePadding = 40;
@@ -921,24 +921,24 @@ void render_ui(struct ui *ui, int width, int height) {
       }
 
       // Mic button
-      nk_layout_space_push(ctx, nk_rect(edgePadding, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
       struct nk_rect circleMic;
-      circleMic.x = 0;
-      circleMic.y = 0;
+      circleMic.x = edgePadding;
+      circleMic.y = (bounds.h - buttonSize) - bottomPadding;
       circleMic.w = buttonSize; circleMic.h = buttonSize;
+      nk_layout_space_push(ctx, circleMic);
       nk_fill_circle(out, circleMic, nk_rgb(100, 100, 100));
       if (nk_button_label(ctx, "M")) {
          // event handling
       }
 
       // Fullscreen
-      nk_layout_space_push(ctx, nk_rect((bounds.w - buttonSize) - edgePadding, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
       struct nk_rect circleFull;
-      circleFull.x = 0;
-      circleFull.y = 0;
+      circleFull.x = nk_rect((bounds.w - buttonSize) - edgePadding;
+      circleFull.y = (bounds.h - buttonSize) - bottomPadding;
       circleFull.w = buttonSize; circleFull.h = buttonSize;
-      nk_fill_circle(out, circleFull, nk_rgb(100, 100, 100));
-      if (nk_button_label(ctx, "M")) {
+      nk_layout_space_push(ctx, circleFull);
+      nk_fill_circle(out, circleFull, nk_rgb(0, 0, 0));
+      if (nk_button_label(ctx, "F")) {
          // event handling
       }
 
