@@ -914,11 +914,11 @@ void render_ui(struct ui *ui, int width, int height) {
       // PS button
       nk_layout_space_push(ctx, nk_rect(centerPosition, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
       const struct nk_color black_button_color = nk_rgb(0, 0, 0); // nk_rgba
-      nk_button_color(ctx, black_button_color);
       // draw in screen coordinates
       if (nk_button_label(ctx, "PS")) {
           // event handling
       }
+      nk_button_color(ctx, black_button_color);
 
       // Mic button
       struct nk_rect circleMic;
@@ -927,9 +927,10 @@ void render_ui(struct ui *ui, int width, int height) {
       circleMic.w = buttonSize; circleMic.h = buttonSize;
       nk_layout_space_push(ctx, circleMic);
       nk_fill_circle(out, circleMic, nk_rgb(100, 100, 100));
-      if (nk_button_label(ctx, "M")) {
+      nk_label(&ctx, "M", NK_TEXT_CENTERED);
+      /*if (nk_button_label(ctx, "M")) {
          // event handling
-      }
+      }*/
 
       // Fullscreen
       struct nk_rect circleFull;
