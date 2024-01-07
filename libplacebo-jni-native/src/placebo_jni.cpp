@@ -925,9 +925,59 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button.text_normal = white_button_color;
       ctx->style.button.text_hover = white_button_color;
       ctx->style.button.text_active = white_button_color;
-      ctx->style.button.rounding = 24;
+      ctx->style.button.rounding = 34;
       nk_layout_space_push(ctx, nk_rect(centerPosition, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
       if (nk_button_label(ctx, "PS")) {
+          // event handling (ignored here)
+      }
+
+      ctx->style.button = cachedButtonStyle;
+
+      // Test button
+      ctx->style.button.normal = nk_style_item_color(black_button_color);
+      ctx->style.button.hover = nk_style_item_color(black_button_color);
+      ctx->style.button.active = nk_style_item_color(black_button_color);
+      ctx->style.button.border_color = white_button_color;
+      ctx->style.button.text_background = white_button_color;
+      ctx->style.button.text_normal = white_button_color;
+      ctx->style.button.text_hover = white_button_color;
+      ctx->style.button.text_active = white_button_color;
+      nk_layout_space_push(ctx, nk_rect(centerPosition, bottomPadding, buttonSize, buttonSize));
+      if (nk_button_label(ctx, "T")) {
+          // event handling (ignored here)
+      }
+
+      ctx->style.button = cachedButtonStyle;
+
+      // Test button 2
+      ctx->style.button.normal = nk_style_item_color(black_button_color);
+      ctx->style.button.hover = nk_style_item_color(black_button_color);
+      ctx->style.button.active = nk_style_item_color(black_button_color);
+      ctx->style.button.border_color = white_button_color;
+      ctx->style.button.text_background = white_button_color;
+      ctx->style.button.text_normal = white_button_color;
+      ctx->style.button.text_hover = white_button_color;
+      ctx->style.button.text_active = white_button_color;
+      ctx->style.button.rounding = 24;
+      nk_layout_space_push(ctx, nk_rect(centerPosition - 100, bottomPadding, buttonSize, buttonSize));
+      if (nk_button_label(ctx, "Z")) {
+          // event handling (ignored here)
+      }
+
+      ctx->style.button = cachedButtonStyle;
+
+      // Test button 3
+      ctx->style.button.normal = nk_style_item_color(black_button_color);
+      ctx->style.button.hover = nk_style_item_color(black_button_color);
+      ctx->style.button.active = nk_style_item_color(black_button_color);
+      ctx->style.button.border_color = white_button_color;
+      ctx->style.button.text_background = white_button_color;
+      ctx->style.button.text_normal = white_button_color;
+      ctx->style.button.text_hover = white_button_color;
+      ctx->style.button.text_active = white_button_color;
+      ctx->style.button.rounding = 10;
+      nk_layout_space_push(ctx, nk_rect(centerPosition + 100, bottomPadding, buttonSize, buttonSize));
+      if (nk_button_label(ctx, "Y")) {
           // event handling (ignored here)
       }
 
