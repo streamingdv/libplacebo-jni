@@ -103,6 +103,8 @@ include_directories(${VKMEMALLOC_HEADERS})
 
 # Project sources
 set(SOURCES
+    src/gui_font.h
+    src/roboto_font.h
     src/libav_impl.c
     src/placebo_jni.cpp
 )
