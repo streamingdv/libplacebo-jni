@@ -917,7 +917,6 @@ void render_ui(struct ui *ui, int width, int height) {
 
 
       // PS button
-      //nk_button_label_styled
       ctx->style.button.normal = nk_style_item_color(black_button_color);
       ctx->style.button.hover = nk_style_item_color(black_button_color);
       ctx->style.button.active = nk_style_item_color(black_button_color);
@@ -926,19 +925,34 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button.text_normal = white_button_color;
       ctx->style.button.text_hover = white_button_color;
       ctx->style.button.text_active = white_button_color;
+      ctx->style.button.border = 1;
+      ctx->style.button.rounding = 25;
       nk_layout_space_push(ctx, nk_rect(centerPosition, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
       if (nk_button_label(ctx, "PS")) {
           // event handling (ignored here)
       }
+
       ctx->style.button = cachedButtonStyle;
 
-      // Options button
+      // Menu buttons
+      ctx->style.button.normal = nk_style_item_color(grey_button_color);
+      ctx->style.button.hover = nk_style_item_color(grey_button_color);
+      ctx->style.button.active = nk_style_item_color(grey_button_color);
+      ctx->style.button.border_color = black_button_color;
+      ctx->style.button.text_background = black_button_color;
+      ctx->style.button.text_normal = black_button_color;
+      ctx->style.button.text_hover = black_button_color;
+      ctx->style.button.text_active = black_button_color;
+      ctx->style.button.border = 1;
+      ctx->style.button.rounding = 13;
+      // -> Share
       nk_layout_space_push(ctx, nk_rect(centerPosition - (buttonSize * 1.5), (bounds.h - buttonSize) - bottomPadding, buttonSize * 0.5, buttonSize));
       nk_button_color(ctx, grey_button_color);
-
-      // Share button
+      // -> Options
       nk_layout_space_push(ctx, nk_rect(centerPosition + (buttonSize * 1.5), (bounds.h - buttonSize) - bottomPadding, buttonSize * 0.5, buttonSize));
       nk_button_color(ctx, grey_button_color);
+
+      ctx->style.button = cachedButtonStyle;
 
       // Mic button
       struct nk_rect circleMic;
@@ -964,6 +978,12 @@ void render_ui(struct ui *ui, int width, int height) {
       }
 
       nk_layout_space_end(ctx);
+
+      /* Info for popup maybe
+      nk_layout_row_dynamic(ctx, 75, 1);
+      nk_label_wrap(ctx, "Best used in 'Card'-like layouts, with a bigger title font on top. Takes on the size of the previous layout definition. Rounding optional.");
+      https://github.com/Immediate-Mode-UI/Nuklear/blob/7c2fa16c26286915f05e2f0aa890621a9fd208b7/demo/common/overview.c#L602C21-L602C21
+      */
   }
   nk_end(ctx);
   nk_style_pop_style_item(ctx);
