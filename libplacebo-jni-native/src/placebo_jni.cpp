@@ -667,7 +667,6 @@ struct ui {
   pl_dispatch dp;
   struct nk_context nk;
   struct nk_font_atlas atlas;
-  //struct nk_font_atlas atlas_icon;
   struct nk_buffer cmds, verts, idx;
   pl_tex font_tex;
   struct pl_vertex_attrib attribs_pl[NUM_VERTEX_ATTRIBS];
@@ -685,7 +684,6 @@ void ui_destroy(struct ui *ui)
   nk_buffer_free(&ui->idx);
   nk_free(&ui->nk);
   nk_font_atlas_clear(&ui->atlas);
-  //nk_font_atlas_clear(&ui->atlas_icon);
   pl_tex_destroy(ui->gpu, &ui->font_tex);
   pl_dispatch_destroy(&ui->dp);
 
@@ -738,11 +736,11 @@ struct ui *ui_create(pl_gpu gpu)
   // Initialize font atlas using built-in font
   nk_font_atlas_init_default(&ui->atlas);
   nk_font_atlas_begin(&ui->atlas);
-
-  //struct nk_font *font = nk_font_atlas_add_default(&ui->atlas, 20, NULL);
-  struct nk_font_config fconfig = nk_font_config(30);
-  fconfig.range = nk_font_default_glyph_ranges();
-  struct nk_font *font =  nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 30, &fconfig);
+  struct nk_font_config robotoConfig = nk_font_config(24);
+  robotoConfig.range = nk_font_default_glyph_ranges();
+  struct nk_font *font =  nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 24, &robotoConfig);
+  struct nk_font_config iconConfig = nk_font_config(30);
+  struct nk_font *font2 =  nk_font_atlas_add_from_memory(&ui->atlas, gui_font, gui_font_size, 30, &iconConfig);
   struct pl_tex_params tparams = {
       .format = pl_find_named_fmt(gpu, "r8"),
       .sampleable = true,
@@ -917,6 +915,7 @@ void render_ui(struct ui *ui, int width, int height) {
       float bottomPadding = 12;
       float edgePadding = 40;
       struct nk_command_buffer* out = nk_window_get_canvas(ctx);
+      const struct nk_color white_button_color_alpha = nk_rgba(255, 255, 255, 163); // nk_rgba
       const struct nk_color white_button_color = nk_rgb(255, 255, 255); // nk_rgba
       const struct nk_color black_button_color = nk_rgb(0, 0, 0); // nk_rgba
       const struct nk_color grey_button_color = nk_rgb(88, 88, 95); // nk_rgba
@@ -932,60 +931,9 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button.text_normal = white_button_color;
       ctx->style.button.text_hover = white_button_color;
       ctx->style.button.text_active = white_button_color;
-      ctx->style.button.rounding = 2;
+      ctx->style.button.rounding = 10;
       nk_layout_space_push(ctx, nk_rect(centerPosition, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
       if (nk_button_label(ctx, "PS")) {
-          // event handling (ignored here)
-      }
-
-      ctx->style.button = cachedButtonStyle;
-
-      // Test button
-      ctx->style.button.normal = nk_style_item_color(black_button_color);
-      ctx->style.button.hover = nk_style_item_color(black_button_color);
-      ctx->style.button.active = nk_style_item_color(black_button_color);
-      ctx->style.button.border_color = white_button_color;
-      ctx->style.button.text_background = white_button_color;
-      ctx->style.button.text_normal = white_button_color;
-      ctx->style.button.text_hover = white_button_color;
-      ctx->style.button.text_active = white_button_color;
-      ctx->style.button.rounding = 0;
-      nk_layout_space_push(ctx, nk_rect(centerPosition, bottomPadding, buttonSize, buttonSize));
-      if (nk_button_label(ctx, "T")) {
-          // event handling (ignored here)
-      }
-
-      ctx->style.button = cachedButtonStyle;
-
-      // Test button 2
-      ctx->style.button.normal = nk_style_item_color(black_button_color);
-      ctx->style.button.hover = nk_style_item_color(black_button_color);
-      ctx->style.button.active = nk_style_item_color(black_button_color);
-      ctx->style.button.border_color = white_button_color;
-      ctx->style.button.text_background = white_button_color;
-      ctx->style.button.text_normal = white_button_color;
-      ctx->style.button.text_hover = white_button_color;
-      ctx->style.button.text_active = white_button_color;
-      ctx->style.button.rounding = 6;
-      nk_layout_space_push(ctx, nk_rect(centerPosition - 100, bottomPadding, buttonSize, buttonSize));
-      if (nk_button_label(ctx, "Z")) {
-          // event handling (ignored here)
-      }
-
-      ctx->style.button = cachedButtonStyle;
-
-      // Test button 3
-      ctx->style.button.normal = nk_style_item_color(black_button_color);
-      ctx->style.button.hover = nk_style_item_color(black_button_color);
-      ctx->style.button.active = nk_style_item_color(black_button_color);
-      ctx->style.button.border_color = white_button_color;
-      ctx->style.button.text_background = white_button_color;
-      ctx->style.button.text_normal = white_button_color;
-      ctx->style.button.text_hover = white_button_color;
-      ctx->style.button.text_active = white_button_color;
-      ctx->style.button.rounding = 8;
-      nk_layout_space_push(ctx, nk_rect(centerPosition + 100, bottomPadding, buttonSize, buttonSize));
-      if (nk_button_label(ctx, "Y")) {
           // event handling (ignored here)
       }
 
@@ -1011,27 +959,41 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button = cachedButtonStyle;
 
       // Mic button
-      struct nk_rect circleMic;
-      circleMic.x = edgePadding;
-      circleMic.y = (bounds.h - buttonSize) - bottomPadding;
-      circleMic.w = buttonSize; circleMic.h = buttonSize;
-      nk_layout_space_push(ctx, circleMic);
-      nk_fill_circle(out, circleMic, nk_rgb(100, 100, 100));
-      nk_label(ctx, "M", NK_TEXT_CENTERED);
-      /*if (nk_button_label(ctx, "M")) {
-         // event handling
-      }*/
+      ctx->style.button.normal = nk_style_item_color(white_button_color_alpha);
+      ctx->style.button.hover = nk_style_item_color(white_button_color_alpha);
+      ctx->style.button.active = nk_style_item_color(white_button_color_alpha);
+      ctx->style.button.border_color = black_button_color;
+      ctx->style.button.text_background = black_button_color;
+      ctx->style.button.text_normal = black_button_color;
+      ctx->style.button.text_hover = black_button_color;
+      ctx->style.button.text_active = black_button_color;
+      ctx->style.button.rounding = 10;
+      ctx->style.button.border = 0;
+      nk_layout_space_push(ctx, nk_rect(edgePadding, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
+      if (nk_button_label(ctx, "")) {
+          // event handling (ignored here)
+      }
+
+      ctx->style.button = cachedButtonStyle;
+
 
       // Fullscreen
-      struct nk_rect circleFull;
-      circleFull.x = (bounds.w - buttonSize) - edgePadding;
-      circleFull.y = (bounds.h - buttonSize) - bottomPadding;
-      circleFull.w = buttonSize; circleFull.h = buttonSize;
-      nk_layout_space_push(ctx, circleFull);
-      nk_fill_circle(out, circleFull, nk_rgb(0, 0, 0));
-      if (nk_button_label(ctx, "F")) {
-         // event handling
+      ctx->style.button.normal = nk_style_item_color(white_button_color_alpha);
+      ctx->style.button.hover = nk_style_item_color(white_button_color_alpha);
+      ctx->style.button.active = nk_style_item_color(white_button_color_alpha);
+      ctx->style.button.border_color = black_button_color;
+      ctx->style.button.text_background = black_button_color;
+      ctx->style.button.text_normal = black_button_color;
+      ctx->style.button.text_hover = black_button_color;
+      ctx->style.button.text_active = black_button_color;
+      ctx->style.button.rounding = 10;
+      ctx->style.button.border = 0;
+      nk_layout_space_push(ctx, nk_rect((bounds.w - buttonSize) - edgePadding, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
+      if (nk_button_label(ctx, "")) {
+          // event handling (ignored here)
       }
+
+      ctx->style.button = cachedButtonStyle;
 
       nk_layout_space_end(ctx);
 
