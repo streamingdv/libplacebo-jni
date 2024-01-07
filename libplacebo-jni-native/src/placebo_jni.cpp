@@ -565,7 +565,7 @@ cleanup:
 
 extern "C"
 JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame2
-  (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer, jlong ui, jint width, jint height) {
+  (JNIEnv *env, jobject obj,jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer, jlong ui, jint width, jint height) {
   AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
   pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
@@ -903,14 +903,43 @@ void render_ui(struct ui *ui, int width, int height) {
 
   nk_style_push_style_item(ctx, &ctx->style.window.fixed_background, nk_style_item_hide());
   if (nk_begin(ctx, "FULLSCREEN", bounds, NK_WINDOW_NO_SCROLLBAR)) {
-      nk_layout_space_begin(ctx, NK_STATIC, bounds.w, bounds.h);
+      nk_layout_space_begin(ctx, NK_STATIC, bounds.w, bounds.h); // use whole window space
+
       float buttonSize = 64;
       float centerPosition = (bounds.w / 2) - 32;
+      float bottomPadding = 12;
+      float edgePadding = 40;
+      struct nk_command_buffer* out = nk_window_get_canvas(ctx);
 
-      nk_layout_space_push(ctx, nk_rect(centerPosition, bounds.h - buttonSize, buttonSize,buttonSize));
+      // PS button
+      nk_layout_space_push(ctx, nk_rect(centerPosition, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
+      const struct nk_color black_button_color = nk_rgb(0, 0, 0); // nk_rgba
+      nk_button_color(ctx, black_button_color);
       // draw in screen coordinates
       if (nk_button_label(ctx, "PS")) {
           // event handling
+      }
+
+      // Mic button
+      nk_layout_space_push(ctx, nk_rect(edgePadding, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
+      struct nk_rect circleMic;
+      circleMic.x = 0;
+      circleMic.y = 0;
+      circleMic.w = buttonSize; circleMic.h = buttonSize;
+      nk_fill_circle(out, circleMic, nk_rgb(100, 100, 100));
+      if (nk_button_label(ctx, "M")) {
+         // event handling
+      }
+
+      // Fullscreen
+      nk_layout_space_push(ctx, nk_rect((bounds.w - buttonSize) - edgePadding, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
+      struct nk_rect circleFull;
+      circleFull.x = 0;
+      circleFull.y = 0;
+      circleFull.w = buttonSize; circleFull.h = buttonSize;
+      nk_fill_circle(out, circleFull, nk_rgb(100, 100, 100));
+      if (nk_button_label(ctx, "M")) {
+         // event handling
       }
 
       nk_layout_space_end(ctx);
