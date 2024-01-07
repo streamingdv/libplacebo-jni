@@ -933,7 +933,7 @@ void render_ui(struct ui *ui, int width, int height) {
 
       // Fullscreen
       struct nk_rect circleFull;
-      circleFull.x = nk_rect((bounds.w - buttonSize) - edgePadding;
+      circleFull.x = (bounds.w - buttonSize) - edgePadding;
       circleFull.y = (bounds.h - buttonSize) - bottomPadding;
       circleFull.w = buttonSize; circleFull.h = buttonSize;
       nk_layout_space_push(ctx, circleFull);
