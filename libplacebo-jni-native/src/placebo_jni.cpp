@@ -910,15 +910,30 @@ void render_ui(struct ui *ui, int width, int height) {
       float bottomPadding = 12;
       float edgePadding = 40;
       struct nk_command_buffer* out = nk_window_get_canvas(ctx);
+      const struct nk_color black_button_color = nk_rgb(0, 0, 0); // nk_rgba
+      const struct nk_color grey_button_color = nk_rgb(88, 88, 95); // nk_rgba
 
       // PS button
       nk_layout_space_push(ctx, nk_rect(centerPosition, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
-      const struct nk_color black_button_color = nk_rgb(0, 0, 0); // nk_rgba
-      // draw in screen coordinates
       if (nk_button_label(ctx, "PS")) {
           // event handling
       }
       nk_button_color(ctx, black_button_color);
+
+      // Options button
+      nk_layout_space_push(ctx, nk_rect(centerPosition - (buttonSize * 1.5), (bounds.h - buttonSize) - bottomPadding, buttonSize * 0.5, buttonSize));
+      nk_button_color(ctx, grey_button_color);
+
+      // Share button
+      nk_layout_space_push(ctx, nk_rect(centerPosition + (buttonSize * 1.5), (bounds.h - buttonSize) - bottomPadding, buttonSize * 0.5, buttonSize));
+      nk_button_color(ctx, grey_button_color);
+
+      // Test button
+      nk_layout_space_push(ctx, nk_rect(centerPosition, 10, buttonSize, buttonSize));
+      nk_button_color(ctx, black_button_color);
+      if (nk_button_label(ctx, "T")) {
+          // event handling
+      }
 
       // Mic button
       struct nk_rect circleMic;
