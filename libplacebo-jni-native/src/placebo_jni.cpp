@@ -927,7 +927,7 @@ void render_ui(struct ui *ui, int width, int height) {
       circleMic.w = buttonSize; circleMic.h = buttonSize;
       nk_layout_space_push(ctx, circleMic);
       nk_fill_circle(out, circleMic, nk_rgb(100, 100, 100));
-      nk_label(&ctx, "M", NK_TEXT_CENTERED);
+      nk_label(ctx, "M", NK_TEXT_CENTERED);
       /*if (nk_button_label(ctx, "M")) {
          // event handling
       }*/
