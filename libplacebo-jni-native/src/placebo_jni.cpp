@@ -910,15 +910,27 @@ void render_ui(struct ui *ui, int width, int height) {
       float bottomPadding = 12;
       float edgePadding = 40;
       struct nk_command_buffer* out = nk_window_get_canvas(ctx);
+      const struct nk_color white_button_color = nk_rgb(255, 255, 255); // nk_rgba
       const struct nk_color black_button_color = nk_rgb(0, 0, 0); // nk_rgba
       const struct nk_color grey_button_color = nk_rgb(88, 88, 95); // nk_rgba
+      struct nk_style_button cachedButtonStyle = ctx->style.button;
+
 
       // PS button
+      //nk_button_label_styled
+      ctx->style.button.normal = nk_style_item_color(black_button_color);
+      ctx->style.button.hover = nk_style_item_color(black_button_color);
+      ctx->style.button.active = nk_style_item_color(black_button_color);
+      ctx->style.button.border_color = white_button_color;
+      ctx->style.button.text_background = white_button_color;
+      ctx->style.button.text_normal = white_button_color;
+      ctx->style.button.text_hover = white_button_color;
+      ctx->style.button.text_active = white_button_color;
       nk_layout_space_push(ctx, nk_rect(centerPosition, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
       if (nk_button_label(ctx, "PS")) {
-          // event handling
+          // event handling (ignored here)
       }
-      nk_button_color(ctx, black_button_color);
+      ctx->style.button = cachedButtonStyle;
 
       // Options button
       nk_layout_space_push(ctx, nk_rect(centerPosition - (buttonSize * 1.5), (bounds.h - buttonSize) - bottomPadding, buttonSize * 0.5, buttonSize));
@@ -927,13 +939,6 @@ void render_ui(struct ui *ui, int width, int height) {
       // Share button
       nk_layout_space_push(ctx, nk_rect(centerPosition + (buttonSize * 1.5), (bounds.h - buttonSize) - bottomPadding, buttonSize * 0.5, buttonSize));
       nk_button_color(ctx, grey_button_color);
-
-      // Test button
-      nk_layout_space_push(ctx, nk_rect(centerPosition, 10, buttonSize, buttonSize));
-      nk_button_color(ctx, black_button_color);
-      if (nk_button_label(ctx, "T")) {
-          // event handling
-      }
 
       // Mic button
       struct nk_rect circleMic;
