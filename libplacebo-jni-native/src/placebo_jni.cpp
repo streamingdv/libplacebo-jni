@@ -925,8 +925,7 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button.text_normal = white_button_color;
       ctx->style.button.text_hover = white_button_color;
       ctx->style.button.text_active = white_button_color;
-      ctx->style.button.border = 1;
-      ctx->style.button.rounding = 25;
+      ctx->style.button.rounding = 24;
       nk_layout_space_push(ctx, nk_rect(centerPosition, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
       if (nk_button_label(ctx, "PS")) {
           // event handling (ignored here)
@@ -943,8 +942,7 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button.text_normal = black_button_color;
       ctx->style.button.text_hover = black_button_color;
       ctx->style.button.text_active = black_button_color;
-      ctx->style.button.border = 1;
-      ctx->style.button.rounding = 13;
+      ctx->style.button.rounding = 12;
       // -> Share
       nk_layout_space_push(ctx, nk_rect(centerPosition - (buttonSize * 1.5), (bounds.h - buttonSize) - bottomPadding, buttonSize * 0.5, buttonSize));
       nk_button_color(ctx, grey_button_color);
