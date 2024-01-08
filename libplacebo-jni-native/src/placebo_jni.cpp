@@ -750,7 +750,7 @@ struct ui *ui_create(pl_gpu gpu)
   struct nk_font_config robotoConfig = nk_font_config(0);
   robotoConfig.range = nk_font_default_glyph_ranges();
   ui->default_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 24, &robotoConfig);
-  ui->default_small_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 8, &robotoConfig);
+  ui->default_small_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 14, &robotoConfig);
   struct nk_font_config iconConfig = nk_font_config(0);
   iconConfig.range = ranges_icons;
   iconConfig.oversample_h = 1; iconConfig.oversample_v = 1;
@@ -925,8 +925,8 @@ void render_ui(struct ui *ui, int width, int height) {
       nk_layout_space_begin(ctx, NK_STATIC, bounds.w, bounds.h); // use whole window space
 
       float buttonSize = 48;
-      float menuButtonFontSize = 10;
-      float menuButtonHeight = buttonSize - menuButtonFontSize;
+      float menuButtonHeight = buttonSize - 10;
+      float menuButtonFontSize = 14 + 4; // 14 + 4 padding
       float centerPosition = (bounds.w / 2) - 32;
       float bottomPadding = 12;
       float edgePadding = 40;
@@ -972,12 +972,12 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button.text_active = black_button_color;
       ctx->style.button.rounding = 10;
       // -> Share
-      nk_layout_space_push(ctx, nk_rect(centerPosition - (buttonSize * 1.5), ((bounds.h - menuButtonHeight) - bottomPadding) - menuButtonFontSize, buttonSize, menuButtonFontSize));
+      nk_layout_space_push(ctx, nk_rect(centerPosition - (buttonSize * 2.5), ((bounds.h - menuButtonHeight) - bottomPadding) - menuButtonFontSize, buttonSize, menuButtonFontSize));
       nk_label(ctx, "SHARE", NK_TEXT_ALIGN_CENTERED);
       nk_layout_space_push(ctx, nk_rect(centerPosition - (buttonSize * 1.5), (bounds.h - menuButtonHeight) - bottomPadding, buttonSize * 0.5, menuButtonHeight));
       nk_button_color(ctx, grey_button_color);
       // -> Options
-      nk_layout_space_push(ctx, nk_rect(centerPosition + (buttonSize * 2), ((bounds.h - menuButtonHeight) - bottomPadding) - menuButtonFontSize, buttonSize, menuButtonFontSize));
+      nk_layout_space_push(ctx, nk_rect(centerPosition + (buttonSize * 3), ((bounds.h - menuButtonHeight) - bottomPadding) - menuButtonFontSize, buttonSize, menuButtonFontSize));
       nk_label(ctx, "OPTIONS", NK_TEXT_ALIGN_CENTERED);
       nk_layout_space_push(ctx, nk_rect(centerPosition + (buttonSize * 2), (bounds.h - menuButtonHeight) - bottomPadding, buttonSize * 0.5, menuButtonHeight ));
       nk_button_color(ctx, grey_button_color);
