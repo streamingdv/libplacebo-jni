@@ -972,12 +972,12 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button.text_active = black_button_color;
       ctx->style.button.rounding = 10;
       // -> Share
-      nk_layout_space_push(ctx, nk_rect(centerPosition - ((buttonSize * 1.5) + 10), ((bounds.h - menuButtonHeight) - bottomPadding) - menuButtonFontSize, buttonSize, menuButtonFontSize));
+      nk_layout_space_push(ctx, nk_rect(centerPosition - ((buttonSize * 1.5) + 8), ((bounds.h - menuButtonHeight) - bottomPadding) - menuButtonFontSize, buttonSize, menuButtonFontSize));
       nk_label(ctx, "SHARE", NK_TEXT_ALIGN_LEFT);
       nk_layout_space_push(ctx, nk_rect(centerPosition - (buttonSize * 1.5), (bounds.h - menuButtonHeight) - bottomPadding, buttonSize * 0.5, menuButtonHeight));
       nk_button_color(ctx, grey_button_color);
       // -> Options
-      nk_layout_space_push(ctx, nk_rect(centerPosition + ((buttonSize * 2) +10), ((bounds.h - menuButtonHeight) - bottomPadding) - menuButtonFontSize, buttonSize, menuButtonFontSize));
+      nk_layout_space_push(ctx, nk_rect(centerPosition + ((buttonSize * 2) - 12), ((bounds.h - menuButtonHeight) - bottomPadding) - menuButtonFontSize, buttonSize, menuButtonFontSize));
       nk_label(ctx, "OPTIONS", NK_TEXT_ALIGN_LEFT);
       nk_layout_space_push(ctx, nk_rect(centerPosition + (buttonSize * 2), (bounds.h - menuButtonHeight) - bottomPadding, buttonSize * 0.5, menuButtonHeight ));
       nk_button_color(ctx, grey_button_color);
