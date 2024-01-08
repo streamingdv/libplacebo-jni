@@ -959,7 +959,7 @@ void render_ui(struct ui *ui, int width, int height) {
       /*if (nk_button_label(ctx, "PS")) {
           // event handling (ignored here)
       }*/
-      if (nk_button_image(ctx, &ui->ps_button_image)) {
+      if (nk_button_image(ctx, ui->ps_button_image)) {
           // event handling (ignored here)
       }
 
