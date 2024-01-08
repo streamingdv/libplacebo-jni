@@ -747,7 +747,7 @@ struct ui *ui_create(pl_gpu gpu)
   nk_font_atlas_begin(&ui->atlas);
   struct nk_font_config robotoConfig = nk_font_config(0);
   robotoConfig.range = nk_font_default_glyph_ranges();
-  struct nk_font *font = = nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 24, &robotoConfig);
+  struct nk_font *font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 24, &robotoConfig);
   ui->default_font = font;
   struct nk_font_config iconConfig = nk_font_config(0);
   iconConfig.range = ranges_icons;
