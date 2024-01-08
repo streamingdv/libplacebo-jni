@@ -918,7 +918,7 @@ void render_ui(struct ui *ui, int width, int height) {
 
   nk_style_push_style_item(ctx, &ctx->style.window.fixed_background, nk_style_item_hide());
   /*** change font to default ***/
-  nk_style_set_font(ctx, &ui->default_font->handle);
+  //nk_style_set_font(ctx, &ui->default_font->handle);
   /*** change font to default ***/
   if (nk_begin(ctx, "FULLSCREEN", bounds, NK_WINDOW_NO_SCROLLBAR)) {
       nk_layout_space_begin(ctx, NK_STATIC, bounds.w, bounds.h); // use whole window space
@@ -973,7 +973,7 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button = cachedButtonStyle;
 
       /*** change font to icon ***/
-      nk_style_set_font(ctx, &ui->icon_font->handle);
+      //nk_style_set_font(ctx, &ui->icon_font->handle);
       /*** change font to icon ***/
 
       // Mic button
@@ -1013,7 +1013,7 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button = cachedButtonStyle;
 
       /*** change font to default ***/
-      nk_style_set_font(ctx, &ui->default_font->handle);
+      //nk_style_set_font(ctx, &ui->default_font->handle);
       /*** change font to default ***/
 
       nk_layout_space_end(ctx);
