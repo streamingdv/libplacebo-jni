@@ -1067,7 +1067,7 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button.text_active = touchpad_white_border_color_alpha;
       ctx->style.button.rounding = 8;
       ctx->style.button.border = 0;
-      nk_layout_space_push(ctx, nk_rect(touchpadPadding, touchpadPadding, bounds.w - (touchpadPadding * 2), bounds.w - ((touchpadPadding * 2) + buttonSize));
+      nk_layout_space_push(ctx, nk_rect(touchpadPadding, touchpadPadding, bounds.w - (touchpadPadding * 2), bounds.w - ((touchpadPadding * 2) + buttonSize)));
       if (nk_button_label(ctx, "")) {
           // event handling (ignored here)
       }
