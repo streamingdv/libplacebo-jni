@@ -767,8 +767,7 @@ struct ui *ui_create(pl_gpu gpu)
       goto error;
 
   // Initialize nuklear state
-  //if (!nk_init_default(&ui->nk, &ui->default_font->handle)) {
-  if (!nk_init_default(&ui->nk, &ui->icon_font->handle)) {
+  if (!nk_init_default(&ui->nk, &ui->default_font->handle)) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "NK: failed initializing UI!");
       goto error;
   }
@@ -944,7 +943,7 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button.text_normal = white_button_color;
       ctx->style.button.text_hover = white_button_color;
       ctx->style.button.text_active = white_button_color;
-      ctx->style.button.rounding = 8;
+      ctx->style.button.rounding = 0;
       nk_layout_space_push(ctx, nk_rect(centerPosition, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
       if (nk_button_label(ctx, "PS")) {
           // event handling (ignored here)
@@ -987,7 +986,7 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button.rounding = 8;
       ctx->style.button.border = 0;
       nk_layout_space_push(ctx, nk_rect(edgePadding, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
-      if (nk_button_label(ctx, "")) {
+      if (nk_button_label(ctx, "\uf131")) {
           // event handling (ignored here)
       }
 
