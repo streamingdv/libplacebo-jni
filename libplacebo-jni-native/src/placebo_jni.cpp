@@ -655,9 +655,9 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plTextDestroy
 /**** create UI methods ****/
 
 nk_rune ranges_icons[] = {
-    0xe800, 0xe801,
-    0xf130, 0xf131,
-    0xe801,
+    0xE800, 0xE801,
+    0xE802, 0xf130,
+    0xf131,
     0
 };
 
@@ -749,7 +749,7 @@ struct ui *ui_create(pl_gpu gpu)
   robotoConfig.range = nk_font_default_glyph_ranges();
   ui->default_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 24, &robotoConfig);
   struct nk_font_config iconConfig = nk_font_config(30);
-  //iconConfig.range = ranges_icons;
+  iconConfig.range = ranges_icons; // ToDo lead to errors...
   ui->icon_font = nk_font_atlas_add_from_memory(&ui->atlas, gui_font, gui_font_size, 30, &iconConfig);
   struct pl_tex_params tparams = {
       .format = pl_find_named_fmt(gpu, "r8"),
@@ -970,7 +970,7 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button = cachedButtonStyle;
 
       /*** change font to icon ***/
-      //nk_style_set_font(ctx, &ui->icon_font->handle);
+      nk_style_set_font(ctx, &ui->icon_font->handle);
       /*** change font to icon ***/
 
       // Mic button
@@ -1010,7 +1010,7 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button = cachedButtonStyle;
 
       /*** change font to default ***/
-      //nk_style_set_font(ctx, &ui->default_font->handle);
+      nk_style_set_font(ctx, &ui->default_font->handle);
       /*** change font to default ***/
 
       nk_layout_space_end(ctx);
