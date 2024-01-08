@@ -767,7 +767,8 @@ struct ui *ui_create(pl_gpu gpu)
       goto error;
 
   // Initialize nuklear state
-  if (!nk_init_default(&ui->nk, &ui->default_font->handle)) {
+  //if (!nk_init_default(&ui->nk, &ui->default_font->handle)) {
+  if (!nk_init_default(&ui->nk, &ui->icon_font->handle)) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "NK: failed initializing UI!");
       goto error;
   }
