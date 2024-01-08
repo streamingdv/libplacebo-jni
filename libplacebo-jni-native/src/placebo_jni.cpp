@@ -930,7 +930,10 @@ void render_ui(struct ui *ui, int width, int height) {
       float centerPosition = (bounds.w / 2) - 32;
       float bottomPadding = 12;
       float edgePadding = 40;
+      float touchpadPadding 10;
       struct nk_command_buffer* out = nk_window_get_canvas(ctx);
+      const struct nk_color touchpad_white_border_color_alpha = nk_rgba(255, 255, 255, 190);
+      const struct nk_color touchpad_white_background_color_alpha = nk_rgba(255, 255, 255, 63);
       const struct nk_color white_button_color_alpha = nk_rgba(255, 255, 255, 163);
       const struct nk_color white_button_color = nk_rgb(255, 255, 255);
       const struct nk_color black_button_color = nk_rgb(0, 0, 0);
@@ -1022,7 +1025,7 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button.text_active = black_button_color;
       ctx->style.button.rounding = 8;
       ctx->style.button.border = 0;
-      nk_layout_space_push(ctx, nk_rect((bounds.w - (buttonSize * 2)) - (edgePadding * 2), (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
+      nk_layout_space_push(ctx, nk_rect((bounds.w - (buttonSize * 2)) - (edgePadding * 1.5), (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
       if (nk_button_label(ctx, "\ue802")) {
           // event handling (ignored here)
       }
@@ -1051,6 +1054,27 @@ void render_ui(struct ui *ui, int width, int height) {
       /*** change font to default ***/
       nk_style_set_font(ctx, &ui->default_font->handle);
       /*** change font to default ***/
+
+      // **** Touchpad
+
+      ctx->style.button.normal = nk_style_item_color(touchpad_white_background_color_alpha);
+      ctx->style.button.hover = nk_style_item_color(touchpad_white_background_color_alpha);
+      ctx->style.button.active = nk_style_item_color(touchpad_white_background_color_alpha);
+      ctx->style.button.border_color = touchpad_white_border_color_alpha;
+      ctx->style.button.text_background = touchpad_white_border_color_alpha;
+      ctx->style.button.text_normal = touchpad_white_border_color_alpha;
+      ctx->style.button.text_hover = touchpad_white_border_color_alpha;
+      ctx->style.button.text_active = touchpad_white_border_color_alpha;
+      ctx->style.button.rounding = 8;
+      ctx->style.button.border = 0;
+      nk_layout_space_push(ctx, nk_rect(touchpadPadding, touchpadPadding, bounds.w - (touchpadPadding * 2), bounds.w - ((touchpadPadding * 2) + buttonSize));
+      if (nk_button_label(ctx, "")) {
+          // event handling (ignored here)
+      }
+
+      ctx->style.button = cachedButtonStyle;
+
+      // **** END
 
       nk_layout_space_end(ctx);
 
