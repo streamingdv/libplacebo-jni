@@ -930,7 +930,7 @@ void render_ui(struct ui *ui, int width, int height) {
       float centerPosition = (bounds.w / 2) - 32;
       float bottomPadding = 12;
       float edgePadding = 40;
-      float touchpadPadding 10;
+      float touchpadPadding = 10;
       struct nk_command_buffer* out = nk_window_get_canvas(ctx);
       const struct nk_color touchpad_white_border_color_alpha = nk_rgba(255, 255, 255, 190);
       const struct nk_color touchpad_white_background_color_alpha = nk_rgba(255, 255, 255, 63);
