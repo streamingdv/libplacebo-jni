@@ -750,7 +750,7 @@ struct ui *ui_create(pl_gpu gpu)
   ui->default_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 24, &robotoConfig);
   struct nk_font_config iconConfig = nk_font_config(0);
   iconConfig.range = ranges_icons; // ToDo breaks everything maybe at oversample_h and pixel_snap ?
-  //iconConfig.oversample_h = 1; iconConfig.oversample_v = 1;
+  iconConfig.oversample_h = 1; iconConfig.oversample_v = 1;
   ui->icon_font = nk_font_atlas_add_from_memory(&ui->atlas, gui_font, gui_font_size, 30, &iconConfig);
   struct pl_tex_params tparams = {
       .format = pl_find_named_fmt(gpu, "r8"),
@@ -1004,7 +1004,7 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button.rounding = 8;
       ctx->style.button.border = 0;
       nk_layout_space_push(ctx, nk_rect((bounds.w - buttonSize) - edgePadding, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
-      if (nk_button_label(ctx, "")) {
+      if (nk_button_label(ctx, "\ue802")) {
           // event handling (ignored here)
       }
 
