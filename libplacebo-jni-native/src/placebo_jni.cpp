@@ -654,6 +654,13 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plTextDestroy
 
 /**** create UI methods ****/
 
+nk_rune ranges_icons[] = {
+    0xe800, 0xe801,
+    0xf130, 0xf131,
+    0xe801,
+    0
+};
+
 struct ui_vertex {
   float pos[2];
   float coord[2];
@@ -665,6 +672,8 @@ struct ui_vertex {
 struct ui {
   pl_gpu gpu;
   pl_dispatch dp;
+  struct nk_font *default_font;
+  struct nk_font *icon_font;
   struct nk_context nk;
   struct nk_font_atlas atlas;
   struct nk_buffer cmds, verts, idx;
@@ -736,11 +745,12 @@ struct ui *ui_create(pl_gpu gpu)
   // Initialize font atlas using built-in font
   nk_font_atlas_init_default(&ui->atlas);
   nk_font_atlas_begin(&ui->atlas);
-  struct nk_font_config robotoConfig = nk_font_config(24);
+  struct nk_font_config robotoConfig = nk_font_config(0);
   robotoConfig.range = nk_font_default_glyph_ranges();
-  struct nk_font *font =  nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 24, &robotoConfig);
-  struct nk_font_config iconConfig = nk_font_config(30);
-  struct nk_font *font2 =  nk_font_atlas_add_from_memory(&ui->atlas, gui_font, gui_font_size, 30, &iconConfig);
+  ui->default_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 24, &robotoConfig);
+  struct nk_font_config iconConfig = nk_font_config(0);
+  iconConfig.range = ranges_icons;
+  ui->icon_font = nk_font_atlas_add_from_memory(&ui->atlas, gui_font, gui_font_size, 30, &iconConfig);
   struct pl_tex_params tparams = {
       .format = pl_find_named_fmt(gpu, "r8"),
       .sampleable = true,
@@ -915,23 +925,24 @@ void render_ui(struct ui *ui, int width, int height) {
       float bottomPadding = 12;
       float edgePadding = 40;
       struct nk_command_buffer* out = nk_window_get_canvas(ctx);
-      const struct nk_color white_button_color_alpha = nk_rgba(255, 255, 255, 163); // nk_rgba
-      const struct nk_color white_button_color = nk_rgb(255, 255, 255); // nk_rgba
-      const struct nk_color black_button_color = nk_rgb(0, 0, 0); // nk_rgba
-      const struct nk_color grey_button_color = nk_rgb(88, 88, 95); // nk_rgba
+      const struct nk_color white_button_color_alpha = nk_rgba(255, 255, 255, 163);
+      const struct nk_color white_button_color = nk_rgb(255, 255, 255);
+      const struct nk_color black_button_color = nk_rgb(0, 0, 0);
+      const struct nk_color dark_grey_button_color = nk_rgb(17, 17, 17);
+      const struct nk_color grey_button_color = nk_rgb(88, 88, 95);
       struct nk_style_button cachedButtonStyle = ctx->style.button;
 
 
       // PS button
-      ctx->style.button.normal = nk_style_item_color(black_button_color);
-      ctx->style.button.hover = nk_style_item_color(black_button_color);
-      ctx->style.button.active = nk_style_item_color(black_button_color);
+      ctx->style.button.normal = nk_style_item_color(dark_grey_button_color);
+      ctx->style.button.hover = nk_style_item_color(dark_grey_button_color);
+      ctx->style.button.active = nk_style_item_color(dark_grey_button_color);
       ctx->style.button.border_color = white_button_color;
       ctx->style.button.text_background = white_button_color;
       ctx->style.button.text_normal = white_button_color;
       ctx->style.button.text_hover = white_button_color;
       ctx->style.button.text_active = white_button_color;
-      ctx->style.button.rounding = 10;
+      ctx->style.button.rounding = 8;
       nk_layout_space_push(ctx, nk_rect(centerPosition, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
       if (nk_button_label(ctx, "PS")) {
           // event handling (ignored here)
@@ -958,6 +969,10 @@ void render_ui(struct ui *ui, int width, int height) {
 
       ctx->style.button = cachedButtonStyle;
 
+      /*** change font to icon ***/
+      nk_style_set_font(ctx, &ui->icon_font);
+      /*** change font to icon ***/
+
       // Mic button
       ctx->style.button.normal = nk_style_item_color(white_button_color_alpha);
       ctx->style.button.hover = nk_style_item_color(white_button_color_alpha);
@@ -967,7 +982,7 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button.text_normal = black_button_color;
       ctx->style.button.text_hover = black_button_color;
       ctx->style.button.text_active = black_button_color;
-      ctx->style.button.rounding = 10;
+      ctx->style.button.rounding = 8;
       ctx->style.button.border = 0;
       nk_layout_space_push(ctx, nk_rect(edgePadding, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
       if (nk_button_label(ctx, "")) {
@@ -975,7 +990,6 @@ void render_ui(struct ui *ui, int width, int height) {
       }
 
       ctx->style.button = cachedButtonStyle;
-
 
       // Fullscreen
       ctx->style.button.normal = nk_style_item_color(white_button_color_alpha);
@@ -986,7 +1000,7 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button.text_normal = black_button_color;
       ctx->style.button.text_hover = black_button_color;
       ctx->style.button.text_active = black_button_color;
-      ctx->style.button.rounding = 10;
+      ctx->style.button.rounding = 8;
       ctx->style.button.border = 0;
       nk_layout_space_push(ctx, nk_rect((bounds.w - buttonSize) - edgePadding, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
       if (nk_button_label(ctx, "")) {
@@ -994,6 +1008,10 @@ void render_ui(struct ui *ui, int width, int height) {
       }
 
       ctx->style.button = cachedButtonStyle;
+
+      /*** change font to default ***/
+      nk_style_set_font(ctx, &ui->default_font);
+      /*** change font to default ***/
 
       nk_layout_space_end(ctx);
 
