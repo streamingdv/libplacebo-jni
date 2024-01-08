@@ -747,7 +747,8 @@ struct ui *ui_create(pl_gpu gpu)
   nk_font_atlas_begin(&ui->atlas);
   struct nk_font_config robotoConfig = nk_font_config(0);
   robotoConfig.range = nk_font_default_glyph_ranges();
-  ui->default_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 24, &robotoConfig);
+  struct nk_font *font = = nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 24, &robotoConfig);
+  ui->default_font = font;
   struct nk_font_config iconConfig = nk_font_config(0);
   iconConfig.range = ranges_icons;
   ui->icon_font = nk_font_atlas_add_from_memory(&ui->atlas, gui_font, gui_font_size, 30, &iconConfig);
@@ -970,7 +971,7 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button = cachedButtonStyle;
 
       /*** change font to icon ***/
-      nk_style_set_font(ctx, &ui->icon_font);
+      nk_style_set_font(ctx, &ui->icon_font->handle);
       /*** change font to icon ***/
 
       // Mic button
@@ -1010,7 +1011,7 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button = cachedButtonStyle;
 
       /*** change font to default ***/
-      nk_style_set_font(ctx, &ui->default_font);
+      nk_style_set_font(ctx, &ui->default_font->handle);
       /*** change font to default ***/
 
       nk_layout_space_end(ctx);
