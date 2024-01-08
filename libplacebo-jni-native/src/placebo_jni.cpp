@@ -939,7 +939,8 @@ void render_ui(struct ui *ui, int width, int height) {
       struct nk_style_button cachedButtonStyle = ctx->style.button;
 
 
-      // PS button
+      // **** PS button ****
+
       ctx->style.button.normal = nk_style_item_color(dark_grey_button_color);
       ctx->style.button.hover = nk_style_item_color(dark_grey_button_color);
       ctx->style.button.active = nk_style_item_color(dark_grey_button_color);
@@ -957,11 +958,12 @@ void render_ui(struct ui *ui, int width, int height) {
 
       ctx->style.button = cachedButtonStyle;
 
+      // **** Menu buttons ****
+
       /*** change font to default ***/
       nk_style_set_font(ctx, &ui->default_small_font->handle);
       /*** change font to default ***/
 
-      // Menu buttons
       ctx->style.button.normal = nk_style_item_color(grey_button_color);
       ctx->style.button.hover = nk_style_item_color(grey_button_color);
       ctx->style.button.active = nk_style_item_color(grey_button_color);
@@ -984,11 +986,12 @@ void render_ui(struct ui *ui, int width, int height) {
 
       ctx->style.button = cachedButtonStyle;
 
+      // **** Mic button
+
       /*** change font to icon ***/
       nk_style_set_font(ctx, &ui->icon_font->handle);
       /*** change font to icon ***/
 
-      // Mic button
       ctx->style.button.normal = nk_style_item_color(white_button_color_alpha);
       ctx->style.button.hover = nk_style_item_color(white_button_color_alpha);
       ctx->style.button.active = nk_style_item_color(white_button_color_alpha);
@@ -1007,7 +1010,8 @@ void render_ui(struct ui *ui, int width, int height) {
 
       ctx->style.button = cachedButtonStyle;
 
-      // Fullscreen
+      // **** Fullscreen
+
       ctx->style.button.normal = nk_style_item_color(white_button_color_alpha);
       ctx->style.button.hover = nk_style_item_color(white_button_color_alpha);
       ctx->style.button.active = nk_style_item_color(white_button_color_alpha);
@@ -1018,12 +1022,31 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button.text_active = black_button_color;
       ctx->style.button.rounding = 8;
       ctx->style.button.border = 0;
-      nk_layout_space_push(ctx, nk_rect((bounds.w - buttonSize) - edgePadding, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
+      nk_layout_space_push(ctx, nk_rect((bounds.w - (buttonSize * 2)) - (edgePadding * 2), (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
       if (nk_button_label(ctx, "\ue802")) {
           // event handling (ignored here)
       }
 
       ctx->style.button = cachedButtonStyle;
+
+       // **** Close
+
+       ctx->style.button.normal = nk_style_item_color(white_button_color_alpha);
+       ctx->style.button.hover = nk_style_item_color(white_button_color_alpha);
+       ctx->style.button.active = nk_style_item_color(white_button_color_alpha);
+       ctx->style.button.border_color = black_button_color;
+       ctx->style.button.text_background = black_button_color;
+       ctx->style.button.text_normal = black_button_color;
+       ctx->style.button.text_hover = black_button_color;
+       ctx->style.button.text_active = black_button_color;
+       ctx->style.button.rounding = 8;
+       ctx->style.button.border = 0;
+       nk_layout_space_push(ctx, nk_rect((bounds.w - buttonSize) - edgePadding, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
+       if (nk_button_label(ctx, "\ue803")) {
+           // event handling (ignored here)
+       }
+
+       ctx->style.button = cachedButtonStyle;
 
       /*** change font to default ***/
       nk_style_set_font(ctx, &ui->default_font->handle);
