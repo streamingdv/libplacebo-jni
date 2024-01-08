@@ -674,8 +674,8 @@ struct ui {
   pl_gpu gpu;
   pl_dispatch dp;
   struct nk_font *default_font;
+  struct nk_font *default_small_font;
   struct nk_font *icon_font;
-  struct nk_image ps_button_image;
   struct nk_context nk;
   struct nk_font_atlas atlas;
   struct nk_buffer cmds, verts, idx;
@@ -744,21 +744,13 @@ struct ui *ui_create(pl_gpu gpu)
       }
   };
 
-  // Initialize images
-  //https://github.com/Immediate-Mode-UI/Nuklear/issues/46
-  struct nk_image img = nk_image_ptr(static_cast<void*>(button_ps));
-  img.w = 64;
-  img.h = 64;
-  img.region[2] = 64;
-  img.region[3] = 64;
-  ui->ps_button_image = img;
-
   // Initialize font atlas using built-in font
   nk_font_atlas_init_default(&ui->atlas);
   nk_font_atlas_begin(&ui->atlas);
   struct nk_font_config robotoConfig = nk_font_config(0);
   robotoConfig.range = nk_font_default_glyph_ranges();
   ui->default_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 24, &robotoConfig);
+  ui->default_small_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 8, &robotoConfig);
   struct nk_font_config iconConfig = nk_font_config(0);
   iconConfig.range = ranges_icons;
   iconConfig.oversample_h = 1; iconConfig.oversample_v = 1;
@@ -933,6 +925,8 @@ void render_ui(struct ui *ui, int width, int height) {
       nk_layout_space_begin(ctx, NK_STATIC, bounds.w, bounds.h); // use whole window space
 
       float buttonSize = 48;
+      float menuButtonFontSize = 10;
+      float menuButtonHeight = buttonSize - menuButtonFontSize;
       float centerPosition = (bounds.w / 2) - 32;
       float bottomPadding = 12;
       float edgePadding = 40;
@@ -956,14 +950,16 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button.text_active = white_button_color;
       ctx->style.button.rounding = 8;
       nk_layout_space_push(ctx, nk_rect(centerPosition, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
-      /*if (nk_button_label(ctx, "PS")) {
-          // event handling (ignored here)
-      }*/
-      if (nk_button_image(ctx, ui->ps_button_image)) {
+      //ctx->style.button.padding  = nk_vec2(6.0f,6.0f);
+      if (nk_button_label(ctx, "PS")) {
           // event handling (ignored here)
       }
 
       ctx->style.button = cachedButtonStyle;
+
+      /*** change font to default ***/
+      nk_style_set_font(ctx, &ui->default_small_font->handle);
+      /*** change font to default ***/
 
       // Menu buttons
       ctx->style.button.normal = nk_style_item_color(grey_button_color);
@@ -976,10 +972,14 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button.text_active = black_button_color;
       ctx->style.button.rounding = 10;
       // -> Share
-      nk_layout_space_push(ctx, nk_rect(centerPosition - (buttonSize * 1.5), (bounds.h - buttonSize) - bottomPadding, buttonSize * 0.5, buttonSize));
+      nk_layout_space_push(ctx, nk_rect(centerPosition - (buttonSize * 1.5), ((bounds.h - menuButtonHeight) - bottomPadding) - menuButtonFontSize, buttonSize, menuButtonFontSize));
+      nk_label(ctx, "SHARE", NK_TEXT_ALIGN_CENTERED);
+      nk_layout_space_push(ctx, nk_rect(centerPosition - (buttonSize * 1.5), (bounds.h - menuButtonHeight) - bottomPadding, buttonSize * 0.5, menuButtonHeight));
       nk_button_color(ctx, grey_button_color);
       // -> Options
-      nk_layout_space_push(ctx, nk_rect(centerPosition + (buttonSize * 2), (bounds.h - buttonSize) - bottomPadding, buttonSize * 0.5, buttonSize));
+      nk_layout_space_push(ctx, nk_rect(centerPosition + (buttonSize * 2), ((bounds.h - menuButtonHeight) - bottomPadding) - menuButtonFontSize, buttonSize, menuButtonFontSize));
+      nk_label(ctx, "OPTIONS", NK_TEXT_ALIGN_CENTERED);
+      nk_layout_space_push(ctx, nk_rect(centerPosition + (buttonSize * 2), (bounds.h - menuButtonHeight) - bottomPadding, buttonSize * 0.5, menuButtonHeight ));
       nk_button_color(ctx, grey_button_color);
 
       ctx->style.button = cachedButtonStyle;
@@ -999,6 +999,7 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button.text_active = black_button_color;
       ctx->style.button.rounding = 8;
       ctx->style.button.border = 0;
+
       nk_layout_space_push(ctx, nk_rect(edgePadding, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
       if (nk_button_label(ctx, "\uf131")) {
           // event handling (ignored here)
