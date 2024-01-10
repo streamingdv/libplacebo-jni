@@ -1070,7 +1070,7 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button.rounding = 8;
       ctx->style.button.border = 1;
       ctx->style.button.padding = nk_vec2(touchpadPadding, touchpadPadding);
-      nk_layout_space_push(ctx, nk_rect(0, 0, bounds.w - ((touchpadPadding * 0.5) - 2), bounds.h - ((touchpadPadding * 2) + buttonSize)));
+      nk_layout_space_push(ctx, nk_rect(0, 0, bounds.w - ((touchpadPadding * 0.6)), bounds.h - ((touchpadPadding * 2) + buttonSize)));
       if (nk_button_label(ctx, "")) {
           // event handling (ignored here)
       }
