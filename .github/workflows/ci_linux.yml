@@ -157,6 +157,12 @@ jobs:
           name: gslang-artefacts-x64
           path: ${{github.workspace}}/glslang/install
 
+      - name: Apply fix_p010_rendering patch to libplacebo
+        #if: env.BUILD_LIBPLACEBO == 'true'
+        working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
+        run: |
+          patch -p1 < ../fix_p010_rendering.patch
+
       - name: Build libplacebo
         #if: env.BUILD_LIBPLACEBO == 'true'
         working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
