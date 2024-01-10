@@ -158,13 +158,13 @@ jobs:
           path: ${{github.workspace}}/glslang/install
 
       - name: Apply fix_p010_rendering patch to libplacebo
-        #if: env.BUILD_LIBPLACEBO == 'true'
+        if: env.BUILD_LIBPLACEBO == 'true'
         working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
         run: |
           git apply ../fix_p010_rendering.patch
 
       - name: Build libplacebo
-        #if: env.BUILD_LIBPLACEBO == 'true'
+        if: env.BUILD_LIBPLACEBO == 'true'
         working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
         run: |
           meson setup build --buildtype release --default-library=static -Ddemos=false -Dprefix=$PWD/install
@@ -172,7 +172,7 @@ jobs:
           meson install -C build
 
       - name: Upload libplacebo artefacts
-        #if: env.BUILD_LIBPLACEBO == 'true'
+        if: env.BUILD_LIBPLACEBO == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: libplacebo-artefacts-x64
