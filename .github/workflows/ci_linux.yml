@@ -161,7 +161,7 @@ jobs:
         #if: env.BUILD_LIBPLACEBO == 'true'
         working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
         run: |
-          patch -p1 < ../fix_p010_rendering.patch
+          git apply ../fix_p010_rendering.patch
 
       - name: Build libplacebo
         #if: env.BUILD_LIBPLACEBO == 'true'
