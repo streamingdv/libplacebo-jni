@@ -9,7 +9,7 @@ on:
       build_libplacebo:
         description: 'Build libplacebo (true/false)'
         required: true
-        default: 'true' # to save time, actual build is already in libs folder
+        default: 'false' # to save time, actual build is already in libs folder
       build_shaderc:
         description: 'Build shaderc (true/false)'
         required: true
@@ -201,8 +201,13 @@ jobs:
             GLSLANG_HEADERS_DIR=${{github.workspace}}/libs/glslang/linux/x64/include
           fi
           
-          LIBPLACEBO_LIB_PATH=${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/lib/libplacebo.a
-          LIBPLACEBO_HEADERS_DIR=${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/include
+          if [ "${{ env.BUILD_LIBPLACEBO }}" = "true" ]; then
+            LIBPLACEBO_LIB_PATH=${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/lib/libplacebo.a
+            LIBPLACEBO_HEADERS_DIR=${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/include
+          else
+            LIBPLACEBO_LIB_PATH=${{github.workspace}}/libs/libplacebo/linux/x64/lib/x86_64-linux-gnu/libplacebo.a
+            LIBPLACEBO_HEADERS_DIR=${{github.workspace}}/libs/libplacebo/linux/x64/include
+          fi
           
           cmake -G "Ninja" -B build -S ./libplacebo-jni-native \
             -DCMAKE_BUILD_TYPE=Release \

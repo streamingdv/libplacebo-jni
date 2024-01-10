@@ -9,7 +9,7 @@ on:
       build_libplacebo:
         description: 'Build libplacebo (true/false)'
         required: true
-        default: 'true' # to save time, actual build is already in libs folder
+        default: 'false' # to save time, actual build is already in libs folder
       build_shaderc:
         description: 'Build shaderc (true/false)'
         required: true
@@ -42,11 +42,11 @@ jobs:
             arch: 64bit
             archValue: 64
             archAltValue: x64
-          - sys: MINGW32 # disable for testing now
-            env: i686
-            arch: 32bit
-            archValue: 32
-            archAltValue: x32
+          #- sys: MINGW32 # disable for testing now
+          #  env: i686
+          #  arch: 32bit
+          #  archValue: 32
+          #  archAltValue: x32
 
     steps:
       - name: Checkout libplacebo-jni repository
@@ -229,9 +229,14 @@ jobs:
             GLSLANG_LIBS_DIR_UNIX=$(cygpath "${{github.workspace}}/libs/glslang/windows/${{ matrix.archAltValue }}/lib")
             GLSLANG_HEADERS_DIR_UNIX=$(cygpath "${{github.workspace}}/libs/glslang/windows/${{ matrix.archAltValue }}/include")
           fi
-          
-          LIBPLACEBO_LIB_PATH_UNIX=$(cygpath "${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/lib/libplacebo.a")
-          LIBPLACEBO_HEADERS_DIR_UNIX=$(cygpath "${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/include")
+      
+          if [ "${{ env.BUILD_LIBPLACEBO }}" = "true" ]; then
+            LIBPLACEBO_LIB_PATH_UNIX=$(cygpath "${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/lib/libplacebo.a")
+            LIBPLACEBO_HEADERS_DIR_UNIX=$(cygpath "${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/include")
+          else
+            LIBPLACEBO_LIB_PATH_UNIX=$(cygpath "${{github.workspace}}/libs/libplacebo/windows/${{ matrix.archAltValue }}/lib/libplacebo.a")
+            LIBPLACEBO_HEADERS_DIR_UNIX=$(cygpath "${{github.workspace}}/libs/libplacebo/windows/${{ matrix.archAltValue }}/include")
+          fi
       
           cmake -G "Ninja" -B build -S ./libplacebo-jni-native \
             -DCMAKE_BUILD_TYPE=Release \

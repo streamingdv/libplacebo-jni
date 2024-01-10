@@ -968,10 +968,10 @@ static void pl_fix_hwframe_sample_depth(struct pl_frame *out, const AVFrame *fra
 
     bits->sample_depth = fmt->component_depth[0];
 
-    switch (hwfc->sw_format) {
+    /*switch (hwfc->sw_format) {
     case AV_PIX_FMT_P010: bits->bit_shift = 6; break;
     default: break;
-    }
+    }*/
 }
 
 static bool pl_map_avframe_drm(pl_gpu gpu, struct pl_frame *out,
@@ -1137,8 +1137,8 @@ static bool pl_map_avframe_vulkan(pl_gpu gpu, struct pl_frame *out,
 
         plane->texture = pl_vulkan_wrap(gpu, pl_vulkan_wrap_params(
             .image  = vkf->img[n],
-            .width  = AV_CEIL_RSHIFT(frame->width, chroma ? desc->log2_chroma_w : 0),
-            .height = AV_CEIL_RSHIFT(frame->height, chroma ? desc->log2_chroma_h : 0),
+            .width  = AV_CEIL_RSHIFT(hwfc->width, chroma ? desc->log2_chroma_w : 0),
+            .height = AV_CEIL_RSHIFT(hwfc->height, chroma ? desc->log2_chroma_h : 0),
             .format = vk_fmt[n],
             .usage  = vkfc->usage,
         ));
