@@ -229,14 +229,9 @@ jobs:
             GLSLANG_LIBS_DIR_UNIX=$(cygpath "${{github.workspace}}/libs/glslang/windows/${{ matrix.archAltValue }}/lib")
             GLSLANG_HEADERS_DIR_UNIX=$(cygpath "${{github.workspace}}/libs/glslang/windows/${{ matrix.archAltValue }}/include")
           fi
-      
-          if [ "${{ env.BUILD_LIBPLACEBO }}" = "true" ]; then
-            LIBPLACEBO_LIB_PATH_UNIX=$(cygpath "${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/lib/libplacebo.a")
-            LIBPLACEBO_HEADERS_DIR_UNIX=$(cygpath "${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/include")
-          else
-            LIBPLACEBO_LIB_PATH_UNIX=$(cygpath "${{github.workspace}}/libs/libplacebo/windows/${{ matrix.archAltValue }}/lib/libplacebo.a")
-            LIBPLACEBO_HEADERS_DIR_UNIX=$(cygpath "${{github.workspace}}/libs/libplacebo/windows/${{ matrix.archAltValue }}/include")
-          fi
+          
+          LIBPLACEBO_LIB_PATH_UNIX=$(cygpath "${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/lib/libplacebo.a")
+          LIBPLACEBO_HEADERS_DIR_UNIX=$(cygpath "${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/include")
       
           cmake -G "Ninja" -B build -S ./libplacebo-jni-native \
             -DCMAKE_BUILD_TYPE=Release \
