@@ -923,7 +923,9 @@ void render_ui(struct ui *ui, int width, int height) {
   nk_style_push_style_item(ctx, &ctx->style.window.fixed_background, nk_style_item_hide());
   if (nk_begin(ctx, "FULLSCREEN", bounds, NK_WINDOW_NO_SCROLLBAR)) {
       nk_layout_space_begin(ctx, NK_STATIC, bounds.w, bounds.h); // use whole window space
+      struct nk_command_buffer* out = nk_window_get_canvas(ctx);
 
+      // sizes
       float buttonSize = 48;
       float menuButtonHeight = buttonSize - 10;
       float menuButtonFontSize = 14 + 4; // 14 + 4 padding
@@ -931,7 +933,8 @@ void render_ui(struct ui *ui, int width, int height) {
       float bottomPadding = 12;
       float edgePadding = 40;
       float touchpadPadding = 12;
-      struct nk_command_buffer* out = nk_window_get_canvas(ctx);
+
+      // colors
       const struct nk_color touchpad_white_border_color_alpha = nk_rgba(255, 255, 255, 190);
       const struct nk_color touchpad_white_background_color_alpha = nk_rgba(255, 255, 255, 63);
       const struct nk_color white_button_color_alpha = nk_rgba(255, 255, 255, 163);
@@ -1073,6 +1076,10 @@ void render_ui(struct ui *ui, int width, int height) {
       }
 
       ctx->style.button = cachedButtonStyle;
+
+      // **** Fullscreen popup
+
+      // ToDo
 
       // **** END
 
