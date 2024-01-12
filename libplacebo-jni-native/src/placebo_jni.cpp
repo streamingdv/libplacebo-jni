@@ -5,6 +5,7 @@
 #include <vector>
 #include <map>
 #include <array>
+#include <algorithm>
 #include <jni.h>
 
 #ifdef _WIN32
@@ -929,10 +930,13 @@ void render_ui(struct ui *ui, int width, int height) {
       float buttonSize = 48;
       float menuButtonHeight = buttonSize - 10;
       float menuButtonFontSize = 14 + 4; // 14 + 4 padding
-      float centerPosition = (bounds.w / 2) - 32;
       float bottomPadding = 12;
       float edgePadding = 40;
       float touchpadPadding = 12;
+      // dynamic sizes
+      float centerPosition = (bounds.w / 2) - 32;
+      float dialogWidth = std::min(800.0f, std::max(500.0f, bounds.w * 0.50f));
+      float dialogHeight = std::min(400.0f, std::max(375.0f, bounds.h * 0.50f));
 
       // colors
       const struct nk_color touchpad_white_border_color_alpha = nk_rgba(255, 255, 255, 190);
@@ -942,6 +946,7 @@ void render_ui(struct ui *ui, int width, int height) {
       const struct nk_color black_button_color = nk_rgb(0, 0, 0);
       const struct nk_color dark_grey_button_color = nk_rgb(17, 17, 17);
       const struct nk_color grey_button_color = nk_rgb(88, 88, 95);
+      const struct nk_color dialog_background = nk_rgb(35, 35, 35);
       struct nk_style_button cachedButtonStyle = ctx->style.button;
 
 
@@ -1078,8 +1083,8 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button = cachedButtonStyle;
 
       // **** Fullscreen popup
-
-      // ToDo
+      struct nk_rect dialog_rect = nk_rect((bounds.w / 2) - (dialogWidth / 2), (bounds.h / 2) - (dialogHeight / 2), dialogWidth, dialogHeight);
+      nk_fill_rect(out, dialog_rect, 8.0, dialog_background);
 
       // **** END
 
