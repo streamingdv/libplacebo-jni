@@ -1100,15 +1100,13 @@ void render_ui(struct ui *ui, int width, int height) {
       nk_label_colored(ctx, "This is an example heading", NK_TEXT_LEFT, dialog_blue);
 
       nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogPaddingRight, dialog_rect.y + dialogTextContentPaddingTop, dialogWidth - (dialogPaddingRight * 2), dialogHeight - dialogTextContentPaddingTop)); // Text
-      nk_layout_row_static(ctx, 0, dialogWidth - (dialogPaddingRight * 2), 1);
       nk_label_colored_wrap(ctx, "This is a very long line to hopefully get this text to be wrapped into multiple lines to show line wrapping", white_button_color);
 
-      nk_layout_row_static(ctx, 0, dialogWidth - (dialogPaddingRight * 2), 1); // checkbox
-      nk_bool check = true; // not checked
-      nk_checkbox_label(ctx, "Put the console in rest mode", &check);
+      // either text or checkbox
+      //nk_bool check = true; // not checked
+      //nk_checkbox_label(ctx, "Put the console in rest mode", &check);
 
-      nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogButtonPaddingRight, dialog_rect.y + dialogButtonContentPaddingTop, dialogWidth - dialogButtonPaddingRight, dialogButtonHeight)); // Buttons
-      nk_layout_row_static(ctx, dialogButtonHeight - 2, dialogButtonWidth, 2);
+      nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogButtonPaddingRight, dialog_rect.y + dialogButtonContentPaddingTop, dialogButtonWidth, dialogButtonHeight)); // Button left
 
       ctx->style.button.normal = nk_style_item_color(nk_rgba(0,0,0,0));
       ctx->style.button.hover = nk_style_item_color(nk_rgb(255,165,0));
@@ -1124,6 +1122,8 @@ void render_ui(struct ui *ui, int width, int height) {
       if (nk_button_label(ctx, "Cancel")) {
           // event handling (ignored here)
       }
+
+      nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogButtonPaddingRight, dialog_rect.y + (dialogButtonContentPaddingTop + dialogButtonWidth + 10), dialogButtonWidth, dialogButtonHeight)); // Button right
 
       if (nk_button_label(ctx, "Yes")) {
           // event handling (ignored here)
