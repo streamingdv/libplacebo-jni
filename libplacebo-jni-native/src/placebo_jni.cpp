@@ -1104,7 +1104,7 @@ void render_ui(struct ui *ui, int width, int height) {
       nk_label_colored_wrap(ctx, "This is a very long line to hopefully get this text to be wrapped into multiple lines to show line wrapping", white_button_color);
 
       nk_layout_row_static(ctx, 0, dialogWidth - (dialogPaddingRight * 2), 1); // checkbox
-      int check = 0; // not checked
+      nk_bool check = true; // not checked
       nk_checkbox_label(ctx, "Put the console in rest mode", &check);
 
       nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogButtonPaddingRight, dialog_rect.y + dialogButtonContentPaddingTop, dialogWidth - dialogButtonPaddingRight, dialogButtonHeight)); // Buttons
