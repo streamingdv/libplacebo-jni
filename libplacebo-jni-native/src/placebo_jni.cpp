@@ -947,7 +947,7 @@ void render_ui(struct ui *ui, int width, int height) {
       // dynamic sizes
       float centerPosition = (bounds.w / 2) - 32;
       float dialogWidth = std::min(800.0f, std::max(500.0f, bounds.w * 0.60f));
-      float dialogHeight = std::min(410.0f, std::max(375.0f, bounds.h * 0.60f));
+      float dialogHeight = std::min(400.0f, std::max(375.0f, bounds.h * 0.60f));
 
       // colors
       const struct nk_color touchpad_white_border_color_alpha = nk_rgba(255, 255, 255, 190);
@@ -1109,7 +1109,7 @@ void render_ui(struct ui *ui, int width, int height) {
       //nk_bool check = true; // not checked
       //nk_checkbox_label(ctx, "Put the console in rest mode", &check);
 
-      nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogButtonPaddingRight, dialog_rect.y + dialogButtonContentPaddingTop, dialogButtonWidth, dialogButtonHeight)); // Button left
+      nk_layout_space_push(ctx, nk_rect(dialog_rect.x + (dialogButtonWidth * 0.30), dialog_rect.y + (dialogHeight * 0 .80), dialogButtonWidth, dialogButtonHeight)); // Button left
 
       ctx->style.button.normal = nk_style_item_color(nk_rgba(0,0,0,0));
       ctx->style.button.hover = nk_style_item_color(nk_rgb(255,165,0));
@@ -1119,14 +1119,14 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button.text_normal = dialog_blue;
       ctx->style.button.text_hover = nk_rgb(28,48,62);
       ctx->style.button.text_active = dialog_blue;
-      ctx->style.button.rounding = 18;
+      ctx->style.button.rounding = 15;
       ctx->style.button.border = 4;
 
       if (nk_button_label(ctx, "Cancel")) {
           // event handling (ignored here)
       }
 
-      nk_layout_space_push(ctx, nk_rect(dialog_rect.x + (dialogButtonPaddingRight + dialogButtonWidth + 10), dialog_rect.y + dialogButtonContentPaddingTop, dialogButtonWidth, dialogButtonHeight)); // Button right
+      nk_layout_space_push(ctx, nk_rect(dialog_rect.x + ((dialogButtonWidth * 0.30) + dialogButtonWidth + 14), dialog_rect.y + (dialogHeight * 0 .80), dialogButtonWidth, dialogButtonHeight)); // Button right
 
       if (nk_button_label(ctx, "Yes")) {
           // event handling (ignored here)
