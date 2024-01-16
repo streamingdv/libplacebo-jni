@@ -59,7 +59,7 @@ jobs:
         with:
           repository: 'Immediate-Mode-UI/Nuklear'
           path: 'Nuklear'
-          ref: '4.10.7'
+          ref: '4.12.0'
 
       - name: Checkout shaderc repository
         if: env.BUILD_SHADERC == 'true'

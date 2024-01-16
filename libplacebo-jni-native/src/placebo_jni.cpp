@@ -1107,7 +1107,7 @@ void render_ui(struct ui *ui, int width, int height) {
       //nk_bool check = true; // not checked
       //nk_checkbox_label(ctx, "Put the console in rest mode", &check);
 
-      nk_layout_space_push(ctx, nk_rect(dialog_rect.x + (dialogButtonWidth * 0.30), dialog_rect.y + (dialogHeight * 0.80), dialogButtonWidth, dialogButtonHeight)); // Button left
+      nk_layout_space_push(ctx, nk_rect(dialog_rect.x + (dialogWidth * 0.30), dialog_rect.y + (dialogHeight * 0.80), dialogButtonWidth, dialogButtonHeight)); // Button left
 
       ctx->style.button.normal = nk_style_item_color(nk_rgba(0,0,0,0));
       ctx->style.button.hover = nk_style_item_color(nk_rgb(255,165,0));
@@ -1124,7 +1124,7 @@ void render_ui(struct ui *ui, int width, int height) {
           // event handling (ignored here)
       }
 
-      nk_layout_space_push(ctx, nk_rect(dialog_rect.x + ((dialogButtonWidth * 0.30) + dialogButtonWidth + 14), dialog_rect.y + (dialogHeight * 0.80), dialogButtonWidth, dialogButtonHeight)); // Button right
+      nk_layout_space_push(ctx, nk_rect(dialog_rect.x + ((dialogWidth * 0.30) + dialogButtonWidth + 14), dialog_rect.y + (dialogHeight * 0.80), dialogButtonWidth, dialogButtonHeight)); // Button right
 
       if (nk_button_label(ctx, "Yes")) {
           // event handling (ignored here)
