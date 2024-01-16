@@ -1096,10 +1096,10 @@ void render_ui(struct ui *ui, int width, int height) {
       struct nk_rect dialog_rect = nk_rect((bounds.w / 2) - (dialogWidth / 2), (bounds.h / 2) - (dialogHeight / 2), dialogWidth, dialogHeight); // Background rect
       nk_fill_rect(out, dialog_rect, 8.0, dialog_background);
 
-      nk_layout_space_push(ctx, nk_rect(nk_rect.x + dialogPaddingRight, nk_rect.y + dialogHeadingPaddingTop, dialogWidth - (dialogPaddingRight * 2), dialogHeadingHeight)); // Heading
+      nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogPaddingRight, dialog_rect.y + dialogHeadingPaddingTop, dialogWidth - (dialogPaddingRight * 2), dialogHeadingHeight)); // Heading
       nk_label_colored(ctx, "This is an example heading", NK_TEXT_LEFT, dialog_blue);
 
-      nk_layout_space_push(ctx, nk_rect(nk_rect.x + dialogPaddingRight, nk_rect.y + dialogTextContentPaddingTop, dialogWidth - (dialogPaddingRight * 2), dialogHeight - dialogTextContentPaddingTop)); // Text
+      nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogPaddingRight, dialog_rect.y + dialogTextContentPaddingTop, dialogWidth - (dialogPaddingRight * 2), dialogHeight - dialogTextContentPaddingTop)); // Text
       nk_layout_row_static(ctx, 0, dialogWidth - (dialogPaddingRight * 2), 1);
       nk_label_colored_wrap(ctx, "This is a very long line to hopefully get this text to be wrapped into multiple lines to show line wrapping", white_button_color);
 
@@ -1107,7 +1107,7 @@ void render_ui(struct ui *ui, int width, int height) {
       int check = 0; // not checked
       nk_checkbox_label(ctx, "Put the console in rest mode", &check);
 
-      nk_layout_space_push(ctx, nk_rect(nk_rect.x + dialogButtonPaddingRight, nk_rect.y + dialogButtonContentPaddingTop, dialogWidth - dialogButtonPaddingRight, dialogButtonHeight)); // Buttons
+      nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogButtonPaddingRight, dialog_rect.y + dialogButtonContentPaddingTop, dialogWidth - dialogButtonPaddingRight, dialogButtonHeight)); // Buttons
       nk_layout_row_static(ctx, dialogButtonHeight - 2, dialogButtonWidth, 2);
 
       ctx->style.button.normal = nk_style_item_color(nk_rgba(0,0,0,0));
