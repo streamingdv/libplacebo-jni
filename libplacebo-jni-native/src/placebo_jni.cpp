@@ -935,16 +935,16 @@ void render_ui(struct ui *ui, int width, int height) {
       float touchpadPadding = 12;
       float dialogHeadingPaddingTop = 44;
       float dialogTextContentPaddingTop = 122;
-      float dialogButtonContentPaddingTop = 320;
+      float dialogButtonContentPaddingTop = 290;
       float dialogPaddingRight = 36;
-      float dialogButtonPaddingRight = 186;
+      float dialogButtonPaddingRight = 135;
       float dialogHeadingHeight = 24 + 2; // 24 + 2 padding
       float dialogButtonHeight = 52 + 2; // 52 + 2 padding
       float dialogButtonWidth = 200;
       // dynamic sizes
       float centerPosition = (bounds.w / 2) - 32;
-      float dialogWidth = std::min(800.0f, std::max(500.0f, bounds.w * 0.50f));
-      float dialogHeight = std::min(400.0f, std::max(375.0f, bounds.h * 0.50f));
+      float dialogWidth = std::min(800.0f, std::max(500.0f, bounds.w * 0.60f));
+      float dialogHeight = std::min(410.0f, std::max(375.0f, bounds.h * 0.60f));
 
       // colors
       const struct nk_color touchpad_white_border_color_alpha = nk_rgba(255, 255, 255, 190);
@@ -1096,11 +1096,11 @@ void render_ui(struct ui *ui, int width, int height) {
       struct nk_rect dialog_rect = nk_rect((bounds.w / 2) - (dialogWidth / 2), (bounds.h / 2) - (dialogHeight / 2), dialogWidth, dialogHeight); // Background rect
       nk_fill_rect(out, dialog_rect, 8.0, dialog_background);
 
-      nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogPaddingRight, dialog_rect.y + dialogHeadingPaddingTop, dialogWidth - (dialogPaddingRight * 2), dialogHeadingHeight)); // Heading
+      nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogPaddingRight, dialog_rect.y + dialogHeadingPaddingTop, dialogWidth - (dialogPaddingRight * 2.5), dialogHeadingHeight)); // Heading
       nk_label_colored(ctx, "This is an example heading", NK_TEXT_LEFT, dialog_blue);
 
-      nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogPaddingRight, dialog_rect.y + dialogTextContentPaddingTop, dialogWidth - (dialogPaddingRight * 2), dialogHeight - dialogTextContentPaddingTop)); // Text
-      nk_label_colored_wrap(ctx, "This is a very long line to hopefully get this text to be wrapped into multiple lines to show line wrapping", white_button_color);
+      nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogPaddingRight, dialog_rect.y + dialogTextContentPaddingTop, dialogWidth - (dialogPaddingRight * 2.5), dialogHeight - dialogTextContentPaddingTop)); // Text
+      nk_label_colored_wrap(ctx, "This is a very long line to hopefully get this text to be wrapped into multiple lines to show line wrapping. In case of an error I hope this would work fine and without any issues!", white_button_color);
 
       // either text or checkbox
       //nk_bool check = true; // not checked
@@ -1116,14 +1116,14 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button.text_normal = dialog_blue;
       ctx->style.button.text_hover = nk_rgb(28,48,62);
       ctx->style.button.text_active = dialog_blue;
-      ctx->style.button.rounding = 12;
+      ctx->style.button.rounding = 18;
       ctx->style.button.border = 4;
 
       if (nk_button_label(ctx, "Cancel")) {
           // event handling (ignored here)
       }
 
-      nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogButtonPaddingRight, dialog_rect.y + (dialogButtonContentPaddingTop + dialogButtonWidth + 10), dialogButtonWidth, dialogButtonHeight)); // Button right
+      nk_layout_space_push(ctx, nk_rect(dialog_rect.x + (dialogButtonPaddingRight + dialogButtonWidth + 10), dialog_rect.y + dialogButtonContentPaddingTop, dialogButtonWidth, dialogButtonHeight)); // Button right
 
       if (nk_button_label(ctx, "Yes")) {
           // event handling (ignored here)
