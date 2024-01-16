@@ -945,7 +945,7 @@ void render_ui(struct ui *ui, int width, int height) {
       // dynamic sizes
       float centerPosition = (bounds.w / 2) - 32;
       float dialogWidth = std::min(800.0f, std::max(500.0f, bounds.w * 0.60f));
-      float dialogHeight = std::min(400.0f, std::max(375.0f, bounds.h * 0.60f));
+      float dialogHeight = std::min(400.0f, std::max(375.0f, bounds.h * 0.50f));
 
       // colors
       const struct nk_color touchpad_white_border_color_alpha = nk_rgba(255, 255, 255, 190);
