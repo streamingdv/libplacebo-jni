@@ -746,13 +746,33 @@ struct ui *ui_create(pl_gpu gpu)
   };
 
   // Initialize font atlas using built-in font
+  /*
+  // Initialize font atlas using built-in font
+  nk_font_atlas_init_default(&ui->atlas);
+  nk_font_atlas_begin(&ui->atlas);
+  struct nk_font *font = nk_font_atlas_add_default(&ui->atlas, 20, NULL);
+  struct pl_tex_params tparams = {
+      .format = pl_find_named_fmt(gpu, "r8"),
+      .sampleable = true,
+      .initial_data = nk_font_atlas_bake(&ui->atlas, &tparams.w, &tparams.h,
+                                         NK_FONT_ATLAS_ALPHA8),
+      .debug_tag = PL_DEBUG_TAG,
+  };
+  ui->font_tex = pl_tex_create(gpu, &tparams);
+  nk_font_atlas_end(&ui->atlas, nk_handle_ptr((void *) ui->font_tex),
+                    &ui->convert_cfg.tex_null);
+  nk_font_atlas_cleanup(&ui->atlas);
+  */
+
+
   nk_font_atlas_init_default(&ui->atlas);
   nk_font_atlas_begin(&ui->atlas);
   struct nk_font_config robotoConfig = nk_font_config(0);
   robotoConfig.range = nk_font_default_glyph_ranges();
   robotoConfig.oversample_h = 1; robotoConfig.oversample_v = 1;
   robotoConfig.pixel_snap = true;
-  ui->default_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 24, &robotoConfig);
+  //ui->default_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 24, &robotoConfig);
+  ui->default_font = nk_font_atlas_add_default(&ui->atlas, 24, NULL);
   ui->default_small_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 14, &robotoConfig);
   struct nk_font_config iconConfig = nk_font_config(0);
   iconConfig.range = ranges_icons;
