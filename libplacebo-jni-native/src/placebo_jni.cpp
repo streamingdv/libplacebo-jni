@@ -356,16 +356,6 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plGetWin32SurfaceF
 }
 
 extern "C"
-JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plGetVkCreateImageViewFunctionPointer
-  (JNIEnv *env, jobject obj, jlong placebo_vk_inst) {
-  pl_vk_inst instance = reinterpret_cast<pl_vk_inst>(placebo_vk_inst);
-  PFN_vkCreateImageView vkCreateImageView = reinterpret_cast<PFN_vkCreateImageView>(
-          instance->get_proc_addr(instance->instance, "vkCreateImageView"));
-
-  return reinterpret_cast<jlong>(vkCreateImageView);
-}
-
-extern "C"
 JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plDestroySurface
   (JNIEnv *env, jobject obj, jlong placebo_vk_inst, jlong surface) {
   pl_vk_inst instance = reinterpret_cast<pl_vk_inst>(placebo_vk_inst);

@@ -165,13 +165,6 @@ public class PlaceboManager {
     public native long plGetWin32SurfaceFunctionPointer(long vkInst);
 
     /**
-     * Gets the handle to the vkCreateImageView function
-     * @param vkInst the vk inst handle
-     * @return the handle to the vkCreateImageView function
-     */
-    public native long plGetVkCreateImageViewFunctionPointer(long vkInst);
-
-    /**
      * Destroys and releases the native surface
      * @param vkInst the vk inst handle
      * @param surface the surface handle
