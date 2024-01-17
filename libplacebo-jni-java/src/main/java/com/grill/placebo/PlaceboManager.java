@@ -242,12 +242,22 @@ public class PlaceboManager {
      * @param vk the vulkan device handle
      * @param swapchain the swapchain handle
      * @param renderer the renderer handle
-     * @param ui the ui handle
      * @return true if successfully rendered, false otherwise
      */
-    public native boolean plRenderAvFrame(long avframe, long vk, long swapchain, long renderer, long ui);
+    public native boolean plRenderAvFrame(long avframe, long vk, long swapchain, long renderer);
 
-    public native boolean plRenderAvFrame2(long avframe, long vk, long swapchain, long renderer, long ui, int width, int height);
+    /**
+     * Renders an avframe with UI overlay
+     * @param avframe the handle to the avframe
+     * @param vk the vulkan device handle
+     * @param swapchain the swapchain handle
+     * @param renderer the renderer handle
+     * @param ui the ui handle
+     * @param width the current window width
+     * @param height the current window height
+     * @return true if successfully rendered, false otherwise
+     */
+    public native boolean plRenderAvFrame(long avframe, long vk, long swapchain, long renderer, long ui, int width, int height);
 
     /**
      * Destroy the global saved textures
@@ -267,22 +277,6 @@ public class PlaceboManager {
      * @param ui the ui handle
      */
     public native void nkDestroyUI(long ui);
-
-    /**
-     * Stores the vkImageView and caches it for the given buttonType. The images can later be used for the UI
-     * @param vkImageView the image view
-     * @param buttonType the button type
-     * @param vk the vulkan device handle
-     */
-    public native void nkStoreImageView(long vkImageView, int buttonType, long vk);
-
-    /**
-     * Destroy all the stored vkImageView references and releases the cache
-     * @param vk the vulkan device handle
-     */
-    public native void nkDestroyStoredImageViews(long vk);
-
-    public native void nkDestroyImageView(long vk, long vkImageView);
 
     /************************/
     /*** load lib methods ***/

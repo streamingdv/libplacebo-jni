@@ -73,26 +73,6 @@ void render_ui(struct ui *ui);
 void render_ui(struct ui *ui, int width, int height);
 bool ui_draw(struct ui *ui, const struct pl_swapchain_frame *frame);
 
-enum class ButtonType {
-  MIC,
-  OPTIONS,
-  PS,
-  SHARE,
-  FULLSCREEN,
-  CLOSE
-};
-
-const std::array<ButtonType, 6> buttonTypes = {
-    ButtonType::MIC,
-    ButtonType::OPTIONS,
-    ButtonType::PS,
-    ButtonType::SHARE,
-    ButtonType::FULLSCREEN,
-    ButtonType::CLOSE
-};
-
-std::map<ButtonType, VkImageView> imageViewMap;
-
 /*** define JNI methods ***/
 
 extern "C"
@@ -492,7 +472,7 @@ pl_tex placebo_tex_global[4] = {nullptr, nullptr, nullptr, nullptr};
 
 extern "C"
 JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
-  (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer, jlong ui) {
+  (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer) {
   AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
   pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
@@ -525,11 +505,6 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   }
   pl_frame_from_swapchain(&target_frame, &sw_frame);
 
-  if(ui != 0){
-      struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
-      render_ui(ui_instance);
-  }
-
   crop = placebo_frame.crop;
   switch (renderingFormat) {
       case 0: // normal
@@ -547,12 +522,6 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to render Placebo frame!");
       goto cleanup;
   }
-  if (ui != 0) {
-     struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
-     if (!ui_draw(ui_instance, &sw_frame)) {
-        LogCallbackFunction(nullptr, PL_LOG_ERR, "Could not draw UI!");
-     }
-  }
   if (!pl_swapchain_submit_frame(placebo_swapchain)) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to submit Placebo frame!");
       goto cleanup;
@@ -568,7 +537,7 @@ cleanup:
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame2
+JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   (JNIEnv *env, jobject obj,jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer, jlong ui, jint width, jint height) {
   AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
@@ -878,47 +847,6 @@ struct nk_context *ui_get_context(struct ui *ui)
 
 std::map<ButtonType, struct nk_image> buttonImageMap;
 
-void render_ui(struct ui *ui) {
-  if (!ui)
-      return;
-
-  struct nk_context *ctx = ui_get_context(ui);
-  const struct nk_rect bounds = nk_rect(0, 0, 1920, 1080); // ToDo: get real window size
-
-  nk_style_push_style_item(ctx, &ctx->style.window.fixed_background, nk_style_item_hide());
-  if (nk_begin(ctx, "FULLSCREEN", bounds, NK_WINDOW_NO_SCROLLBAR)) {
-      nk_layout_space_begin(ctx, NK_STATIC, bounds.w, bounds.h);
-
-      ButtonType key = ButtonType::PS; // Replace with the actual enum value for "PS"
-      auto it = buttonImageMap.find(key);
-
-      if (it == buttonImageMap.end()) {
-          // Button image does not exist, create it
-          if (imageViewMap.find(key) != imageViewMap.end()) {
-              VkImageView& imageView = imageViewMap[key];
-              struct nk_image btnImage = nk_image_ptr(&imageView);
-
-              // Store the created btnImage in the global map
-              buttonImageMap[key] = btnImage;
-          } else {
-              LogCallbackFunction(nullptr, PL_LOG_ERR, "NK: NO image");
-              // Exit the function or handle the missing imageView case
-              return;
-          }
-      }
-
-      // Use the btnImage from the map
-      struct nk_image& btnImage = buttonImageMap[key];
-      nk_layout_space_push(ctx, nk_rect(100, 600, 64, 64));
-      nk_button_image(ctx, btnImage);
-      nk_layout_space_end(ctx);
-
-      // ... rest of your code ...
-  }
-  nk_end(ctx);
-  nk_style_pop_style_item(ctx);
-}
-
 void render_ui(struct ui *ui, int width, int height) {
   if (!ui)
       return;
@@ -1175,41 +1103,6 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_nkCreateUI
       return 0L;
   }
   return reinterpret_cast<jlong>(ui_instance);
-}
-
-extern "C"
-JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkStoreImageView
-  (JNIEnv *env, jobject obj, jlong imageView, jint btnType, jlong placebo_vulkan) {
-  VkImageView pVkImageView = reinterpret_cast<VkImageView>(static_cast<uint64_t>(imageView));
-  ButtonType buttonType = static_cast<ButtonType>(btnType);
-  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
-
-  auto it = imageViewMap.find(buttonType);
-  if (it != imageViewMap.end()) {
-      // If an entry exists, destroy the old VkImageView
-      vkDestroyImageView(vulkan->device, it->second, nullptr);
-  }
-  imageViewMap[buttonType] = pVkImageView;
-}
-
-extern "C"
-JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkDestroyStoredImageViews
-  (JNIEnv *env, jobject obj, jlong placebo_vulkan) {
-  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
-  for (const auto& pair : imageViewMap) {
-      if (pair.second != VK_NULL_HANDLE) {
-          vkDestroyImageView(vulkan->device, pair.second, nullptr);
-      }
-  }
-  imageViewMap.clear();
-}
-
-extern "C"
-JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkDestroyImageView
-  (JNIEnv *env, jobject obj, jlong placebo_vulkan, jlong imageView) {
-  VkImageView pVkImageView = reinterpret_cast<VkImageView>(static_cast<uint64_t>(imageView));
-  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
-  vkDestroyImageView(vulkan->device, pVkImageView, nullptr);
 }
 
 extern "C"
