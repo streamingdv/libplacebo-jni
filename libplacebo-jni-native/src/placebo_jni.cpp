@@ -1126,7 +1126,7 @@ void render_ui(struct ui *ui, int width, int height) {
           // event handling (ignored here)
       }
 
-      nk_layout_space_push(ctx, nk_rect(buttonContainerX + dialogButtonWidth + 14), dialog_rect.y + (dialogHeight * 0.80), dialogButtonWidth, dialogButtonHeight)); // Button right
+      nk_layout_space_push(ctx, nk_rect(buttonContainerX + (dialogButtonWidth + 14), dialog_rect.y + (dialogHeight * 0.80), dialogButtonWidth, dialogButtonHeight)); // Button right
 
       if (nk_button_label(ctx, "Yes")) {
           // event handling (ignored here)
