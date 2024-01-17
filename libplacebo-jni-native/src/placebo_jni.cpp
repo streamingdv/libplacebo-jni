@@ -945,7 +945,7 @@ void render_ui(struct ui *ui, int width, int height) {
       // dynamic sizes
       float centerPosition = (bounds.w / 2) - 32;
       float dialogWidth = std::min(800.0f, std::max(500.0f, bounds.w * 0.60f));
-      float dialogHeight = std::min(400.0f, std::max(375.0f, bounds.h * 0.50f));
+      float dialogHeight = std::min(390.0f, std::max(375.0f, bounds.h * 0.50f));
 
       // colors
       const struct nk_color touchpad_white_border_color_alpha = nk_rgba(255, 255, 255, 190);
@@ -1107,7 +1107,9 @@ void render_ui(struct ui *ui, int width, int height) {
       //nk_bool check = true; // not checked
       //nk_checkbox_label(ctx, "Put the console in rest mode", &check);
 
-      nk_layout_space_push(ctx, nk_rect(dialog_rect.x + (dialogWidth * 0.30), dialog_rect.y + (dialogHeight * 0.80), dialogButtonWidth, dialogButtonHeight)); // Button left
+      float buttonContainerFullWidth = (dialogButtonWidth * 2) + 14;
+      float buttonContainerX = ((dialog_rect.x + dialogWidth) - buttonContainerFullWidth) - 40; // - 40 padding
+      nk_layout_space_push(ctx, nk_rect(buttonContainerX, dialog_rect.y + (dialogHeight * 0.80), dialogButtonWidth, dialogButtonHeight)); // Button left
 
       ctx->style.button.normal = nk_style_item_color(nk_rgba(0,0,0,0));
       ctx->style.button.hover = nk_style_item_color(nk_rgb(255,165,0));
@@ -1124,7 +1126,7 @@ void render_ui(struct ui *ui, int width, int height) {
           // event handling (ignored here)
       }
 
-      nk_layout_space_push(ctx, nk_rect(dialog_rect.x + ((dialogWidth * 0.30) + dialogButtonWidth + 14), dialog_rect.y + (dialogHeight * 0.80), dialogButtonWidth, dialogButtonHeight)); // Button right
+      nk_layout_space_push(ctx, nk_rect(buttonContainerX + dialogButtonWidth + 14), dialog_rect.y + (dialogHeight * 0.80), dialogButtonWidth, dialogButtonHeight)); // Button right
 
       if (nk_button_label(ctx, "Yes")) {
           // event handling (ignored here)
