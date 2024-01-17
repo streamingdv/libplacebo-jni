@@ -257,7 +257,7 @@ public class PlaceboManager {
      * @param height the current window height
      * @return true if successfully rendered, false otherwise
      */
-    public native boolean plRenderAvFrame(long avframe, long vk, long swapchain, long renderer, long ui, int width, int height);
+    public native boolean plRenderAvFrameWithUi(long avframe, long vk, long swapchain, long renderer, long ui, int width, int height);
 
     /**
      * Destroy the global saved textures

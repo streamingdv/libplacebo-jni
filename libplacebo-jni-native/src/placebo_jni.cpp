@@ -537,7 +537,7 @@ cleanup:
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
+JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrameWithUi
   (JNIEnv *env, jobject obj,jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer, jlong ui, jint width, jint height) {
   AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
@@ -844,8 +844,6 @@ struct nk_context *ui_get_context(struct ui *ui)
 {
   return &ui->nk;
 }
-
-std::map<ButtonType, struct nk_image> buttonImageMap;
 
 void render_ui(struct ui *ui, int width, int height) {
   if (!ui)
