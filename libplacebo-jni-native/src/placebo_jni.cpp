@@ -50,8 +50,8 @@
 #include <libplacebo/shaders/custom.h>
 #include <vk_mem_alloc.h>
 #include <roboto_font.h>
+#include <roboto_bold_font.h>
 #include <gui_font.h>
-#include <ps_button.h>
 
 /*** define helper functions ***/
 
@@ -675,6 +675,7 @@ struct ui {
   pl_gpu gpu;
   pl_dispatch dp;
   struct nk_font *default_font;
+  struct nk_font *default_bold_font;
   struct nk_font *default_small_font;
   struct nk_font *icon_font;
   struct nk_context nk;
@@ -746,25 +747,6 @@ struct ui *ui_create(pl_gpu gpu)
   };
 
   // Initialize font atlas using built-in font
-  /*
-  // Initialize font atlas using built-in font
-  nk_font_atlas_init_default(&ui->atlas);
-  nk_font_atlas_begin(&ui->atlas);
-  struct nk_font *font = nk_font_atlas_add_default(&ui->atlas, 20, NULL);
-  struct pl_tex_params tparams = {
-      .format = pl_find_named_fmt(gpu, "r8"),
-      .sampleable = true,
-      .initial_data = nk_font_atlas_bake(&ui->atlas, &tparams.w, &tparams.h,
-                                         NK_FONT_ATLAS_ALPHA8),
-      .debug_tag = PL_DEBUG_TAG,
-  };
-  ui->font_tex = pl_tex_create(gpu, &tparams);
-  nk_font_atlas_end(&ui->atlas, nk_handle_ptr((void *) ui->font_tex),
-                    &ui->convert_cfg.tex_null);
-  nk_font_atlas_cleanup(&ui->atlas);
-  */
-
-
   nk_font_atlas_init_default(&ui->atlas);
   nk_font_atlas_begin(&ui->atlas);
   struct nk_font_config robotoConfig = nk_font_config(0);
@@ -772,9 +754,8 @@ struct ui *ui_create(pl_gpu gpu)
   robotoConfig.oversample_h = 1; robotoConfig.oversample_v = 1;
   robotoConfig.pixel_snap = true;
   ui->default_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 24, &robotoConfig);
-  //ui->default_font = nk_font_atlas_add_default(&ui->atlas, 24, NULL);
+  ui->default_bold_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_bold_font, roboto_bold_font_size, 24, &robotoConfig);
   ui->default_small_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 14, &robotoConfig);
-  //ui->default_small_font = nk_font_atlas_add_default(&ui->atlas, 14, NULL);
   struct nk_font_config iconConfig = nk_font_config(0);
   iconConfig.range = ranges_icons;
   iconConfig.oversample_h = 1; iconConfig.oversample_v = 1;
@@ -1118,8 +1099,16 @@ void render_ui(struct ui *ui, int width, int height) {
       struct nk_rect dialog_rect = nk_rect((bounds.w / 2) - (dialogWidth / 2), (bounds.h / 2) - (dialogHeight / 2), dialogWidth, dialogHeight); // Background rect
       nk_fill_rect(out, dialog_rect, 8.0, dialog_background);
 
+      /*** change font to bold default ***/
+      nk_style_set_font(ctx, &ui->default_bold_font->handle);
+      /*** change font to bold default ***/
+
       nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogPaddingRight, dialog_rect.y + dialogHeadingPaddingTop, dialogWidth - (dialogPaddingRight * 2.5), dialogHeadingHeight)); // Heading
       nk_label_colored(ctx, "This is an example heading", NK_TEXT_LEFT, dialog_blue);
+
+      /*** change font to default ***/
+      nk_style_set_font(ctx, &ui->default_font->handle);
+      /*** change font to default ***/
 
       nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogPaddingRight, dialog_rect.y + dialogTextContentPaddingTop, dialogWidth - (dialogPaddingRight * 2.5), dialogHeight - dialogTextContentPaddingTop)); // Text
       nk_label_colored_wrap(ctx, "This is a very long line to hopefully get this text to be wrapped into multiple lines to show line wrapping. In case of an error I hope this would work fine and without any issues!", white_button_color);
@@ -1143,6 +1132,10 @@ void render_ui(struct ui *ui, int width, int height) {
       ctx->style.button.rounding = 15;
       ctx->style.button.border = 4;
 
+      /*** change font to bold default ***/
+      nk_style_set_font(ctx, &ui->default_bold_font->handle);
+      /*** change font to bold default ***/
+
       if (nk_button_label(ctx, "Cancel")) {
           // event handling (ignored here)
       }
@@ -1152,6 +1145,10 @@ void render_ui(struct ui *ui, int width, int height) {
       if (nk_button_label(ctx, "Yes")) {
           // event handling (ignored here)
       }
+
+      /*** change font to default ***/
+      nk_style_set_font(ctx, &ui->default_font->handle);
+      /*** change font to default ***/
 
       ctx->style.button = cachedButtonStyle;
 
