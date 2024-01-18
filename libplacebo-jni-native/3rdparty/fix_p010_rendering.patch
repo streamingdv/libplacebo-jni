@@ -1,17 +1,29 @@
-﻿diff --git a/src/include/libplacebo/utils/libav_internal.h b/src/include/libplacebo/utils/libav_internal.h
-index 4c269e5d..ed3d504c 100644
+diff --git a/src/include/libplacebo/utils/libav_internal.h b/src/include/libplacebo/utils/libav_internal.h
+index 4c269e5d..bd0d79fa 100644
 --- a/src/include/libplacebo/utils/libav_internal.h
 +++ b/src/include/libplacebo/utils/libav_internal.h
-@@ -968,10 +968,10 @@ static void pl_fix_hwframe_sample_depth(struct pl_frame *out, const AVFrame *fra
+@@ -967,11 +967,6 @@ static void pl_fix_hwframe_sample_depth(struct pl_frame *out, const AVFrame *fra
+     struct pl_bit_encoding *bits = &out->repr.bits;
  
      bits->sample_depth = fmt->component_depth[0];
- 
+-
 -    switch (hwfc->sw_format) {
-+    /*switch (hwfc->sw_format) {
-     case AV_PIX_FMT_P010: bits->bit_shift = 6; break;
-     default: break;
+-    case AV_PIX_FMT_P010: bits->bit_shift = 6; break;
+-    default: break;
 -    }
-+    }*/
  }
  
  static bool pl_map_avframe_drm(pl_gpu gpu, struct pl_frame *out,
+@@ -1016,6 +1011,12 @@ static bool pl_map_avframe_drm(pl_gpu gpu, struct pl_frame *out,
+     }
+ 
+     pl_fix_hwframe_sample_depth(out, frame);
++	
++    switch (hwfc->sw_format) {
++    case AV_PIX_FMT_P010: out->repr.bits.bit_shift = 6; break;
++    default: break;
++    }
++
+     return true;
+ }
+ 
