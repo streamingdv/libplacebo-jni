@@ -933,7 +933,11 @@ void render_ui(struct ui *ui, int width, int height) {
           nk_layout_space_push(ctx, nk_rect(centerPosition - ((buttonSize * 1.5) + 7), ((bounds.h - menuButtonHeight) - bottomPadding) - menuButtonFontSize, buttonSize, menuButtonFontSize));
           nk_label(ctx, "SHARE", NK_TEXT_ALIGN_LEFT);
           nk_layout_space_push(ctx, nk_rect(centerPosition - (buttonSize * 1.5), (bounds.h - menuButtonHeight) - bottomPadding, buttonSize * 0.5, menuButtonHeight));
-          nk_button_color(ctx, grey_button_color);
+          if(globalUiState.panelState.shareButtonPressed){
+              nk_button_color(ctx, pressed_grey_button_color);
+          } else {
+              nk_button_color(ctx, grey_button_color);
+          }
           // -> Options
           if(globalUiState.panelState.optionsButtonPressed){
               ctx->style.button.normal = nk_style_item_color(pressed_grey_button_color);
@@ -947,7 +951,11 @@ void render_ui(struct ui *ui, int width, int height) {
           nk_layout_space_push(ctx, nk_rect(centerPosition + ((buttonSize * 2) - 12), ((bounds.h - menuButtonHeight) - bottomPadding) - menuButtonFontSize, buttonSize, menuButtonFontSize));
           nk_label(ctx, "OPTIONS", NK_TEXT_ALIGN_LEFT);
           nk_layout_space_push(ctx, nk_rect(centerPosition + (buttonSize * 2), (bounds.h - menuButtonHeight) - bottomPadding, buttonSize * 0.5, menuButtonHeight ));
-          nk_button_color(ctx, grey_button_color);
+          if(globalUiState.panelState.optionsButtonPressed){
+              nk_button_color(ctx, pressed_grey_button_color);
+          } else {
+              nk_button_color(ctx, grey_button_color);
+          }
 
           ctx->style.button = cachedButtonStyle;
 
