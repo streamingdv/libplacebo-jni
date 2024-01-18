@@ -562,8 +562,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   }
   pl_frame_from_swapchain(&target_frame, &sw_frame);
 
-  if(ui != 0 && previousUiStateId != currentUiStateId) {
-      previousUiStateId = currentUiStateId;
+  if(ui != 0) {
       struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
       render_ui(ui_instance, width, height);
   }
@@ -832,16 +831,43 @@ bool ui_draw(struct ui *ui, const struct pl_swapchain_frame *frame)
   return true;
 }
 
-struct nk_context *ui_get_context(struct ui *ui)
-{
-  return &ui->nk;
-}
+/*
+struct PanelState {
+    bool showMicButton;
+    bool micButtonPressed;
+    bool shareButtonPressed;
+    bool psButtonPressed;
+    bool optionsButtonPressed;
+    bool fullscreenButtonPressed;
+    bool closeButtonPressed;
+};
+
+struct PopupState {
+    const char* headerText;
+    const char* popupText;
+    bool showCheckbox;
+    const char* popupButtonLeft;
+    const char* popupButtonRight;
+    bool checkboxPressed;
+    bool leftPressed;
+    bool rightPressed;
+};
+
+struct UiState {
+    bool showTouchpad;
+    bool showPanel;
+    bool showPopup;
+    bool touchpadPressed;
+    bool panelPressed;
+    PanelState panelState;
+    PopupState popupState;
+};*/
 
 void render_ui(struct ui *ui, int width, int height) {
-  if (!ui)
+  if (!ui || (!globalUiState.showTouchpad && !globalUiState.showPanel && !globalUiState.showPopup))
       return;
 
-  struct nk_context *ctx = ui_get_context(ui);
+  struct nk_context *ctx = &ui->nk;
   const struct nk_rect bounds = nk_rect(0, 0, width, height);
 
   nk_style_push_style_item(ctx, &ctx->style.window.fixed_background, nk_style_item_hide());
@@ -856,195 +882,202 @@ void render_ui(struct ui *ui, int width, int height) {
       // cache button style
       struct nk_style_button cachedButtonStyle = ctx->style.button;
 
-      // **** PS button ****
+      if(globalUiState.showPanel) {
+          // **** PS button ****
 
-      ctx->style.button.normal = nk_style_item_color(dark_grey_button_color);
-      ctx->style.button.hover = nk_style_item_color(dark_grey_button_color);
-      ctx->style.button.active = nk_style_item_color(dark_grey_button_color);
-      ctx->style.button.border_color = white_button_color;
-      ctx->style.button.text_background = white_button_color;
-      ctx->style.button.text_normal = white_button_color;
-      ctx->style.button.text_hover = white_button_color;
-      ctx->style.button.text_active = white_button_color;
-      ctx->style.button.rounding = 8;
-      nk_layout_space_push(ctx, nk_rect(centerPosition, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
-      if (nk_button_label(ctx, "PS")) {
-          // event handling (ignored here)
+          ctx->style.button.normal = nk_style_item_color(dark_grey_button_color);
+          ctx->style.button.hover = nk_style_item_color(dark_grey_button_color);
+          ctx->style.button.active = nk_style_item_color(dark_grey_button_color);
+          ctx->style.button.border_color = white_button_color;
+          ctx->style.button.text_background = white_button_color;
+          ctx->style.button.text_normal = white_button_color;
+          ctx->style.button.text_hover = white_button_color;
+          ctx->style.button.text_active = white_button_color;
+          ctx->style.button.rounding = 8;
+          nk_layout_space_push(ctx, nk_rect(centerPosition, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
+          if (nk_button_label(ctx, "PS")) {
+              // event handling (ignored here)
+          }
+
+          ctx->style.button = cachedButtonStyle;
+
+          // **** Menu buttons ****
+
+          /*** change font to default ***/
+          nk_style_set_font(ctx, &ui->default_small_font->handle);
+          /*** change font to default ***/
+
+          ctx->style.button.normal = nk_style_item_color(grey_button_color);
+          ctx->style.button.hover = nk_style_item_color(grey_button_color);
+          ctx->style.button.active = nk_style_item_color(grey_button_color);
+          ctx->style.button.border_color = black_button_color;
+          ctx->style.button.text_background = black_button_color;
+          ctx->style.button.text_normal = black_button_color;
+          ctx->style.button.text_hover = black_button_color;
+          ctx->style.button.text_active = black_button_color;
+          ctx->style.button.rounding = 10;
+          // -> Share
+          nk_layout_space_push(ctx, nk_rect(centerPosition - ((buttonSize * 1.5) + 7), ((bounds.h - menuButtonHeight) - bottomPadding) - menuButtonFontSize, buttonSize, menuButtonFontSize));
+          nk_label(ctx, "SHARE", NK_TEXT_ALIGN_LEFT);
+          nk_layout_space_push(ctx, nk_rect(centerPosition - (buttonSize * 1.5), (bounds.h - menuButtonHeight) - bottomPadding, buttonSize * 0.5, menuButtonHeight));
+          nk_button_color(ctx, grey_button_color);
+          // -> Options
+          nk_layout_space_push(ctx, nk_rect(centerPosition + ((buttonSize * 2) - 12), ((bounds.h - menuButtonHeight) - bottomPadding) - menuButtonFontSize, buttonSize, menuButtonFontSize));
+          nk_label(ctx, "OPTIONS", NK_TEXT_ALIGN_LEFT);
+          nk_layout_space_push(ctx, nk_rect(centerPosition + (buttonSize * 2), (bounds.h - menuButtonHeight) - bottomPadding, buttonSize * 0.5, menuButtonHeight ));
+          nk_button_color(ctx, grey_button_color);
+
+          ctx->style.button = cachedButtonStyle;
+
+          // **** Mic button
+
+          /*** change font to icon ***/
+          nk_style_set_font(ctx, &ui->icon_font->handle);
+          /*** change font to icon ***/
+
+          if(globalUiState.panelState.showMicButton) {
+              ctx->style.button.normal = nk_style_item_color(white_button_color_alpha);
+              ctx->style.button.hover = nk_style_item_color(white_button_color_alpha);
+              ctx->style.button.active = nk_style_item_color(white_button_color_alpha);
+              ctx->style.button.border_color = black_button_color;
+              ctx->style.button.text_background = black_button_color;
+              ctx->style.button.text_normal = black_button_color;
+              ctx->style.button.text_hover = black_button_color;
+              ctx->style.button.text_active = black_button_color;
+              ctx->style.button.rounding = 8;
+              ctx->style.button.border = 0;
+
+              nk_layout_space_push(ctx, nk_rect(edgePadding, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
+              if (nk_button_label(ctx, "\uf131")) {
+                  // event handling (ignored here)
+              }
+
+              ctx->style.button = cachedButtonStyle;
+          }
+
+          // **** Fullscreen
+
+          ctx->style.button.normal = nk_style_item_color(white_button_color_alpha);
+          ctx->style.button.hover = nk_style_item_color(white_button_color_alpha);
+          ctx->style.button.active = nk_style_item_color(white_button_color_alpha);
+          ctx->style.button.border_color = black_button_color;
+          ctx->style.button.text_background = black_button_color;
+          ctx->style.button.text_normal = black_button_color;
+          ctx->style.button.text_hover = black_button_color;
+          ctx->style.button.text_active = black_button_color;
+          ctx->style.button.rounding = 8;
+          ctx->style.button.border = 0;
+          nk_layout_space_push(ctx, nk_rect((bounds.w - (buttonSize * 2)) - (edgePadding * 1.5), (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
+          if (nk_button_label(ctx, "\ue802")) {
+              // event handling (ignored here)
+          }
+
+          ctx->style.button = cachedButtonStyle;
+
+          // **** Close
+
+          ctx->style.button.normal = nk_style_item_color(white_button_color_alpha);
+          ctx->style.button.hover = nk_style_item_color(white_button_color_alpha);
+          ctx->style.button.active = nk_style_item_color(white_button_color_alpha);
+          ctx->style.button.border_color = black_button_color;
+          ctx->style.button.text_background = black_button_color;
+          ctx->style.button.text_normal = black_button_color;
+          ctx->style.button.text_hover = black_button_color;
+          ctx->style.button.text_active = black_button_color;
+          ctx->style.button.rounding = 8;
+          ctx->style.button.border = 0;
+          nk_layout_space_push(ctx, nk_rect((bounds.w - buttonSize) - edgePadding, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
+          if (nk_button_label(ctx, "\ue803")) {
+              // event handling (ignored here)
+          }
+
+          ctx->style.button = cachedButtonStyle;
+
+          /*** change font to default ***/
+          nk_style_set_font(ctx, &ui->default_font->handle);
+          /*** change font to default ***/
       }
-
-      ctx->style.button = cachedButtonStyle;
-
-      // **** Menu buttons ****
-
-      /*** change font to default ***/
-      nk_style_set_font(ctx, &ui->default_small_font->handle);
-      /*** change font to default ***/
-
-      ctx->style.button.normal = nk_style_item_color(grey_button_color);
-      ctx->style.button.hover = nk_style_item_color(grey_button_color);
-      ctx->style.button.active = nk_style_item_color(grey_button_color);
-      ctx->style.button.border_color = black_button_color;
-      ctx->style.button.text_background = black_button_color;
-      ctx->style.button.text_normal = black_button_color;
-      ctx->style.button.text_hover = black_button_color;
-      ctx->style.button.text_active = black_button_color;
-      ctx->style.button.rounding = 10;
-      // -> Share
-      nk_layout_space_push(ctx, nk_rect(centerPosition - ((buttonSize * 1.5) + 7), ((bounds.h - menuButtonHeight) - bottomPadding) - menuButtonFontSize, buttonSize, menuButtonFontSize));
-      nk_label(ctx, "SHARE", NK_TEXT_ALIGN_LEFT);
-      nk_layout_space_push(ctx, nk_rect(centerPosition - (buttonSize * 1.5), (bounds.h - menuButtonHeight) - bottomPadding, buttonSize * 0.5, menuButtonHeight));
-      nk_button_color(ctx, grey_button_color);
-      // -> Options
-      nk_layout_space_push(ctx, nk_rect(centerPosition + ((buttonSize * 2) - 12), ((bounds.h - menuButtonHeight) - bottomPadding) - menuButtonFontSize, buttonSize, menuButtonFontSize));
-      nk_label(ctx, "OPTIONS", NK_TEXT_ALIGN_LEFT);
-      nk_layout_space_push(ctx, nk_rect(centerPosition + (buttonSize * 2), (bounds.h - menuButtonHeight) - bottomPadding, buttonSize * 0.5, menuButtonHeight ));
-      nk_button_color(ctx, grey_button_color);
-
-      ctx->style.button = cachedButtonStyle;
-
-      // **** Mic button
-
-      /*** change font to icon ***/
-      nk_style_set_font(ctx, &ui->icon_font->handle);
-      /*** change font to icon ***/
-
-      ctx->style.button.normal = nk_style_item_color(white_button_color_alpha);
-      ctx->style.button.hover = nk_style_item_color(white_button_color_alpha);
-      ctx->style.button.active = nk_style_item_color(white_button_color_alpha);
-      ctx->style.button.border_color = black_button_color;
-      ctx->style.button.text_background = black_button_color;
-      ctx->style.button.text_normal = black_button_color;
-      ctx->style.button.text_hover = black_button_color;
-      ctx->style.button.text_active = black_button_color;
-      ctx->style.button.rounding = 8;
-      ctx->style.button.border = 0;
-
-      nk_layout_space_push(ctx, nk_rect(edgePadding, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
-      if (nk_button_label(ctx, "\uf131")) {
-          // event handling (ignored here)
-      }
-
-      ctx->style.button = cachedButtonStyle;
-
-      // **** Fullscreen
-
-      ctx->style.button.normal = nk_style_item_color(white_button_color_alpha);
-      ctx->style.button.hover = nk_style_item_color(white_button_color_alpha);
-      ctx->style.button.active = nk_style_item_color(white_button_color_alpha);
-      ctx->style.button.border_color = black_button_color;
-      ctx->style.button.text_background = black_button_color;
-      ctx->style.button.text_normal = black_button_color;
-      ctx->style.button.text_hover = black_button_color;
-      ctx->style.button.text_active = black_button_color;
-      ctx->style.button.rounding = 8;
-      ctx->style.button.border = 0;
-      nk_layout_space_push(ctx, nk_rect((bounds.w - (buttonSize * 2)) - (edgePadding * 1.5), (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
-      if (nk_button_label(ctx, "\ue802")) {
-          // event handling (ignored here)
-      }
-
-      ctx->style.button = cachedButtonStyle;
-
-       // **** Close
-
-       ctx->style.button.normal = nk_style_item_color(white_button_color_alpha);
-       ctx->style.button.hover = nk_style_item_color(white_button_color_alpha);
-       ctx->style.button.active = nk_style_item_color(white_button_color_alpha);
-       ctx->style.button.border_color = black_button_color;
-       ctx->style.button.text_background = black_button_color;
-       ctx->style.button.text_normal = black_button_color;
-       ctx->style.button.text_hover = black_button_color;
-       ctx->style.button.text_active = black_button_color;
-       ctx->style.button.rounding = 8;
-       ctx->style.button.border = 0;
-       nk_layout_space_push(ctx, nk_rect((bounds.w - buttonSize) - edgePadding, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
-       if (nk_button_label(ctx, "\ue803")) {
-           // event handling (ignored here)
-       }
-
-       ctx->style.button = cachedButtonStyle;
-
-      /*** change font to default ***/
-      nk_style_set_font(ctx, &ui->default_font->handle);
-      /*** change font to default ***/
 
       // **** Touchpad
 
-      ctx->style.button.normal = nk_style_item_color(touchpad_white_background_color_alpha);
-      ctx->style.button.hover = nk_style_item_color(touchpad_white_background_color_alpha);
-      ctx->style.button.active = nk_style_item_color(touchpad_white_background_color_alpha);
-      ctx->style.button.border_color = touchpad_white_border_color_alpha;
-      ctx->style.button.text_background = touchpad_white_border_color_alpha;
-      ctx->style.button.text_normal = touchpad_white_border_color_alpha;
-      ctx->style.button.text_hover = touchpad_white_border_color_alpha;
-      ctx->style.button.text_active = touchpad_white_border_color_alpha;
-      ctx->style.button.rounding = 8;
-      ctx->style.button.border = 1;
-      ctx->style.button.padding = nk_vec2(touchpadPadding, touchpadPadding);
-      nk_layout_space_push(ctx, nk_rect(0, 0, bounds.w - ((touchpadPadding * 0.6)), bounds.h - ((touchpadPadding * 2) + buttonSize)));
-      if (nk_button_label(ctx, "")) {
-          // event handling (ignored here)
-      }
+      if(globalUiState.touchpadPressed) {
+          ctx->style.button.normal = nk_style_item_color(touchpad_white_background_color_alpha);
+          ctx->style.button.hover = nk_style_item_color(touchpad_white_background_color_alpha);
+          ctx->style.button.active = nk_style_item_color(touchpad_white_background_color_alpha);
+          ctx->style.button.border_color = touchpad_white_border_color_alpha;
+          ctx->style.button.text_background = touchpad_white_border_color_alpha;
+          ctx->style.button.text_normal = touchpad_white_border_color_alpha;
+          ctx->style.button.text_hover = touchpad_white_border_color_alpha;
+          ctx->style.button.text_active = touchpad_white_border_color_alpha;
+          ctx->style.button.rounding = 8;
+          ctx->style.button.border = 1;
+          ctx->style.button.padding = nk_vec2(touchpadPadding, touchpadPadding);
+          nk_layout_space_push(ctx, nk_rect(0, 0, bounds.w - ((touchpadPadding * 0.6)), bounds.h - ((touchpadPadding * 2) + buttonSize)));
+          if (nk_button_label(ctx, "")) {
+              // event handling (ignored here)
+          }
 
-      ctx->style.button = cachedButtonStyle;
+          ctx->style.button = cachedButtonStyle;
+      }
 
       // **** Fullscreen popup
+      if(globalUiState.showPopup) {
+          struct nk_rect dialog_rect = nk_rect((bounds.w / 2) - (dialogWidth / 2), (bounds.h / 2) - (dialogHeight / 2), dialogWidth, dialogHeight); // Background rect
+          nk_fill_rect(out, dialog_rect, 8.0, dialog_background);
 
-      struct nk_rect dialog_rect = nk_rect((bounds.w / 2) - (dialogWidth / 2), (bounds.h / 2) - (dialogHeight / 2), dialogWidth, dialogHeight); // Background rect
-      nk_fill_rect(out, dialog_rect, 8.0, dialog_background);
+          /*** change font to bold default ***/
+          nk_style_set_font(ctx, &ui->default_bold_font->handle);
+          /*** change font to bold default ***/
 
-      /*** change font to bold default ***/
-      nk_style_set_font(ctx, &ui->default_bold_font->handle);
-      /*** change font to bold default ***/
+          nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogPaddingRight, dialog_rect.y + dialogHeadingPaddingTop, dialogWidth - (dialogPaddingRight * 2.5), dialogHeadingHeight)); // Heading
+          nk_label_colored(ctx, "This is an example heading", NK_TEXT_LEFT, dialog_blue);
 
-      nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogPaddingRight, dialog_rect.y + dialogHeadingPaddingTop, dialogWidth - (dialogPaddingRight * 2.5), dialogHeadingHeight)); // Heading
-      nk_label_colored(ctx, "This is an example heading", NK_TEXT_LEFT, dialog_blue);
+          /*** change font to default ***/
+          nk_style_set_font(ctx, &ui->default_font->handle);
+          /*** change font to default ***/
 
-      /*** change font to default ***/
-      nk_style_set_font(ctx, &ui->default_font->handle);
-      /*** change font to default ***/
+          nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogPaddingRight, dialog_rect.y + dialogTextContentPaddingTop, dialogWidth - (dialogPaddingRight * 2.5), dialogHeight - dialogTextContentPaddingTop)); // Text
+          nk_label_colored_wrap(ctx, "This is a very long line to hopefully get this text to be wrapped into multiple lines to show line wrapping. In case of an error I hope this would work fine and without any issues!", white_button_color);
 
-      nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogPaddingRight, dialog_rect.y + dialogTextContentPaddingTop, dialogWidth - (dialogPaddingRight * 2.5), dialogHeight - dialogTextContentPaddingTop)); // Text
-      nk_label_colored_wrap(ctx, "This is a very long line to hopefully get this text to be wrapped into multiple lines to show line wrapping. In case of an error I hope this would work fine and without any issues!", white_button_color);
+          // either text or checkbox
+          //nk_bool check = true; // not checked
+          //nk_checkbox_label(ctx, "Put the console in rest mode", &check);
 
-      // either text or checkbox
-      //nk_bool check = true; // not checked
-      //nk_checkbox_label(ctx, "Put the console in rest mode", &check);
+          float buttonContainerFullWidth = (dialogButtonWidth * 2) + 14;
+          float buttonContainerX = ((dialog_rect.x + dialogWidth) - buttonContainerFullWidth) - 40; // - 40 padding
+          nk_layout_space_push(ctx, nk_rect(buttonContainerX, dialog_rect.y + (dialogHeight * 0.80), dialogButtonWidth, dialogButtonHeight)); // Button left
 
-      float buttonContainerFullWidth = (dialogButtonWidth * 2) + 14;
-      float buttonContainerX = ((dialog_rect.x + dialogWidth) - buttonContainerFullWidth) - 40; // - 40 padding
-      nk_layout_space_push(ctx, nk_rect(buttonContainerX, dialog_rect.y + (dialogHeight * 0.80), dialogButtonWidth, dialogButtonHeight)); // Button left
+          ctx->style.button.normal = nk_style_item_color(nk_rgba(0,0,0,0));
+          ctx->style.button.hover = nk_style_item_color(nk_rgb(255,165,0));
+          ctx->style.button.active = nk_style_item_color(nk_rgba(0,0,0,0));
+          ctx->style.button.border_color = dialog_blue;
+          ctx->style.button.text_background = dialog_blue;
+          ctx->style.button.text_normal = dialog_blue;
+          ctx->style.button.text_hover = nk_rgb(28,48,62);
+          ctx->style.button.text_active = dialog_blue;
+          ctx->style.button.rounding = 15;
+          ctx->style.button.border = 4;
 
-      ctx->style.button.normal = nk_style_item_color(nk_rgba(0,0,0,0));
-      ctx->style.button.hover = nk_style_item_color(nk_rgb(255,165,0));
-      ctx->style.button.active = nk_style_item_color(nk_rgba(0,0,0,0));
-      ctx->style.button.border_color = dialog_blue;
-      ctx->style.button.text_background = dialog_blue;
-      ctx->style.button.text_normal = dialog_blue;
-      ctx->style.button.text_hover = nk_rgb(28,48,62);
-      ctx->style.button.text_active = dialog_blue;
-      ctx->style.button.rounding = 15;
-      ctx->style.button.border = 4;
+          /*** change font to bold default ***/
+          nk_style_set_font(ctx, &ui->default_bold_font->handle);
+          /*** change font to bold default ***/
 
-      /*** change font to bold default ***/
-      nk_style_set_font(ctx, &ui->default_bold_font->handle);
-      /*** change font to bold default ***/
+          if (nk_button_label(ctx, "Cancel")) {
+              // event handling (ignored here)
+          }
 
-      if (nk_button_label(ctx, "Cancel")) {
-          // event handling (ignored here)
+          nk_layout_space_push(ctx, nk_rect(buttonContainerX + (dialogButtonWidth + 14), dialog_rect.y + (dialogHeight * 0.80), dialogButtonWidth, dialogButtonHeight)); // Button right
+
+          if (nk_button_label(ctx, "Yes")) {
+              // event handling (ignored here)
+          }
+
+          /*** change font to default ***/
+          nk_style_set_font(ctx, &ui->default_font->handle);
+          /*** change font to default ***/
+
+          ctx->style.button = cachedButtonStyle;
       }
-
-      nk_layout_space_push(ctx, nk_rect(buttonContainerX + (dialogButtonWidth + 14), dialog_rect.y + (dialogHeight * 0.80), dialogButtonWidth, dialogButtonHeight)); // Button right
-
-      if (nk_button_label(ctx, "Yes")) {
-          // event handling (ignored here)
-      }
-
-      /*** change font to default ***/
-      nk_style_set_font(ctx, &ui->default_font->handle);
-      /*** change font to default ***/
-
-      ctx->style.button = cachedButtonStyle;
 
       // **** END
 
@@ -1100,8 +1133,6 @@ Java_com_grill_placebo_PlaceboManager_nkUpdateUIState(JNIEnv *env, jobject obj,
   globalUiState.popupState.checkboxPressed = popupCheckboxPressed;
   globalUiState.popupState.leftPressed = popupLeftPressed;
   globalUiState.popupState.rightPressed = popupRightPressed;
-
-  currentUiStateId++;
 
   env->ReleaseStringUTFChars(popupHeaderText, globalUiState.popupState.headerText);
   env->ReleaseStringUTFChars(popupPopupText, globalUiState.popupState.popupText);
