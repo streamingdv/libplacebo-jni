@@ -977,10 +977,14 @@ void render_ui(struct ui *ui, int width, int height) {
               ctx->style.button.border = 0;
 
               nk_layout_space_push(ctx, nk_rect(edgePadding, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
-              if(globalUiState.panelState.) {
-              }
-              if (nk_button_label(ctx, "\uf131")) {
-                  // event handling (ignored here)
+              if(globalUiState.panelState.micButtonActive) {
+                  if (nk_button_label(ctx, "\uf130")) {
+                      // event handling (ignored here)
+                  }
+              } else {
+                  if (nk_button_label(ctx, "\uf131")) {
+                      // event handling (ignored here)
+                  }
               }
 
               ctx->style.button = cachedButtonStyle;
@@ -1005,8 +1009,14 @@ void render_ui(struct ui *ui, int width, int height) {
           ctx->style.button.rounding = 8;
           ctx->style.button.border = 0;
           nk_layout_space_push(ctx, nk_rect((bounds.w - (buttonSize * 2)) - (edgePadding * 1.5), (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
-          if (nk_button_label(ctx, "\ue802")) {
-              // event handling (ignored here)
+          if(globalUiState.panelState.fullscreenButtonActive) {
+              if (nk_button_label(ctx, "\ue804")) {
+                  // event handling (ignored here)
+              }
+          } else {
+              if (nk_button_label(ctx, "\ue802")) {
+                  // event handling (ignored here)
+              }
           }
 
           ctx->style.button = cachedButtonStyle;
