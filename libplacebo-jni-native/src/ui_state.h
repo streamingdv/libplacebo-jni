@@ -1,8 +1,3 @@
-// used to indicate the current ui state
-UiState globalUiState;
-unsigned long previousUiStateId = 0;
-unsigned long currentUiStateId = 0;
-
 struct PanelState {
     bool showMicButton;
     bool micButtonPressed;
@@ -33,3 +28,8 @@ struct UiState {
     PanelState panelState;
     PopupState popupState;
 };
+
+// used to indicate the current ui state
+UiState globalUiState;
+unsigned long previousUiStateId = 0;
+unsigned long currentUiStateId = 0;
