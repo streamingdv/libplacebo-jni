@@ -885,18 +885,21 @@ void render_ui(struct ui *ui, int width, int height) {
       if(globalUiState.showPanel) {
           // **** PS button ****
 
-          ctx->style.button.normal = nk_style_item_color(dark_grey_button_color);
-          ctx->style.button.hover = nk_style_item_color(dark_grey_button_color);
-          ctx->style.button.active = nk_style_item_color(dark_grey_button_color);
+          if(globalUiState.panelState.psButtonPressed){
+              ctx->style.button.normal = nk_style_item_color(pressed_dark_grey_button_color);
+              ctx->style.button.hover = nk_style_item_color(pressed_dark_grey_button_color);
+              ctx->style.button.active = nk_style_item_color(pressed_dark_grey_button_color);
+          } else {
+              ctx->style.button.normal = nk_style_item_color(dark_grey_button_color);
+              ctx->style.button.hover = nk_style_item_color(dark_grey_button_color);
+              ctx->style.button.active = nk_style_item_color(dark_grey_button_color);
+          }
           ctx->style.button.border_color = white_button_color;
           ctx->style.button.text_background = white_button_color;
           ctx->style.button.text_normal = white_button_color;
           ctx->style.button.text_hover = white_button_color;
           ctx->style.button.text_active = white_button_color;
           ctx->style.button.rounding = 8;
-          if(globalUiState.panelState.psButtonPressed){
-              ctx->style.button.padding = nk_vec2(touchpadPadding, touchpadPadding);
-          }
 
           nk_layout_space_push(ctx, nk_rect(centerPosition, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
           if (nk_button_label(ctx, "PS")) {
@@ -911,9 +914,15 @@ void render_ui(struct ui *ui, int width, int height) {
           nk_style_set_font(ctx, &ui->default_small_font->handle);
           /*** change font to default ***/
 
-          ctx->style.button.normal = nk_style_item_color(grey_button_color);
-          ctx->style.button.hover = nk_style_item_color(grey_button_color);
-          ctx->style.button.active = nk_style_item_color(grey_button_color);
+          if(globalUiState.panelState.shareButtonPressed){
+              ctx->style.button.normal = nk_style_item_color(pressed_grey_button_color);
+              ctx->style.button.hover = nk_style_item_color(pressed_grey_button_color);
+              ctx->style.button.active = nk_style_item_color(pressed_grey_button_color);
+          } else {
+              ctx->style.button.normal = nk_style_item_color(grey_button_color);
+              ctx->style.button.hover = nk_style_item_color(grey_button_color);
+              ctx->style.button.active = nk_style_item_color(grey_button_color);
+          }
           ctx->style.button.border_color = black_button_color;
           ctx->style.button.text_background = black_button_color;
           ctx->style.button.text_normal = black_button_color;
@@ -926,6 +935,15 @@ void render_ui(struct ui *ui, int width, int height) {
           nk_layout_space_push(ctx, nk_rect(centerPosition - (buttonSize * 1.5), (bounds.h - menuButtonHeight) - bottomPadding, buttonSize * 0.5, menuButtonHeight));
           nk_button_color(ctx, grey_button_color);
           // -> Options
+          if(globalUiState.panelState.optionsButtonPressed){
+              ctx->style.button.normal = nk_style_item_color(pressed_grey_button_color);
+              ctx->style.button.hover = nk_style_item_color(pressed_grey_button_color);
+              ctx->style.button.active = nk_style_item_color(pressed_grey_button_color);
+          } else {
+              ctx->style.button.normal = nk_style_item_color(grey_button_color);
+              ctx->style.button.hover = nk_style_item_color(grey_button_color);
+              ctx->style.button.active = nk_style_item_color(grey_button_color);
+          }
           nk_layout_space_push(ctx, nk_rect(centerPosition + ((buttonSize * 2) - 12), ((bounds.h - menuButtonHeight) - bottomPadding) - menuButtonFontSize, buttonSize, menuButtonFontSize));
           nk_label(ctx, "OPTIONS", NK_TEXT_ALIGN_LEFT);
           nk_layout_space_push(ctx, nk_rect(centerPosition + (buttonSize * 2), (bounds.h - menuButtonHeight) - bottomPadding, buttonSize * 0.5, menuButtonHeight ));
@@ -940,9 +958,16 @@ void render_ui(struct ui *ui, int width, int height) {
           /*** change font to icon ***/
 
           if(globalUiState.panelState.showMicButton) {
-              ctx->style.button.normal = nk_style_item_color(white_button_color_alpha);
-              ctx->style.button.hover = nk_style_item_color(white_button_color_alpha);
-              ctx->style.button.active = nk_style_item_color(white_button_color_alpha);
+
+              if(globalUiState.panelState.micButtonPressed){
+                  ctx->style.button.normal = nk_style_item_color(pressed_white_button_color_alpha);
+                  ctx->style.button.hover = nk_style_item_color(pressed_white_button_color_alpha);
+                  ctx->style.button.active = nk_style_item_color(pressed_white_button_color_alpha);
+              } else {
+                  ctx->style.button.normal = nk_style_item_color(white_button_color_alpha);
+                  ctx->style.button.hover = nk_style_item_color(white_button_color_alpha);
+                  ctx->style.button.active = nk_style_item_color(white_button_color_alpha);
+              }
               ctx->style.button.border_color = black_button_color;
               ctx->style.button.text_background = black_button_color;
               ctx->style.button.text_normal = black_button_color;
@@ -961,9 +986,15 @@ void render_ui(struct ui *ui, int width, int height) {
 
           // **** Fullscreen
 
-          ctx->style.button.normal = nk_style_item_color(white_button_color_alpha);
-          ctx->style.button.hover = nk_style_item_color(white_button_color_alpha);
-          ctx->style.button.active = nk_style_item_color(white_button_color_alpha);
+          if(globalUiState.panelState.fullscreenButtonPressed){
+              ctx->style.button.normal = nk_style_item_color(pressed_white_button_color_alpha);
+              ctx->style.button.hover = nk_style_item_color(pressed_white_button_color_alpha);
+              ctx->style.button.active = nk_style_item_color(pressed_white_button_color_alpha);
+          } else {
+              ctx->style.button.normal = nk_style_item_color(white_button_color_alpha);
+              ctx->style.button.hover = nk_style_item_color(white_button_color_alpha);
+              ctx->style.button.active = nk_style_item_color(white_button_color_alpha);
+          }
           ctx->style.button.border_color = black_button_color;
           ctx->style.button.text_background = black_button_color;
           ctx->style.button.text_normal = black_button_color;
@@ -980,9 +1011,15 @@ void render_ui(struct ui *ui, int width, int height) {
 
           // **** Close
 
-          ctx->style.button.normal = nk_style_item_color(white_button_color_alpha);
-          ctx->style.button.hover = nk_style_item_color(white_button_color_alpha);
-          ctx->style.button.active = nk_style_item_color(white_button_color_alpha);
+          if(globalUiState.panelState.closeButtonPressed){
+              ctx->style.button.normal = nk_style_item_color(pressed_white_button_color_alpha);
+              ctx->style.button.hover = nk_style_item_color(pressed_white_button_color_alpha);
+              ctx->style.button.active = nk_style_item_color(pressed_white_button_color_alpha);
+          } else {
+              ctx->style.button.normal = nk_style_item_color(white_button_color_alpha);
+              ctx->style.button.hover = nk_style_item_color(white_button_color_alpha);
+              ctx->style.button.active = nk_style_item_color(white_button_color_alpha);
+          }
           ctx->style.button.border_color = black_button_color;
           ctx->style.button.text_background = black_button_color;
           ctx->style.button.text_normal = black_button_color;
