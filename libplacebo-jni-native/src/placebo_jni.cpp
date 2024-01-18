@@ -977,6 +977,8 @@ void render_ui(struct ui *ui, int width, int height) {
               ctx->style.button.border = 0;
 
               nk_layout_space_push(ctx, nk_rect(edgePadding, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
+              if(globalUiState.panelState.) {
+              }
               if (nk_button_label(ctx, "\uf131")) {
                   // event handling (ignored here)
               }
@@ -1142,15 +1144,13 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_nkCreateUI
 extern "C" JNIEXPORT void JNICALL
 Java_com_grill_placebo_PlaceboManager_nkUpdateUIState(JNIEnv *env, jobject obj,
   jboolean showTouchpad, jboolean showPanel, jboolean showPopup,
-  jboolean touchpadPressed, jboolean panelPressed,
-  jboolean panelShowMicButton, jboolean panelMicButtonPressed,
-  jboolean panelShareButtonPressed, jboolean panelPsButtonPressed,
-  jboolean panelOptionsButtonPressed, jboolean panelFullscreenButtonPressed,
-  jboolean panelCloseButtonPressed,
-  jstring popupHeaderText, jstring popupPopupText,
-  jboolean popupShowCheckbox, jstring popupButtonLeft,
-  jstring popupButtonRight, jboolean popupCheckboxPressed,
-  jboolean popupLeftPressed, jboolean popupRightPressed) {
+  jboolean touchpadPressed, jboolean panelPressed, jboolean panelShowMicButton,
+  jboolean panelMicButtonPressed, jboolean panelMicButtonActive, jboolean panelShareButtonPressed,
+  jboolean panelPsButtonPressed, jboolean panelOptionsButtonPressed, jboolean panelFullscreenButtonPressed,
+  jboolean panelFullscreenButtonActive, jboolean panelCloseButtonPressed, jstring popupHeaderText, jstring popupPopupText,
+  jboolean popupShowCheckbox, jstring popupButtonLeft, jstring popupButtonRight,
+  jboolean popupCheckboxPressed, jboolean popupCheckboxFocused, jboolean popupLeftButtonPressed,
+  jboolean popupLeftButtonFocused, jboolean popupRightButtonPressed, jboolean popupRightButtonFocused ) {
 
   globalUiState.showTouchpad = showTouchpad;
   globalUiState.showPanel = showPanel;
@@ -1160,25 +1160,36 @@ Java_com_grill_placebo_PlaceboManager_nkUpdateUIState(JNIEnv *env, jobject obj,
 
   globalUiState.panelState.showMicButton = panelShowMicButton;
   globalUiState.panelState.micButtonPressed = panelMicButtonPressed;
+  globalUiState.panelState.micButtonActive = panelMicButtonActive;
   globalUiState.panelState.shareButtonPressed = panelShareButtonPressed;
   globalUiState.panelState.psButtonPressed = panelPsButtonPressed;
   globalUiState.panelState.optionsButtonPressed = panelOptionsButtonPressed;
   globalUiState.panelState.fullscreenButtonPressed = panelFullscreenButtonPressed;
+  globalUiState.panelState.fullscreenButtonActive = panelFullscreenButtonActive;
   globalUiState.panelState.closeButtonPressed = panelCloseButtonPressed;
 
-  globalUiState.popupState.headerText = env->GetStringUTFChars(popupHeaderText, nullptr);
-  globalUiState.popupState.popupText = env->GetStringUTFChars(popupPopupText, nullptr);
-  globalUiState.popupState.showCheckbox = popupShowCheckbox;
-  globalUiState.popupState.popupButtonLeft = env->GetStringUTFChars(popupButtonLeft, nullptr);
-  globalUiState.popupState.popupButtonRight = env->GetStringUTFChars(popupButtonRight, nullptr);
-  globalUiState.popupState.checkboxPressed = popupCheckboxPressed;
-  globalUiState.popupState.leftPressed = popupLeftPressed;
-  globalUiState.popupState.rightPressed = popupRightPressed;
+  const char* headerText = popupHeaderText ? env->GetStringUTFChars(popupHeaderText, nullptr) : "";
+  const char* popupText = popupPopupText ? env->GetStringUTFChars(popupPopupText, nullptr) : "";
+  const char* buttonLeft = popupButtonLeft ? env->GetStringUTFChars(popupButtonLeft, nullptr) : "";
+  const char* buttonRight = popupButtonRight ? env->GetStringUTFChars(popupButtonRight, nullptr) : "";
 
-  env->ReleaseStringUTFChars(popupHeaderText, globalUiState.popupState.headerText);
-  env->ReleaseStringUTFChars(popupPopupText, globalUiState.popupState.popupText);
-  env->ReleaseStringUTFChars(popupButtonLeft, globalUiState.popupState.popupButtonLeft);
-  env->ReleaseStringUTFChars(popupButtonRight, globalUiState.popupState.popupButtonRight);
+  globalUiState.popupState.headerText = headerText;
+  globalUiState.popupState.popupText = popupText;
+  globalUiState.popupState.popupButtonLeft = buttonLeft;
+  globalUiState.popupState.popupButtonRight = buttonRight;
+
+  globalUiState.popupState.showCheckbox = popupShowCheckbox;
+  globalUiState.popupState.checkboxPressed = popupCheckboxPressed;
+  globalUiState.popupState.checkboxFocused = popupCheckboxFocused;
+  globalUiState.popupState.leftButtonPressed = popupLeftButtonPressed;
+  globalUiState.popupState.leftButtonFocused = popupLeftButtonFocused;
+  globalUiState.popupState.rightButtonPressed = popupRightButtonPressed;
+  globalUiState.popupState.rightButtonFocused = popupRightButtonFocused;
+
+  if (popupHeaderText) env->ReleaseStringUTFChars(popupHeaderText, headerText);
+  if (popupPopupText) env->ReleaseStringUTFChars(popupPopupText, popupText);
+  if (popupButtonLeft) env->ReleaseStringUTFChars(popupButtonLeft, buttonLeft);
+  if (popupButtonRight) env->ReleaseStringUTFChars(popupButtonRight, buttonRight);
 }
 
 extern "C"

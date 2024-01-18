@@ -1,10 +1,12 @@
 struct PanelState {
     bool showMicButton;
     bool micButtonPressed;
+    bool micButtonActive;
     bool shareButtonPressed;
     bool psButtonPressed;
     bool optionsButtonPressed;
     bool fullscreenButtonPressed;
+    bool fullscreenButtonActive;
     bool closeButtonPressed;
 };
 
@@ -15,8 +17,11 @@ struct PopupState {
     const char* popupButtonLeft;
     const char* popupButtonRight;
     bool checkboxPressed;
-    bool leftPressed;
-    bool rightPressed;
+    bool checkboxFocused;
+    bool leftButtonPressed;
+    bool leftButtonFocused;
+    bool rightButtonPressed;
+    bool rightButtonFocused;
 };
 
 struct UiState {

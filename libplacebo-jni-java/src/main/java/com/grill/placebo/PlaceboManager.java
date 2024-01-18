@@ -271,15 +271,14 @@ public class PlaceboManager {
      */
     public native void nkUpdateUIState(
             boolean showTouchpad, boolean showPanel, boolean showPopup,
-            boolean touchpadPressed, boolean panelPressed,
-            boolean panelShowMicButton, boolean panelMicButtonPressed,
-            boolean panelShareButtonPressed, boolean panelPsButtonPressed,
-            boolean panelOptionsButtonPressed, boolean panelFullscreenButtonPressed,
-            boolean panelCloseButtonPressed,
-            String popupHeaderText, String popupPopupText,
-            boolean popupShowCheckbox, String popupButtonLeft,
-            String popupButtonRight, boolean popupCheckboxPressed,
-            boolean popupLeftPressed, boolean popupRightPressed
+            boolean touchpadPressed, boolean panelPressed, boolean panelShowMicButton,
+            boolean panelMicButtonPressed, boolean panelMicButtonActive,  boolean panelShareButtonPressed,
+            boolean panelPsButtonPressed, boolean panelOptionsButtonPressed, boolean panelFullscreenButtonPressed,
+            boolean panelFullscreenButtonActive, boolean panelCloseButtonPressed, String popupHeaderText,
+            String popupPopupText, boolean popupShowCheckbox, String popupButtonLeft,
+            String popupButtonRight, boolean popupCheckboxPressed, boolean popupCheckboxFocused,
+            boolean popupLeftButtonPressed, boolean popupLeftButtonFocused, boolean popupRightButtonPressed,
+            boolean popupRightButtonFocused
     );
 
     /**
