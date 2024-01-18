@@ -831,38 +831,6 @@ bool ui_draw(struct ui *ui, const struct pl_swapchain_frame *frame)
   return true;
 }
 
-/*
-struct PanelState {
-    bool showMicButton;
-    bool micButtonPressed;
-    bool shareButtonPressed;
-    bool psButtonPressed;
-    bool optionsButtonPressed;
-    bool fullscreenButtonPressed;
-    bool closeButtonPressed;
-};
-
-struct PopupState {
-    const char* headerText;
-    const char* popupText;
-    bool showCheckbox;
-    const char* popupButtonLeft;
-    const char* popupButtonRight;
-    bool checkboxPressed;
-    bool leftPressed;
-    bool rightPressed;
-};
-
-struct UiState {
-    bool showTouchpad;
-    bool showPanel;
-    bool showPopup;
-    bool touchpadPressed;
-    bool panelPressed;
-    PanelState panelState;
-    PopupState popupState;
-};*/
-
 void render_ui(struct ui *ui, int width, int height) {
   if (!ui || (!globalUiState.showTouchpad && !globalUiState.showPanel && !globalUiState.showPopup))
       return;
