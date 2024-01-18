@@ -583,7 +583,7 @@
 @c @set config-vaapi no
 @c @set config-vdpau no
 @c @set config-videotoolbox no
-@c @set config-vulkan no
+@set config-vulkan yes
 @set config-v4l2-m2m yes
 @c @set config-ftrapv no
 @c @set config-gray no
@@ -632,7 +632,7 @@
 @c @set config-bsfs no
 @set config-decoders yes
 @c @set config-encoders no
-@c @set config-hwaccels no
+@set config-hwaccels yes
 @c @set config-parsers no
 @c @set config-indevs no
 @c @set config-outdevs no
@@ -1636,7 +1636,7 @@
 @c @set config-h264-vaapi-hwaccel no
 @c @set config-h264-vdpau-hwaccel no
 @c @set config-h264-videotoolbox-hwaccel no
-@c @set config-h264-vulkan-hwaccel no
+@set config-h264-vulkan-hwaccel yes
 @c @set config-hevc-d3d11va-hwaccel no
 @c @set config-hevc-d3d11va2-hwaccel no
 @c @set config-hevc-dxva2-hwaccel no
@@ -1644,7 +1644,7 @@
 @c @set config-hevc-vaapi-hwaccel no
 @c @set config-hevc-vdpau-hwaccel no
 @c @set config-hevc-videotoolbox-hwaccel no
-@c @set config-hevc-vulkan-hwaccel no
+@set config-hevc-vulkan-hwaccel yes
 @c @set config-mjpeg-nvdec-hwaccel no
 @c @set config-mjpeg-vaapi-hwaccel no
 @c @set config-mpeg1-nvdec-hwaccel no

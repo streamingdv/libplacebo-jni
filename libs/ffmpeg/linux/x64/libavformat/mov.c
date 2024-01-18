@@ -1222,8 +1222,12 @@ static int mov_read_ftyp(MOVContext *c, AVIOContext *pb, MOVAtom atom)
     int ret = ffio_read_size(pb, type, 4);
     if (ret < 0)
         return ret;
-    if (c->fc->nb_streams)
-        return AVERROR_INVALIDDATA;
+    if (c->fc->nb_streams) {
+        if (c->fc->strict_std_compliance >= FF_COMPLIANCE_STRICT)
+            return AVERROR_INVALIDDATA;
+        av_log(c->fc, AV_LOG_DEBUG, "Ignoring duplicate FTYP\n");
+        return 0;
+    }
 
     if (strcmp(type, "qt  "))
         c->isom = 1;
@@ -1468,6 +1472,7 @@ static int update_frag_index(MOVContext *c, int64_t offset)
         frag_stream_info[i].index_base = -1;
         frag_stream_info[i].index_entry = -1;
         frag_stream_info[i].encryption_index = NULL;
+        frag_stream_info[i].stsd_id = -1;
     }
 
     if (index < c->frag_index.nb_items)
@@ -2238,8 +2243,13 @@ static int mov_read_stco(MOVContext *c, AVIOContext *pb, MOVAtom atom)
         for (i = 0; i < entries && !pb->eof_reached; i++)
             sc->chunk_offsets[i] = avio_rb32(pb);
     else if (atom.type == MKTAG('c','o','6','4'))
-        for (i = 0; i < entries && !pb->eof_reached; i++)
+        for (i = 0; i < entries && !pb->eof_reached; i++) {
             sc->chunk_offsets[i] = avio_rb64(pb);
+            if (sc->chunk_offsets[i] < 0) {
+                av_log(c->fc, AV_LOG_WARNING, "Impossible chunk_offset\n");
+                sc->chunk_offsets[i] = 0;
+            }
+        }
     else
         return AVERROR_INVALIDDATA;
 
@@ -9006,7 +9016,7 @@ static int mov_read_packet(AVFormatContext *s, AVPacket *pkt)
         pkt->flags |= AV_PKT_FLAG_DISCARD;
     }
     if (sc->ctts_data && sc->ctts_index < sc->ctts_count) {
-        pkt->pts = pkt->dts + sc->dts_shift + sc->ctts_data[sc->ctts_index].duration;
+        pkt->pts = av_sat_add64(pkt->dts, av_sat_add64(sc->dts_shift, sc->ctts_data[sc->ctts_index].duration));
         /* update ctts context */
         sc->ctts_sample++;
         if (sc->ctts_index < sc->ctts_count &&
