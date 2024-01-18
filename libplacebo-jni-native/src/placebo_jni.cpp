@@ -894,6 +894,10 @@ void render_ui(struct ui *ui, int width, int height) {
           ctx->style.button.text_hover = white_button_color;
           ctx->style.button.text_active = white_button_color;
           ctx->style.button.rounding = 8;
+          if(globalUiState.panelState.psButtonPressed){
+              ctx->style.button.padding = nk_vec2(touchpadPadding, touchpadPadding);
+          }
+
           nk_layout_space_push(ctx, nk_rect(centerPosition, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
           if (nk_button_label(ctx, "PS")) {
               // event handling (ignored here)
