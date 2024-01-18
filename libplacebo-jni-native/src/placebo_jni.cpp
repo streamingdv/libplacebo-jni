@@ -52,6 +52,8 @@
 #include <roboto_font.h>
 #include <roboto_bold_font.h>
 #include <gui_font.h>
+#include <ui_consts.h>
+#include <ui_state.h>
 
 /*** define helper functions ***/
 
@@ -69,7 +71,6 @@ void LogCallbackFunction(void *log_priv, enum pl_log_level level, const char *ms
 
 struct nk_image globalBtnImage;
 
-void render_ui(struct ui *ui);
 void render_ui(struct ui *ui, int width, int height);
 bool ui_draw(struct ui *ui, const struct pl_swapchain_frame *frame);
 
@@ -561,7 +562,8 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   }
   pl_frame_from_swapchain(&target_frame, &sw_frame);
 
-  if(ui != 0){
+  if(ui != 0 && previousUiStateId != currentUiStateId) {
+      previousUiStateId = currentUiStateId;
       struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
       render_ui(ui_instance, width, height);
   }
@@ -847,36 +849,12 @@ void render_ui(struct ui *ui, int width, int height) {
       nk_layout_space_begin(ctx, NK_STATIC, bounds.w, bounds.h); // use whole window space
       struct nk_command_buffer* out = nk_window_get_canvas(ctx);
 
-      // sizes
-      float buttonSize = 48;
-      float menuButtonHeight = buttonSize - 10;
-      float menuButtonFontSize = 14 + 4; // 14 + 4 padding
-      float bottomPadding = 12;
-      float edgePadding = 40;
-      float touchpadPadding = 12;
-      float dialogHeadingPaddingTop = 44;
-      float dialogTextContentPaddingTop = 122;
-      float dialogPaddingRight = 36;
-      float dialogHeadingHeight = 24 + 2; // 24 + 2 padding
-      float dialogButtonHeight = 52 + 2; // 52 + 2 padding
-      float dialogButtonWidth = 200;
       // dynamic sizes
       float centerPosition = (bounds.w / 2) - 32;
       float dialogWidth = std::min(800.0f, std::max(500.0f, bounds.w * 0.60f));
       float dialogHeight = std::min(390.0f, std::max(375.0f, bounds.h * 0.50f));
-
-      // colors
-      const struct nk_color touchpad_white_border_color_alpha = nk_rgba(255, 255, 255, 190);
-      const struct nk_color touchpad_white_background_color_alpha = nk_rgba(255, 255, 255, 63);
-      const struct nk_color white_button_color_alpha = nk_rgba(255, 255, 255, 163);
-      const struct nk_color white_button_color = nk_rgb(255, 255, 255);
-      const struct nk_color black_button_color = nk_rgb(0, 0, 0);
-      const struct nk_color dark_grey_button_color = nk_rgb(17, 17, 17);
-      const struct nk_color grey_button_color = nk_rgb(88, 88, 95);
-      const struct nk_color dialog_background = nk_rgb(35, 35, 35);
-      const struct nk_color dialog_blue = nk_rgb(0, 132, 241);
+      // cache button style
       struct nk_style_button cachedButtonStyle = ctx->style.button;
-
 
       // **** PS button ****
 
@@ -1071,12 +1049,6 @@ void render_ui(struct ui *ui, int width, int height) {
       // **** END
 
       nk_layout_space_end(ctx);
-
-      /* Info for popup maybe
-      nk_layout_row_dynamic(ctx, 75, 1);
-      nk_label_wrap(ctx, "Best used in 'Card'-like layouts, with a bigger title font on top. Takes on the size of the previous layout definition. Rounding optional.");
-      https://github.com/Immediate-Mode-UI/Nuklear/blob/7c2fa16c26286915f05e2f0aa890621a9fd208b7/demo/common/overview.c#L602C21-L602C21
-      */
   }
   nk_end(ctx);
   nk_style_pop_style_item(ctx);
@@ -1091,6 +1063,50 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_nkCreateUI
       return 0L;
   }
   return reinterpret_cast<jlong>(ui_instance);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_grill_placebo_PlaceboManager_nkUpdateUIState(JNIEnv *env, jobject obj,
+  jboolean showTouchpad, jboolean showPanel, jboolean showPopup,
+  jboolean touchpadPressed, jboolean panelPressed,
+  jboolean panelShowMicButton, jboolean panelMicButtonPressed,
+  jboolean panelShareButtonPressed, jboolean panelPsButtonPressed,
+  jboolean panelOptionsButtonPressed, jboolean panelFullscreenButtonPressed,
+  jboolean panelCloseButtonPressed,
+  jstring popupHeaderText, jstring popupPopupText,
+  jboolean popupShowCheckbox, jstring popupButtonLeft,
+  jstring popupButtonRight, jboolean popupCheckboxPressed,
+  jboolean popupLeftPressed, jboolean popupRightPressed) {
+
+  globalUiState.showTouchpad = showTouchpad;
+  globalUiState.showPanel = showPanel;
+  globalUiState.showPopup = showPopup;
+  globalUiState.touchpadPressed = touchpadPressed;
+  globalUiState.panelPressed = panelPressed;
+
+  globalUiState.panelState.showMicButton = panelShowMicButton;
+  globalUiState.panelState.micButtonPressed = panelMicButtonPressed;
+  globalUiState.panelState.shareButtonPressed = panelShareButtonPressed;
+  globalUiState.panelState.psButtonPressed = panelPsButtonPressed;
+  globalUiState.panelState.optionsButtonPressed = panelOptionsButtonPressed;
+  globalUiState.panelState.fullscreenButtonPressed = panelFullscreenButtonPressed;
+  globalUiState.panelState.closeButtonPressed = panelCloseButtonPressed;
+
+  globalUiState.popupState.headerText = env->GetStringUTFChars(popupHeaderText, nullptr);
+  globalUiState.popupState.popupText = env->GetStringUTFChars(popupPopupText, nullptr);
+  globalUiState.popupState.showCheckbox = popupShowCheckbox;
+  globalUiState.popupState.popupButtonLeft = env->GetStringUTFChars(popupButtonLeft, nullptr);
+  globalUiState.popupState.popupButtonRight = env->GetStringUTFChars(popupButtonRight, nullptr);
+  globalUiState.popupState.checkboxPressed = popupCheckboxPressed;
+  globalUiState.popupState.leftPressed = popupLeftPressed;
+  globalUiState.popupState.rightPressed = popupRightPressed;
+
+  currentUiStateId++;
+
+  env->ReleaseStringUTFChars(popupHeaderText, globalUiState.popupState.headerText);
+  env->ReleaseStringUTFChars(popupPopupText, globalUiState.popupState.popupText);
+  env->ReleaseStringUTFChars(popupButtonLeft, globalUiState.popupState.popupButtonLeft);
+  env->ReleaseStringUTFChars(popupButtonRight, globalUiState.popupState.popupButtonRight);
 }
 
 extern "C"

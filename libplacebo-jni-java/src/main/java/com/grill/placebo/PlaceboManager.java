@@ -265,6 +265,23 @@ public class PlaceboManager {
      */
     public native long nkCreateUI(long vk);
 
+
+    /**
+     * Updated the UI state with the given values which should be taken into consideration the next rendering update
+     */
+    public native void nkUpdateUIState(
+            boolean showTouchpad, boolean showPanel, boolean showPopup,
+            boolean touchpadPressed, boolean panelPressed,
+            boolean panelShowMicButton, boolean panelMicButtonPressed,
+            boolean panelShareButtonPressed, boolean panelPsButtonPressed,
+            boolean panelOptionsButtonPressed, boolean panelFullscreenButtonPressed,
+            boolean panelCloseButtonPressed,
+            String popupHeaderText, String popupPopupText,
+            boolean popupShowCheckbox, String popupButtonLeft,
+            String popupButtonRight, boolean popupCheckboxPressed,
+            boolean popupLeftPressed, boolean popupRightPressed
+    );
+
     /**
      * Destroys the nuklear ui stuff
      * @param ui the ui handle
