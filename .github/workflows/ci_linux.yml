@@ -9,7 +9,7 @@ on:
       build_libplacebo:
         description: 'Build libplacebo (true/false)'
         required: true
-        default: 'true' # to save time, actual build is already in libs folder
+        default: 'false' # to save time, actual build is already in libs folder
       build_shaderc:
         description: 'Build shaderc (true/false)'
         required: true
@@ -29,7 +29,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       BUILD_GLSLANG: ${{ github.event.inputs.build_glslang }}
-      #BUILD_LIBPLACEBO: ${{ github.event.inputs.build_libplacebo }}
+      BUILD_LIBPLACEBO: ${{ github.event.inputs.build_libplacebo }}
       BUILD_SHADERC: ${{ github.event.inputs.build_shaderc }}
       BUILD_VULKAN_LOADER: ${{ github.event.inputs.build_vulkan }}
       BUILD_LCMS2: ${{ github.event.inputs.build_lcms2 }}
@@ -158,13 +158,13 @@ jobs:
           path: ${{github.workspace}}/glslang/install
 
       - name: Apply fix_p010_rendering patch to libplacebo
-        #if: env.BUILD_LIBPLACEBO == 'true'
+        if: env.BUILD_LIBPLACEBO == 'true'
         working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
         run: |
           git apply ../fix_p010_rendering.patch
 
       - name: Build libplacebo
-        #if: env.BUILD_LIBPLACEBO == 'true'
+        if: env.BUILD_LIBPLACEBO == 'true'
         working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
         run: |
           meson setup build --buildtype release --default-library=static -Ddemos=false -Dprefix=$PWD/install
@@ -172,7 +172,7 @@ jobs:
           meson install -C build
 
       - name: Upload libplacebo artefacts
-        #if: env.BUILD_LIBPLACEBO == 'true'
+        if: env.BUILD_LIBPLACEBO == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: libplacebo-artefacts-x64
@@ -201,8 +201,13 @@ jobs:
             GLSLANG_HEADERS_DIR=${{github.workspace}}/libs/glslang/linux/x64/include
           fi
           
-          LIBPLACEBO_LIB_PATH=${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/lib/libplacebo.a
-          LIBPLACEBO_HEADERS_DIR=${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/include
+          if [ "${{ env.BUILD_LIBPLACEBO }}" = "true" ]; then
+            LIBPLACEBO_LIB_PATH=${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/lib/libplacebo.a
+            LIBPLACEBO_HEADERS_DIR=${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/include
+          else
+            LIBPLACEBO_LIB_PATH=${{github.workspace}}/libs/libplacebo/linux/x64/lib/x86_64-linux-gnu/libplacebo.a
+            LIBPLACEBO_HEADERS_DIR=${{github.workspace}}/libs/libplacebo/linux/x64/include
+          fi
           
           cmake -G "Ninja" -B build -S ./libplacebo-jni-native \
             -DCMAKE_BUILD_TYPE=Release \
