@@ -627,19 +627,6 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUiOnly
         render_ui(ui_instance, width, height);
     }
 
-    crop = target_frame.crop;
-    switch (renderingFormat) {
-        case 0: // normal
-            pl_rect2df_aspect_copy(&target_frame.crop, &crop, 0.0);
-            break;
-        case 1: // stretched
-            // Nothing to do, target.crop already covers the full image
-            break;
-        case 2: // zoomed
-            pl_rect2df_aspect_copy(&target_frame.crop, &crop, 1.0);
-            break;
-    }
-
     if (!pl_render_image(placebo_renderer, NULL, &target_frame, &render_params)) {
         LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to render Placebo frame!");
         goto cleanup;
@@ -659,7 +646,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUiOnly
     ret = true;
 
   cleanup:
-    pl_unmap_avframe_vulkan(vulkan->gpu, &target_frame);
+    pl_unmap_avframe(vulkan->gpu, &target_frame);
 
     return ret;
 }
