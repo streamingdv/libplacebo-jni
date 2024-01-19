@@ -634,6 +634,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUiOnly
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to submit Placebo frame!");
       goto finish;
   }
+  pl_gpu_finish(vulkan->gpu);
 
   pl_swapchain_swap_buffers(placebo_swapchain);
   ret = true;
