@@ -659,7 +659,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUiOnly
     ret = true;
 
   cleanup:
-    pl_unmap_avframe(vulkan->gpu, &target_frame);
+    pl_unmap_avframe_vulkan(vulkan->gpu, &target_frame);
 
     return ret;
 }
