@@ -429,6 +429,15 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plSwapchainResize
   pl_swapchain_resize(placebo_swapchain, &int_width, &int_height);
 }
 
+extern "C"
+JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plSwapchainResizeWithBuffer
+  (JNIEnv *env, jobject obj, jlong swapchain, jlong widthBuffer, jlong heightBuffer) {
+  pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
+  int* intWidth = reinterpret_cast<int*>(widthBuffer);
+  int* intHeight = reinterpret_cast<int*>(heightBuffer);
+  pl_swapchain_resize(placebo_swapchain, intWidth, intHeight);
+}
+
 pl_render_params render_params = pl_render_fast_params; // default params, others -> pl_render_high_quality_params, pl_render_default_params
 
 extern "C"

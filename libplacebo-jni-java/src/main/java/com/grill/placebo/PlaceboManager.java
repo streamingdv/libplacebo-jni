@@ -209,6 +209,14 @@ public class PlaceboManager {
     public native void plSwapchainResize(long swapchain, int width, int height);
 
     /**
+     * Resizes the swapchain
+     * @param swapchain the swapchain handle
+     * @param intBufferWidth the int buffer handle for width
+     * @param intBufferHeight the int buffer handle for height
+     */
+    public native void plSwapchainResizeWithBuffer(long swapchain, long intBufferWidth, long intBufferHeight);
+
+    /**
      * Activates fast rendering
      */
     public native void plActivateFastRendering();
