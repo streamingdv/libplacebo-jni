@@ -608,48 +608,60 @@ extern "C"
 JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUiOnly
   (JNIEnv *env, jobject obj, jlong placebo_vulkan, jlong swapchain, jlong renderer, jlong ui, jint width, jint height) {
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
-  pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
-  pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
-  bool ret = false;
+    pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
+    pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
+    bool ret = false;
 
-  struct pl_swapchain_frame sw_frame = {0};
-  struct pl_frame target_frame = {0};
+    struct pl_swapchain_frame sw_frame = {0};
+    struct pl_frame target_frame = {0};
+    pl_rect2df crop;
 
-  if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
-      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
-      goto finish;
-  }
-  pl_frame_from_swapchain(&target_frame, &sw_frame);
+    if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
+        LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
+        goto cleanup;
+    }
+    pl_frame_from_swapchain(&target_frame, &sw_frame);
 
-  if(ui != 0) {
-      struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
-      render_ui(ui_instance, width, height);
-  }
+    if(ui != 0) {
+        struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
+        render_ui(ui_instance, width, height);
+    }
 
-  if (!pl_render_image(placebo_renderer, nullptr, &target_frame, &render_params)) {
-      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to render Placebo frame!");
-      goto cleanup;
-  }
-  if (ui != 0) {
-     struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
-     if (!ui_draw(ui_instance, &sw_frame)) {
-        LogCallbackFunction(nullptr, PL_LOG_ERR, "Could not draw UI!");
-     }
-  }
-  if (!pl_swapchain_submit_frame(placebo_swapchain)) {
-      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to submit Placebo frame!");
-      goto finish;
-  }
+    crop = target_frame.crop;
+    switch (renderingFormat) {
+        case 0: // normal
+            pl_rect2df_aspect_copy(&target_frame.crop, &crop, 0.0);
+            break;
+        case 1: // stretched
+            // Nothing to do, target.crop already covers the full image
+            break;
+        case 2: // zoomed
+            pl_rect2df_aspect_copy(&target_frame.crop, &crop, 1.0);
+            break;
+    }
 
+    if (!pl_render_image(placebo_renderer, NULL, &target_frame, &render_params)) {
+        LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to render Placebo frame!");
+        goto cleanup;
+    }
+    if (ui != 0) {
+       struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
+       if (!ui_draw(ui_instance, &sw_frame)) {
+          LogCallbackFunction(nullptr, PL_LOG_ERR, "Could not draw UI!");
+       }
+    }
+    if (!pl_swapchain_submit_frame(placebo_swapchain)) {
+        LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to submit Placebo frame!");
+        goto cleanup;
+    }
 
-  pl_gpu_finish(vulkan->gpu);
+    pl_swapchain_swap_buffers(placebo_swapchain);
+    ret = true;
 
-  pl_swapchain_swap_buffers(placebo_swapchain);
-  ret = true;
+  cleanup:
+    pl_unmap_avframe(vulkan->gpu, &target_frame);
 
-finish:
-
-  return ret;
+    return ret;
 }
 
 extern "C"
