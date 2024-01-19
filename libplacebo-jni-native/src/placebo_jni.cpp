@@ -624,7 +624,11 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUiOnly
     struct pl_swapchain_frame sw_frame = {0};
     struct pl_frame target_frame = {0};
 
-    struct pl_color_space hint = {0};
+    struct pl_color_space hint = {
+        .primaries = PL_COLOR_PRIM_UNKNOWN,
+        .transfer = PL_COLOR_TRC_UNKNOWN,
+        .hdr = PL_HDR_METADATA_NONE
+    };
     pl_swapchain_colorspace_hint(placebo_swapchain, &hint); // reset color space hint
 
     if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
