@@ -618,7 +618,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUiOnly
 
     if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
         LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
-        goto cleanup;
+        goto finish;
     }
     pl_frame_from_swapchain(&target_frame, &sw_frame);
 
@@ -647,6 +647,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUiOnly
 
   cleanup:
     pl_unmap_avframe(vulkan->gpu, &target_frame);
+  finish:
 
     return ret;
 }
