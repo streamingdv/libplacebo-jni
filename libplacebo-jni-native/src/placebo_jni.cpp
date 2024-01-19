@@ -613,17 +613,23 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUiOnly
   bool ret = false;
 
   struct pl_swapchain_frame sw_frame = {0};
+  struct pl_frame target_frame = {0};
 
   if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
       goto finish;
   }
+  pl_frame_from_swapchain(&target_frame, &sw_frame);
 
   if(ui != 0) {
       struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
       render_ui(ui_instance, width, height);
   }
 
+  if (!pl_render_image(placebo_renderer, nullptr, &target_frame, &render_params)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to render Placebo frame!");
+      goto cleanup;
+  }
   if (ui != 0) {
      struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
      if (!ui_draw(ui_instance, &sw_frame)) {
@@ -634,6 +640,8 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUiOnly
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to submit Placebo frame!");
       goto finish;
   }
+
+
   pl_gpu_finish(vulkan->gpu);
 
   pl_swapchain_swap_buffers(placebo_swapchain);
