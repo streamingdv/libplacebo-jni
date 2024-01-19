@@ -819,14 +819,14 @@ bool ui_draw(struct ui *ui, const struct pl_swapchain_frame *frame)
   if (nk_convert(&ui->nk, &ui->cmds, &ui->verts, &ui->idx, &ui->convert_cfg) != NK_CONVERT_SUCCESS) {
       return false;
   }
-LogCallbackFunction(nullptr, PL_LOG_ERR, "NK: begin");
+
   const struct nk_draw_command *cmd = NULL;
   const uint8_t* vertices = reinterpret_cast<const uint8_t*>(nk_buffer_memory(&ui->verts));
   const nk_draw_index* indices = reinterpret_cast<const nk_draw_index*>(nk_buffer_memory(&ui->idx));
   nk_draw_foreach(cmd, &ui->nk, &ui->cmds) {
       if (!cmd->elem_count)
           continue;
-LogCallbackFunction(nullptr, PL_LOG_ERR, "NK: 0");
+
       pl_shader sh = pl_dispatch_begin(ui->dp);
       struct pl_shader_desc shader_desc = {
           .desc = {
@@ -846,8 +846,6 @@ LogCallbackFunction(nullptr, PL_LOG_ERR, "NK: 0");
           .num_descriptors = 1,
       };
       pl_shader_custom(sh, &custom_shader);
-
-LogCallbackFunction(nullptr, PL_LOG_ERR, "NK: 1");
 
       struct pl_color_repr repr = frame->color_repr;
       struct pl_color_map_args cmap_args = {
@@ -879,7 +877,6 @@ LogCallbackFunction(nullptr, PL_LOG_ERR, "NK: 1");
           .index_data = indices,
           .index_fmt = PL_INDEX_UINT32,
       };
-      LogCallbackFunction(nullptr, PL_LOG_ERR, "NK: 2");
       bool ok = pl_dispatch_vertex(ui->dp, &vertex_params);
       if (!ok) {
           return false;
