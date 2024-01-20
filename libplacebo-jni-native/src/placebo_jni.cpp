@@ -608,7 +608,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   ret = true;
 
 cleanup:
-  struct pl_avframe_priv *priv = placebo_frame.user_data;
+  struct pl_avframe_priv *priv = static_cast<struct pl_avframe_priv*>(placebo_frame.user_data);
   if (!priv) {
     LogCallbackFunction(nullptr, PL_LOG_ERR, "NO unmap!!!!!");
   } else {
