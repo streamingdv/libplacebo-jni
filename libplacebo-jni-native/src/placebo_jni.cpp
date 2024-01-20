@@ -608,6 +608,14 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   ret = true;
 
 cleanup:
+  struct pl_frame *frameTest = &placebo_frame;
+  struct pl_avframe_priv *priv = frameTest->user_data;
+  if (!priv) {
+    LogCallbackFunction(nullptr, PL_LOG_ERR, "NO unmap!!!!!");
+  } else {
+    LogCallbackFunction(nullptr, PL_LOG_ERR, "Frame should be unmapped!");
+  }
+
   pl_unmap_avframe(vulkan->gpu, &placebo_frame);
 
   return ret;
