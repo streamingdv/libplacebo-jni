@@ -14,10 +14,6 @@
     #include <xcb/xcb.h>
 #endif
 
-#include <libavutil/buffer.h>
-#include <libavutil/hwcontext.h>
-#include <libavutil/hwcontext_vulkan.h>
-
 #include <libplacebo/options.h>
 #include <libplacebo/vulkan.h>
 #include <libplacebo/renderer.h>
@@ -58,6 +54,10 @@
 #include <gui_font.h>
 #include <ui_consts.h>
 #include <ui_state.h>
+
+#include <libavutil/buffer.h>
+#include <libavutil/hwcontext.h>
+#include <libavutil/hwcontext_vulkan.h>
 
 /*** define helper functions ***/
 
