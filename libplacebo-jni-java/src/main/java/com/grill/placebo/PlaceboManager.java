@@ -217,6 +217,15 @@ public class PlaceboManager {
     public native void plSwapchainResizeWithBuffer(long swapchain, long intBufferWidth, long intBufferHeight);
 
     /**
+     * Sets the vulkan context from libplacebo to the hardware vulkan context of ffmpeg
+     * @param vulkan_hw_dev_ctx_handle the handle to the AVBufferRef
+     * @param vkInst the vk inst handle
+     * @param vkInst the vk inst handle
+     * @return true when the libplacebo context could be set successfully
+     */
+    public native boolean plSetHwDeviceCtx(long vulkan_hw_dev_ctx_handle, long vk, long vkInst);
+
+    /**
      * Activates fast rendering
      */
     public native void plActivateFastRendering();

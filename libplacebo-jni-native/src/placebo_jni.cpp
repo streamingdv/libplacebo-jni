@@ -14,6 +14,10 @@
     #include <xcb/xcb.h>
 #endif
 
+#include <libavutil/buffer.h>
+#include <libavutil/hwcontext.h>
+#include <libavutil/hwcontext_vulkan.h>
+
 #include <libplacebo/options.h>
 #include <libplacebo/vulkan.h>
 #include <libplacebo/renderer.h>
@@ -436,6 +440,55 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plSwapchainResizeWi
   int* intWidth = reinterpret_cast<int*>(widthBuffer);
   int* intHeight = reinterpret_cast<int*>(heightBuffer);
   pl_swapchain_resize(placebo_swapchain, intWidth, intHeight);
+}
+
+int vk_decode_queue_index = -1;
+
+extern "C"
+JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plSetHwDeviceCtx
+  (JNIEnv *env, jobject obj, jlong vulkan_hw_dev_ctx_handle, jlong placebo_vulkan, jlong placebo_vk_inst) {
+  if (vk_decode_queue_index < 0) {
+    LogCallbackFunction(nullptr, PL_LOG_ERR, "Can not configure vulkan hardware device context!");
+    return false; // not possible
+  }
+
+  AVBufferRef *vulkan_hw_dev_ctx = reinterpret_cast<AVBufferRef *>(vulkan_hw_dev_ctx_handle);
+  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
+  pl_vk_inst instance = reinterpret_cast<pl_vk_inst>(placebo_vk_inst);
+
+  AVHWDeviceContext *hwctx = reinterpret_cast<AVHWDeviceContext*>(vulkan_hw_dev_ctx->data);
+  hwctx->user_opaque = const_cast<void*>(reinterpret_cast<const void*>(vulkan));
+  AVVulkanDeviceContext *vkctx = reinterpret_cast<AVVulkanDeviceContext*>(hwctx->hwctx);
+  vkctx->get_proc_addr = vulkan->get_proc_addr;
+  vkctx->inst = vulkan->instance;
+  vkctx->phys_dev = vulkan->phys_device;
+  vkctx->act_dev = vulkan->device;
+  vkctx->device_features = *vulkan->features;
+
+  vkctx->enabled_inst_extensions = instance->extensions;
+  vkctx->nb_enabled_inst_extensions = instance->num_extensions;
+
+  vkctx->enabled_dev_extensions = vulkan->extensions;
+  vkctx->nb_enabled_dev_extensions = vulkan->num_extensions;
+  vkctx->queue_family_index = vulkan->queue_graphics.index;
+  vkctx->nb_graphics_queues = vulkan->queue_graphics.count;
+  vkctx->queue_family_tx_index = vulkan->queue_transfer.index;
+  vkctx->nb_tx_queues = vulkan->queue_transfer.count;
+  vkctx->queue_family_comp_index = vulkan->queue_compute.index;
+  vkctx->nb_comp_queues = vulkan->queue_compute.count;
+
+  vkctx->queue_family_decode_index = vk_decode_queue_index;
+  vkctx->nb_decode_queues = 1;
+  vkctx->lock_queue = [](struct AVHWDeviceContext *dev_ctx, uint32_t queue_family, uint32_t index) {
+      auto vk = reinterpret_cast<pl_vulkan>(dev_ctx->user_opaque);
+      vk->lock_queue(vk, queue_family, index);
+  };
+  vkctx->unlock_queue = [](struct AVHWDeviceContext *dev_ctx, uint32_t queue_family, uint32_t index) {
+      auto vk = reinterpret_cast<pl_vulkan>(dev_ctx->user_opaque);
+      vk->unlock_queue(vk, queue_family, index);
+  };
+
+  return true;
 }
 
 pl_render_params render_params = pl_render_fast_params; // default params, others -> pl_render_high_quality_params, pl_render_default_params
