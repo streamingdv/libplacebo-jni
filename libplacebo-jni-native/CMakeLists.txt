@@ -49,7 +49,7 @@ if(GLSLANG_HEADERS_DIR STREQUAL "")
 endif()
 include_directories(${GLSLANG_HEADERS_DIR})
 
-# Inlcude JNI headers
+# Include JNI headers
 include_directories(${GENERATED_JNI_HEADERS_DIR})
 # Include libplacebo headers
 set(LIBPLACEBO_HEADERS_DIR "${CMAKE_SOURCE_DIR}/3rdparty/libplacebo/install/include" CACHE STRING "Path to libplacebo headers")
@@ -71,7 +71,7 @@ include_directories(${SHADERC_HEADERS_DIR})
 
 set(SHADERC_LIB_DIR "" CACHE STRING "Path to shaderc lib")
 if(SHADERC_LIB_DIR STREQUAL "")
-    message(FATAL_ERROR "Please run CMake with -DSHADERC_LIB_DIR=/path/to/shaderc/include")
+    message(FATAL_ERROR "Please run CMake with -DSHADERC_LIB_DIR=/path/to/shaderc/lib")
 endif()
 
 # Check for FFMPEG
@@ -85,7 +85,7 @@ set(LCMS2_DIR "" CACHE STRING "Path to lcms2 dir")
 if(LCMS2_DIR STREQUAL "")
     message(FATAL_ERROR "Please run CMake with -DLCMS2_DIR=/path/to/lcms2")
 endif()
-include_directories(${LCMS2_DIR}/inlcude)
+include_directories(${LCMS2_DIR}/include)
 
 # Check for NUKLEAR_DIR
 set(NUKLEAR_DIR "" CACHE STRING "Path to nuklear headers")
@@ -111,6 +111,15 @@ set(SOURCES
 # Add shared library target
 add_library(libplacebo-jni-native SHARED ${SOURCES})
 target_compile_definitions(libplacebo-jni-native PRIVATE PL_STATIC)
+
+# Set link options for Windows
+if(IS_RUNNING_ON_WINDOWS)
+    target_link_options(libplacebo-jni-native PRIVATE
+        -static-libgcc
+        -static-libstdc++
+        -static
+    )
+endif()
 
 if(IS_RUNNING_ON_WINDOWS)
     # Link libraries - Static versions
@@ -184,6 +193,6 @@ set_target_properties(libplacebo-jni-native PROPERTIES PREFIX "") # avoid the "l
 if(MSVC)
     set_property(
             TARGET libplacebo-jni-native
-            PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreadedDebug"
+            PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded"
     )
 endif()
