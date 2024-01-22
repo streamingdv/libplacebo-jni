@@ -607,7 +607,6 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
       .tex = placebo_tex_global,
       .map_dovi = false,
   };
-  LogCallbackFunction(nullptr, PL_LOG_ERR, "1!");
   bool mapped = pl_map_avframe_ex(vulkan->gpu, &placebo_frame, &avparams);
   if (!mapped) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to map AVFrame to Placebo frame!");
@@ -618,12 +617,10 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   struct pl_color_space hint = placebo_frame.color;
   pl_swapchain_colorspace_hint(placebo_swapchain, &hint);
   pl_rect2df crop;
-  LogCallbackFunction(nullptr, PL_LOG_ERR, "2!");
   if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
       goto cleanup;
   }
-  LogCallbackFunction(nullptr, PL_LOG_ERR, "3!");
   pl_frame_from_swapchain(&target_frame, &sw_frame);
 
   if(ui != 0) {
@@ -644,25 +641,21 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
           break;
   }
 
-  LogCallbackFunction(nullptr, PL_LOG_ERR, "4!");
   if (!pl_render_image(placebo_renderer, &placebo_frame, &target_frame, &render_params)) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to render Placebo frame!");
       goto cleanup;
   }
-  LogCallbackFunction(nullptr, PL_LOG_ERR, "5!");
   if (ui != 0) {
      struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
      if (!ui_draw(ui_instance, &sw_frame)) {
         LogCallbackFunction(nullptr, PL_LOG_ERR, "Could not draw UI!");
      }
   }
-  LogCallbackFunction(nullptr, PL_LOG_ERR, "6!");
   if (!pl_swapchain_submit_frame(placebo_swapchain)) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to submit Placebo frame!");
       goto cleanup;
   }
 
-  LogCallbackFunction(nullptr, PL_LOG_ERR, "7!");
   pl_swapchain_swap_buffers(placebo_swapchain);
   ret = true;
 
