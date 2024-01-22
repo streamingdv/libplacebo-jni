@@ -215,7 +215,7 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanCreate
 }
 
 extern "C"
-JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plInitQueue
+JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plInitQueue
   (JNIEnv *env, jobject obj, jlong placebo_vulkan) {
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
 
@@ -230,6 +230,8 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plInitQueue
   if (queue_it != queueFamilyProperties.end()) {
       vk_decode_queue_index = std::distance(queueFamilyProperties.begin(), queue_it);
   }
+
+  return vk_decode_queue_index != 0;
 }
 
 extern "C"
