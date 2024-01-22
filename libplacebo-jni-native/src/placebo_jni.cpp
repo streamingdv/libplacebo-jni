@@ -78,6 +78,19 @@ struct nk_image globalBtnImage;
 void render_ui(struct ui *ui, int width, int height);
 bool ui_draw(struct ui *ui, const struct pl_swapchain_frame *frame);
 
+int vk_decode_queue_index = -1;
+
+struct {
+#ifdef _WIN32
+    PFN_vkCreateWin32SurfaceKHR vkCreateWin32SurfaceKHR;
+#else
+    PFN_vkCreateXcbSurfaceKHR vkCreateXcbSurfaceKHR;
+    PFN_vkCreateWaylandSurfaceKHR vkCreateWaylandSurfaceKHR;
+#endif
+    PFN_vkDestroySurfaceKHR vkDestroySurfaceKHR;
+    PFN_vkGetPhysicalDeviceQueueFamilyProperties vkGetPhysicalDeviceQueueFamilyProperties;
+} vk_funcs;
+
 /*** define JNI methods ***/
 
 extern "C"
@@ -180,14 +193,43 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanCreate
   pl_log log = reinterpret_cast<pl_log>(placebo_log);
   pl_vk_inst instance = reinterpret_cast<pl_vk_inst>(placebo_vk_inst);
 
+  const char *opt_dev_extensions[] = {
+      VK_KHR_VIDEO_QUEUE_EXTENSION_NAME,
+      VK_KHR_VIDEO_DECODE_QUEUE_EXTENSION_NAME,
+      VK_KHR_VIDEO_DECODE_H264_EXTENSION_NAME,
+      VK_KHR_VIDEO_DECODE_H265_EXTENSION_NAME,
+  };
+
   struct pl_vulkan_params vulkan_params = {
       .instance = instance->instance,
       .get_proc_addr = instance->get_proc_addr,
+      .allow_software = true,
       PL_VULKAN_DEFAULTS
+      .extra_queues = VK_QUEUE_VIDEO_DECODE_BIT_KHR,
+      .opt_extensions = opt_dev_extensions,
+      .num_opt_extensions = 4,
   };
 
   pl_vulkan placebo_vulkan = pl_vulkan_create(log, &vulkan_params);
   return reinterpret_cast<jlong>(placebo_vulkan);
+}
+
+extern "C"
+JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plInitQueue
+  (JNIEnv *env, jobject obj, jlong placebo_vulkan) {
+  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
+
+  uint32_t queueFamilyCount = 0;
+  vk_funcs.vkGetPhysicalDeviceQueueFamilyProperties(vulkan->phys_device, &queueFamilyCount, nullptr);
+  std::vector<VkQueueFamilyProperties> queueFamilyProperties(queueFamilyCount);
+  vk_funcs.vkGetPhysicalDeviceQueueFamilyProperties(vulkan->phys_device, &queueFamilyCount, queueFamilyProperties.data());
+  auto queue_it = std::find_if(queueFamilyProperties.begin(), queueFamilyProperties.end(), [](VkQueueFamilyProperties prop) {
+      return prop.queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR;
+  });
+
+  if (queue_it != queueFamilyProperties.end()) {
+      vk_decode_queue_index = std::distance(queueFamilyProperties.begin(), queue_it);
+  }
 }
 
 extern "C"
@@ -216,57 +258,44 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plGetVkPhysicalDev
 }
 
 extern "C"
-JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plSetVmaVulkanFunctions
-  (JNIEnv *env, jobject obj, jlong placebo_vk_inst, jlong placebo_vulkan, jlong vulkanFunctions) {
-    pl_vk_inst instance = reinterpret_cast<pl_vk_inst>(placebo_vk_inst);
-    pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
-    VmaVulkanFunctions* vmaVulkanFunctions = reinterpret_cast<VmaVulkanFunctions*>(vulkanFunctions);
+JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plInitFunctionPointers
+  (JNIEnv *env, jobject obj, jlong placebo_vk_inst) {
+  pl_vk_inst instance = reinterpret_cast<pl_vk_inst>(placebo_vk_inst);
+  #ifdef _WIN32
+       vk_funcs.vkCreateWin32SurfaceKHR = reinterpret_cast<PFN_vkCreateWin32SurfaceKHR>(
+               instance->get_proc_addr(instance->instance, "vkCreateWin32SurfaceKHR"));
+       if(!vk_funcs.vkCreateWin32SurfaceKHR) {
+           LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to resolve vkCreateWin32SurfaceKHR!");
+           return false;
+       }
+  #else
+       vk_funcs.vkCreateXcbSurfaceKHR = reinterpret_cast<PFN_vkCreateXcbSurfaceKHR>(
+               instance->get_proc_addr(instance->instance, "vkCreateXcbSurfaceKHR"));
+       if(!vk_funcs.vkCreateXcbSurfaceKHR) {
+           LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to resolve vkCreateXcbSurfaceKHR!");
+           return false;
+       }
+       vk_funcs.vkCreateWaylandSurfaceKHR = reinterpret_cast<PFN_vkCreateWaylandSurfaceKHR>(
+               instance->get_proc_addr(instance->instance, "vkCreateWaylandSurfaceKHR"));
+       if(!vk_funcs.vkCreateWaylandSurfaceKHR) {
+           LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to resolve vkCreateWaylandSurfaceKHR!");
+           return false;
+       }
+  #endif
+  vk_funcs.vkDestroySurfaceKHR = reinterpret_cast<PFN_vkDestroySurfaceKHR>(
+             instance->get_proc_addr(instance->instance, "vkDestroySurfaceKHR"));
+  if(!vk_funcs.vkDestroySurfaceKHR) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to resolve vkDestroySurfaceKHR!");
+      return false;
+  }
+  vk_funcs.vkGetPhysicalDeviceQueueFamilyProperties = reinterpret_cast<PFN_vkGetPhysicalDeviceQueueFamilyProperties>(
+             instance->get_proc_addr(instance->instance, "vkGetPhysicalDeviceQueueFamilyProperties"));
+  if(!vk_funcs.vkGetPhysicalDeviceQueueFamilyProperties) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to resolve vkGetPhysicalDeviceQueueFamilyProperties!");
+      return false;
+  }
 
-    VkInstance vk_instance = instance->instance;
-    VkDevice device = vulkan->device;
-
-    // Assigning function pointers
-    vmaVulkanFunctions->vkGetInstanceProcAddr = reinterpret_cast<PFN_vkGetInstanceProcAddr>(vkGetInstanceProcAddr(vk_instance, "vkGetInstanceProcAddr"));
-    vmaVulkanFunctions->vkGetDeviceProcAddr = reinterpret_cast<PFN_vkGetDeviceProcAddr>(vkGetDeviceProcAddr(device, "vkGetDeviceProcAddr"));
-    vmaVulkanFunctions->vkGetPhysicalDeviceProperties = reinterpret_cast<PFN_vkGetPhysicalDeviceProperties>(vkGetInstanceProcAddr(vk_instance, "vkGetPhysicalDeviceProperties"));
-    vmaVulkanFunctions->vkGetPhysicalDeviceMemoryProperties = reinterpret_cast<PFN_vkGetPhysicalDeviceMemoryProperties>(vkGetInstanceProcAddr(vk_instance, "vkGetPhysicalDeviceMemoryProperties"));
-    vmaVulkanFunctions->vkAllocateMemory = reinterpret_cast<PFN_vkAllocateMemory>(vkGetDeviceProcAddr(device, "vkAllocateMemory"));
-    vmaVulkanFunctions->vkFreeMemory = reinterpret_cast<PFN_vkFreeMemory>(vkGetDeviceProcAddr(device, "vkFreeMemory"));
-    vmaVulkanFunctions->vkMapMemory = reinterpret_cast<PFN_vkMapMemory>(vkGetDeviceProcAddr(device, "vkMapMemory"));
-    vmaVulkanFunctions->vkUnmapMemory = reinterpret_cast<PFN_vkUnmapMemory>(vkGetDeviceProcAddr(device, "vkUnmapMemory"));
-    vmaVulkanFunctions->vkFlushMappedMemoryRanges = reinterpret_cast<PFN_vkFlushMappedMemoryRanges>(vkGetDeviceProcAddr(device, "vkFlushMappedMemoryRanges"));
-    vmaVulkanFunctions->vkInvalidateMappedMemoryRanges = reinterpret_cast<PFN_vkInvalidateMappedMemoryRanges>(vkGetDeviceProcAddr(device, "vkInvalidateMappedMemoryRanges"));
-    vmaVulkanFunctions->vkBindBufferMemory = reinterpret_cast<PFN_vkBindBufferMemory>(vkGetDeviceProcAddr(device, "vkBindBufferMemory"));
-    vmaVulkanFunctions->vkBindImageMemory = reinterpret_cast<PFN_vkBindImageMemory>(vkGetDeviceProcAddr(device, "vkBindImageMemory"));
-    vmaVulkanFunctions->vkGetBufferMemoryRequirements = reinterpret_cast<PFN_vkGetBufferMemoryRequirements>(vkGetDeviceProcAddr(device, "vkGetBufferMemoryRequirements"));
-    vmaVulkanFunctions->vkGetImageMemoryRequirements = reinterpret_cast<PFN_vkGetImageMemoryRequirements>(vkGetDeviceProcAddr(device, "vkGetImageMemoryRequirements"));
-    vmaVulkanFunctions->vkCreateBuffer = reinterpret_cast<PFN_vkCreateBuffer>(vkGetDeviceProcAddr(device, "vkCreateBuffer"));
-    vmaVulkanFunctions->vkDestroyBuffer = reinterpret_cast<PFN_vkDestroyBuffer>(vkGetDeviceProcAddr(device, "vkDestroyBuffer"));
-    vmaVulkanFunctions->vkCreateImage = reinterpret_cast<PFN_vkCreateImage>(vkGetDeviceProcAddr(device, "vkCreateImage"));
-    vmaVulkanFunctions->vkDestroyImage = reinterpret_cast<PFN_vkDestroyImage>(vkGetDeviceProcAddr(device, "vkDestroyImage"));
-    vmaVulkanFunctions->vkCmdCopyBuffer = reinterpret_cast<PFN_vkCmdCopyBuffer>(vkGetDeviceProcAddr(device, "vkCmdCopyBuffer"));
-
-    // Extension functions with fallback
-    auto vkGetBufferMemoryRequirements2KHR = reinterpret_cast<PFN_vkGetBufferMemoryRequirements2KHR>(vkGetDeviceProcAddr(device, "vkGetBufferMemoryRequirements2"));
-    vmaVulkanFunctions->vkGetBufferMemoryRequirements2KHR = vkGetBufferMemoryRequirements2KHR ? vkGetBufferMemoryRequirements2KHR : reinterpret_cast<PFN_vkGetBufferMemoryRequirements2KHR>(vkGetDeviceProcAddr(device, "vkGetBufferMemoryRequirements2KHR"));
-
-    auto vkGetImageMemoryRequirements2KHR = reinterpret_cast<PFN_vkGetImageMemoryRequirements2KHR>(vkGetDeviceProcAddr(device, "vkGetImageMemoryRequirements2"));
-    vmaVulkanFunctions->vkGetImageMemoryRequirements2KHR = vkGetImageMemoryRequirements2KHR ? vkGetImageMemoryRequirements2KHR : reinterpret_cast<PFN_vkGetImageMemoryRequirements2KHR>(vkGetDeviceProcAddr(device, "vkGetImageMemoryRequirements2KHR"));
-
-    auto vkBindBufferMemory2KHR = reinterpret_cast<PFN_vkBindBufferMemory2KHR>(vkGetDeviceProcAddr(device, "vkBindBufferMemory2"));
-    vmaVulkanFunctions->vkBindBufferMemory2KHR = vkBindBufferMemory2KHR ? vkBindBufferMemory2KHR : reinterpret_cast<PFN_vkBindBufferMemory2KHR>(vkGetDeviceProcAddr(device, "vkBindBufferMemory2KHR"));
-
-    auto vkBindImageMemory2KHR = reinterpret_cast<PFN_vkBindImageMemory2KHR>(vkGetDeviceProcAddr(device, "vkBindImageMemory2"));
-    vmaVulkanFunctions->vkBindImageMemory2KHR = vkBindImageMemory2KHR ? vkBindImageMemory2KHR : reinterpret_cast<PFN_vkBindImageMemory2KHR>(vkGetDeviceProcAddr(device, "vkBindImageMemory2KHR"));
-
-    auto vkGetPhysicalDeviceMemoryProperties2KHR = reinterpret_cast<PFN_vkGetPhysicalDeviceMemoryProperties2KHR>(vkGetInstanceProcAddr(vk_instance, "vkGetPhysicalDeviceMemoryProperties2"));
-    vmaVulkanFunctions->vkGetPhysicalDeviceMemoryProperties2KHR = vkGetPhysicalDeviceMemoryProperties2KHR ? vkGetPhysicalDeviceMemoryProperties2KHR : reinterpret_cast<PFN_vkGetPhysicalDeviceMemoryProperties2KHR>(vkGetInstanceProcAddr(vk_instance, "vkGetPhysicalDeviceMemoryProperties2KHR"));
-
-    auto vkGetDeviceBufferMemoryRequirements = reinterpret_cast<PFN_vkGetDeviceBufferMemoryRequirements>(vkGetDeviceProcAddr(device, "vkGetDeviceBufferMemoryRequirements"));
-    vmaVulkanFunctions->vkGetDeviceBufferMemoryRequirements = vkGetDeviceBufferMemoryRequirements ? vkGetDeviceBufferMemoryRequirements : reinterpret_cast<PFN_vkGetDeviceBufferMemoryRequirements>(vkGetDeviceProcAddr(device, "vkGetDeviceBufferMemoryRequirementsKHR"));
-
-    auto vkGetDeviceImageMemoryRequirements = reinterpret_cast<PFN_vkGetDeviceImageMemoryRequirements>(vkGetDeviceProcAddr(device, "vkGetDeviceImageMemoryRequirements"));
-    vmaVulkanFunctions->vkGetDeviceImageMemoryRequirements = vkGetDeviceImageMemoryRequirements ? vkGetDeviceImageMemoryRequirements : reinterpret_cast<PFN_vkGetDeviceImageMemoryRequirements>(vkGetDeviceProcAddr(device, "vkGetDeviceImageMemoryRequirementsKHR"));
+  return true;
 }
 
 extern "C"
@@ -349,12 +378,9 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plGetVkInstance
 
 extern "C"
 JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plGetWin32SurfaceFunctionPointer
-  (JNIEnv *env, jobject obj, jlong placebo_vk_inst) {
+  (JNIEnv *env, jobject obj) {
   #ifdef _WIN32
-       pl_vk_inst instance = reinterpret_cast<pl_vk_inst>(placebo_vk_inst);
-       PFN_vkCreateWin32SurfaceKHR createSurface = reinterpret_cast<PFN_vkCreateWin32SurfaceKHR>(
-               instance->get_proc_addr(instance->instance, "vkCreateWin32SurfaceKHR"));
-       return reinterpret_cast<jlong>(createSurface);
+       return reinterpret_cast<jlong>(vk_funcs.vkCreateWin32SurfaceKHR);
   #endif
 
   return 0;
@@ -365,9 +391,7 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plDestroySurface
   (JNIEnv *env, jobject obj, jlong placebo_vk_inst, jlong surface) {
   pl_vk_inst instance = reinterpret_cast<pl_vk_inst>(placebo_vk_inst);
   VkSurfaceKHR vkSurfaceKHR = reinterpret_cast<VkSurfaceKHR>(static_cast<uint64_t>(surface));
-  PFN_vkDestroySurfaceKHR destroySurface = reinterpret_cast<PFN_vkDestroySurfaceKHR>(
-          instance->get_proc_addr(instance->instance, "vkDestroySurfaceKHR"));
-  destroySurface(instance->instance, vkSurfaceKHR, nullptr);
+  vk_funcs.vkDestroySurfaceKHR(instance->instance, vkSurfaceKHR, nullptr);
 }
 
 extern "C"
@@ -441,8 +465,6 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plSwapchainResizeWi
   int* intHeight = reinterpret_cast<int*>(heightBuffer);
   pl_swapchain_resize(placebo_swapchain, intWidth, intHeight);
 }
-
-int vk_decode_queue_index = -1;
 
 extern "C"
 JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plSetHwDeviceCtx

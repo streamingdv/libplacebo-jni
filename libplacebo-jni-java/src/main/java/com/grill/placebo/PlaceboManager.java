@@ -88,6 +88,13 @@ public class PlaceboManager {
     public native long plVulkanCreate(long plLog, long vkInst);
 
     /**
+     * Init the vulkan decoding queue
+     * @param vk the vulkan device handle
+     * @return true if successful, false otherwise
+     */
+    public native boolean plInitQueue(long vk);
+
+    /**
      * Destroys the vulkan device
      * @param vk the vulkan device handle
      */
@@ -108,12 +115,11 @@ public class PlaceboManager {
     public native long plGetVkPhysicalDevice(long vk);
 
     /**
-     * Fill the necessary vulkan functions
-     * @param vkInst the handle to the vk instance, placebo_vk_inst
-     * @param vk the vulkan device handle
-     * @param vmaVulkanFunctions the vulkan functions handle
+     * After inititalization fill in all necesarry function pointers
+     * @param vkInst the vk inst handle
+     * @return true if all function pointers could be initialized correctly, false otherwise
      */
-    public native void plSetVmaVulkanFunctions(long vkInst, long vk, long vmaVulkanFunctions);
+    public native boolean plInitFunctionPointers(long vkInst);
 
     /**
      * Create placebo cache
@@ -159,10 +165,9 @@ public class PlaceboManager {
 
     /**
      * Gets the handle to the vkCreateWin32SurfaceKHR function
-     * @param vkInst the vk inst handle
      * @return the handle to the vkCreateWin32SurfaceKHR function
      */
-    public native long plGetWin32SurfaceFunctionPointer(long vkInst);
+    public native long plGetWin32SurfaceFunctionPointer();
 
     /**
      * Destroys and releases the native surface
