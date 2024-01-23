@@ -546,6 +546,7 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plSetRenderingForma
 }
 
 pl_tex placebo_tex_global[4] = {nullptr, nullptr, nullptr, nullptr};
+pl_color_space m_LastColorspace = {};
 
 extern "C"
 JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
@@ -572,8 +573,10 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
       return ret;
   }
   // set colorspace hint
-  struct pl_color_space hint = placebo_frame.color;
-  pl_swapchain_colorspace_hint(placebo_swapchain, &hint);
+  if (!pl_color_space_equal(&placebo_frame.color, &m_LastColorspace)) {
+      m_LastColorspace = placebo_frame.color;
+      pl_swapchain_colorspace_hint(placebo_swapchain, &placebo_frame.color);
+  }
   pl_rect2df crop;
 
   if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
@@ -638,8 +641,10 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
       return ret;
   }
   // set colorspace hint
-  struct pl_color_space hint = placebo_frame.color;
-  pl_swapchain_colorspace_hint(placebo_swapchain, &hint);
+  if (!pl_color_space_equal(&placebo_frame.color, &m_LastColorspace)) {
+      m_LastColorspace = placebo_frame.color;
+      pl_swapchain_colorspace_hint(placebo_swapchain, &placebo_frame.color);
+  }
   pl_rect2df crop;
   if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
@@ -705,7 +710,10 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUiOnly
         .transfer = PL_COLOR_TRC_UNKNOWN,
         .hdr = PL_HDR_METADATA_NONE
     };
-    pl_swapchain_colorspace_hint(placebo_swapchain, &hint); // reset color space hint
+    if (!pl_color_space_equal(&hint, &m_LastColorspace)) { // reset color space hint if needed
+        m_LastColorspace = hint;
+        pl_swapchain_colorspace_hint(placebo_swapchain, &hint);
+    }
 
     if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
         LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
