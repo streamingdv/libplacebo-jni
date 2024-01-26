@@ -1,10 +1,10 @@
 diff --git a/src/include/libplacebo/utils/libav_internal.h b/src/include/libplacebo/utils/libav_internal.h
-index 4c269e5d..bd0d79fa 100644
+index 4c269e5d..069ef88f 100644
 --- a/src/include/libplacebo/utils/libav_internal.h
 +++ b/src/include/libplacebo/utils/libav_internal.h
 @@ -967,11 +967,6 @@ static void pl_fix_hwframe_sample_depth(struct pl_frame *out, const AVFrame *fra
      struct pl_bit_encoding *bits = &out->repr.bits;
-
+ 
      bits->sample_depth = fmt->component_depth[0];
 -
 -    switch (hwfc->sw_format) {
@@ -12,13 +12,13 @@ index 4c269e5d..bd0d79fa 100644
 -    default: break;
 -    }
  }
-
+ 
  static bool pl_map_avframe_drm(pl_gpu gpu, struct pl_frame *out,
 @@ -1016,6 +1011,12 @@ static bool pl_map_avframe_drm(pl_gpu gpu, struct pl_frame *out,
      }
-
+ 
      pl_fix_hwframe_sample_depth(out, frame);
-+
++	
 +    switch (hwfc->sw_format) {
 +    case AV_PIX_FMT_P010: out->repr.bits.bit_shift = 6; break;
 +    default: break;
@@ -26,4 +26,31 @@ index 4c269e5d..bd0d79fa 100644
 +
      return true;
  }
-
+ 
+@@ -1037,7 +1038,7 @@ static bool pl_map_avframe_derived(pl_gpu gpu, struct pl_frame *out,
+     if (!pl_map_avframe_drm(gpu, out, derived))
+         goto error;
+ 
+-    av_frame_free(&priv->avframe);
++    //av_frame_free(&priv->avframe); // done in own code
+     priv->avframe = derived;
+     return true;
+ 
+@@ -1266,7 +1267,7 @@ PL_LIBAV_API bool pl_map_avframe_ex(pl_gpu gpu, struct pl_frame *out,
+         }
+ 
+         if (!pl_upload_plane(gpu, &out->planes[p], &tex[p], &data[p])) {
+-            av_frame_free((AVFrame **) &data[p].priv);
++            //av_frame_free((AVFrame **) &data[p].priv); // done in own code
+             goto error;
+         }
+ 
+@@ -1308,7 +1309,7 @@ PL_LIBAV_API void pl_unmap_avframe(pl_gpu gpu, struct pl_frame *frame)
+             pl_tex_destroy(gpu, &frame->planes[i].texture);
+     }
+ 
+-    av_frame_free(&priv->avframe);
++    //av_frame_free(&priv->avframe); // done in own code
+     free(priv);
+ 
+ done:
