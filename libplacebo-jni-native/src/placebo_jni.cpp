@@ -762,8 +762,8 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plCleanupRendererCo
 
   struct pl_swapchain_frame sw_frame = {0};
   if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
-      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
-      goto finish;
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame in cleanup renderer context!");
+      return;
   }
 
   pl_swapchain_submit_frame(placebo_swapchain);
