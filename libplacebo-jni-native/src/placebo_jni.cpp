@@ -756,11 +756,18 @@ extern "C"
 JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plCleanupRendererContext
   (JNIEnv *env, jobject obj, jlong swapchain) {
   pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
-
-  if (m_HasPendingSwapchainFrame) {
-      pl_swapchain_submit_frame(placebo_swapchain);
-      m_HasPendingSwapchainFrame = false;
+  if (!m_HasPendingSwapchainFrame) {
+      return;
   }
+
+  struct pl_swapchain_frame sw_frame = {0};
+  if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
+      goto finish;
+  }
+
+  pl_swapchain_submit_frame(placebo_swapchain);
+  m_HasPendingSwapchainFrame = false;
 }
 
 extern "C"
