@@ -450,6 +450,9 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plDestroyRenderer
   pl_renderer_destroy(&placebo_renderer);
 }
 
+pl_swapchain_frame sw_frame = {};
+bool m_HasPendingSwapchainFrame = false;
+
 extern "C"
 JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plSwapchainResize
   (JNIEnv *env, jobject obj, jlong swapchain, jint width, jint height) {
@@ -457,6 +460,26 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plSwapchainResize
   int int_width = static_cast<int>(width);
   int int_height = static_cast<int>(height);
   pl_swapchain_resize(placebo_swapchain, &int_width, &int_height);
+}
+
+extern "C"
+JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plWaitToRender()
+  (JNIEnv *env, jobject obj, jlong swapchain, jint width, jint height) {
+  pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
+
+ if (pl_gpu_is_failed(m_Vulkan->gpu)) {
+     LogCallbackFunction(nullptr, PL_LOG_ERR, "GPU is in failed state. Recreating renderer.");
+ }
+
+  pl_swapchain_swap_buffers(placebo_swapchain);
+
+  int int_width = static_cast<int>(width);
+  int int_height = static_cast<int>(height);
+  pl_swapchain_resize(placebo_swapchain, &int_width, &int_height);
+
+  if (pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
+      m_HasPendingSwapchainFrame = true;
+  }
 }
 
 extern "C"
@@ -557,7 +580,6 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
   bool ret = false;
 
-  struct pl_swapchain_frame sw_frame = {0};
   struct pl_frame placebo_frame = {0};
   struct pl_frame target_frame = {0};
 
@@ -622,9 +644,15 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
   pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
   pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
+
+  // If waitToRender() failed to get the next swapchain frame, skip
+  // rendering this frame. It probably means the window is occluded.
+  if (!m_HasPendingSwapchainFrame) {
+      return;
+  }
+
   bool ret = false;
 
-  struct pl_swapchain_frame sw_frame = {0};
   struct pl_frame placebo_frame = {0};
   struct pl_frame target_frame = {0};
 
@@ -644,10 +672,10 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
       pl_swapchain_colorspace_hint(placebo_swapchain, &placebo_frame.color);
   }
   pl_rect2df crop;
-  if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
+  /*if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
       goto cleanup;
-  }
+  }*/
   pl_frame_from_swapchain(&target_frame, &sw_frame);
 
   if(ui != 0) {
@@ -678,12 +706,13 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
         LogCallbackFunction(nullptr, PL_LOG_ERR, "Could not draw UI!");
      }
   }
+  m_HasPendingSwapchainFrame = false;
   if (!pl_swapchain_submit_frame(placebo_swapchain)) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to submit Placebo frame!");
       goto cleanup;
   }
 
-  pl_swapchain_swap_buffers(placebo_swapchain);
+  //pl_swapchain_swap_buffers(placebo_swapchain);
   ret = true;
 
 cleanup:
@@ -700,7 +729,6 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUiOnly
     pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
     bool ret = false;
 
-    struct pl_swapchain_frame sw_frame = {0};
     struct pl_frame target_frame = {0};
 
     struct pl_color_space hint = {
@@ -746,6 +774,17 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUiOnly
     pl_unmap_avframe(vulkan->gpu, &target_frame);
   finish:
     return ret;
+}
+
+extern "C"
+JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plCleanupRendererContext
+  (JNIEnv *env, jobject obj, jlong swapchain) {
+  pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
+
+  if (m_HasPendingSwapchainFrame) {
+      pl_swapchain_submit_frame(placebo_swapchain);
+      m_HasPendingSwapchainFrame = false;
+  }
 }
 
 extern "C"

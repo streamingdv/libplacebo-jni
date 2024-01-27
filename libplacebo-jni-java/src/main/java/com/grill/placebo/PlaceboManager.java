@@ -213,6 +213,10 @@ public class PlaceboManager {
      */
     public native void plSwapchainResize(long swapchain, int width, int height);
 
+    public native void plWaitToRender(long swapchain, int width, int height);
+
+    public native void plCleanupRendererContext(long swapchain);
+
     /**
      * Resizes the swapchain
      * @param swapchain the swapchain handle
