@@ -564,7 +564,6 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   struct pl_avframe_params avparams = {
       .frame = frame,
       .tex = placebo_tex_global,
-      .map_dovi = false,
   };
   bool mapped = pl_map_avframe_ex(vulkan->gpu, &placebo_frame, &avparams);
   if (!mapped) {
@@ -632,7 +631,6 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   struct pl_avframe_params avparams = {
       .frame = frame,
       .tex = placebo_tex_global,
-      .map_dovi = false,
   };
   bool mapped = pl_map_avframe_ex(vulkan->gpu, &placebo_frame, &avparams);
   if (!mapped) {
