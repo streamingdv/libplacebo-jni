@@ -213,10 +213,6 @@ public class PlaceboManager {
      */
     public native void plSwapchainResize(long swapchain, int width, int height);
 
-    public native void plWaitToRender(long swapchain, int width, int height);
-
-    public native void plCleanupRendererContext(long swapchain);
-
     /**
      * Resizes the swapchain
      * @param swapchain the swapchain handle
@@ -279,6 +275,8 @@ public class PlaceboManager {
     public native boolean plRenderAvFrameWithUi(long avframe, long vk, long swapchain, long renderer, long ui, int width, int height);
 
     public native boolean plRenderUiOnly(long vk, long swapchain, long renderer, long ui, int width, int height);
+
+    public native void plCleanupRendererContext(long swapchain);
 
     /**
      * Destroy the global saved textures
