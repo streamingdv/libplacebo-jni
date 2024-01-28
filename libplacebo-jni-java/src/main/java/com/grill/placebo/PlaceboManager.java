@@ -87,6 +87,8 @@ public class PlaceboManager {
      */
     public native long plVulkanCreate(long plLog, long vkInst);
 
+    public native long plVulkanCreate2(long plLog, long vkInst);
+
     /**
      * Init the vulkan decoding queue
      * @param vk the vulkan device handle
