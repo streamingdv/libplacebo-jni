@@ -219,8 +219,9 @@ public class PlaceboManager {
      * @param swapchain the swapchain handle
      * @param intBufferWidth the int buffer handle for width
      * @param intBufferHeight the int buffer handle for height
+     * @return true if successful, false otherwise
      */
-    public native void plSwapchainResizeWithBuffer(long swapchain, long intBufferWidth, long intBufferHeight);
+    public native boolean plSwapchainResizeWithBuffer(long swapchain, long intBufferWidth, long intBufferHeight);
 
     /**
      * Sets the vulkan context from libplacebo to the hardware vulkan context of ffmpeg
