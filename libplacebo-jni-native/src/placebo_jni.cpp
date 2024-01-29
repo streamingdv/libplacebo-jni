@@ -269,36 +269,36 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plInitFunctionP
                instance->get_proc_addr(instance->instance, "vkCreateWin32SurfaceKHR"));
        if(!vk_funcs.vkCreateWin32SurfaceKHR) {
            LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to resolve vkCreateWin32SurfaceKHR!");
-           return false;
+           return static_cast<jboolean>(false);
        }
   #else
        vk_funcs.vkCreateXcbSurfaceKHR = reinterpret_cast<PFN_vkCreateXcbSurfaceKHR>(
                instance->get_proc_addr(instance->instance, "vkCreateXcbSurfaceKHR"));
        if(!vk_funcs.vkCreateXcbSurfaceKHR) {
            LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to resolve vkCreateXcbSurfaceKHR!");
-           return false;
+           return static_cast<jboolean>(false);
        }
        vk_funcs.vkCreateWaylandSurfaceKHR = reinterpret_cast<PFN_vkCreateWaylandSurfaceKHR>(
                instance->get_proc_addr(instance->instance, "vkCreateWaylandSurfaceKHR"));
        if(!vk_funcs.vkCreateWaylandSurfaceKHR) {
            LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to resolve vkCreateWaylandSurfaceKHR!");
-           return false;
+           return static_cast<jboolean>(false);
        }
   #endif
   vk_funcs.vkDestroySurfaceKHR = reinterpret_cast<PFN_vkDestroySurfaceKHR>(
              instance->get_proc_addr(instance->instance, "vkDestroySurfaceKHR"));
   if(!vk_funcs.vkDestroySurfaceKHR) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to resolve vkDestroySurfaceKHR!");
-      return false;
+      return static_cast<jboolean>(false);
   }
   vk_funcs.vkGetPhysicalDeviceQueueFamilyProperties = reinterpret_cast<PFN_vkGetPhysicalDeviceQueueFamilyProperties>(
              instance->get_proc_addr(instance->instance, "vkGetPhysicalDeviceQueueFamilyProperties"));
   if(!vk_funcs.vkGetPhysicalDeviceQueueFamilyProperties) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to resolve vkGetPhysicalDeviceQueueFamilyProperties!");
-      return false;
+      return static_cast<jboolean>(false);
   }
 
-  return true;
+  return static_cast<jboolean>(true);
 }
 
 extern "C"
@@ -457,7 +457,8 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plSwapchainResi
   pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
   int int_width = static_cast<int>(width);
   int int_height = static_cast<int>(height);
-  return pl_swapchain_resize(placebo_swapchain, &int_width, &int_height);
+  bool result = pl_swapchain_resize(placebo_swapchain, &int_width, &int_height);
+  return static_cast<jboolean>(result);
 }
 
 extern "C"
@@ -466,7 +467,8 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plSwapchainResi
   pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
   int* intWidth = reinterpret_cast<int*>(widthBuffer);
   int* intHeight = reinterpret_cast<int*>(heightBuffer);
-  return pl_swapchain_resize(placebo_swapchain, intWidth, intHeight);
+  bool result = pl_swapchain_resize(placebo_swapchain, intWidth, intHeight);
+  return static_cast<jboolean>(result);
 }
 
 extern "C"
@@ -474,7 +476,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plSetHwDeviceCt
   (JNIEnv *env, jobject obj, jlong vulkan_hw_dev_ctx_handle, jlong placebo_vulkan, jlong placebo_vk_inst) {
   if (vk_decode_queue_index < 0) {
     LogCallbackFunction(nullptr, PL_LOG_ERR, "Can not configure vulkan hardware device context!");
-    return false; // not possible
+    return static_cast<jboolean>(false); // not possible
   }
 
   AVBufferRef *vulkan_hw_dev_ctx = reinterpret_cast<AVBufferRef *>(vulkan_hw_dev_ctx_handle);
@@ -513,7 +515,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plSetHwDeviceCt
       vk->unlock_queue(vk, queue_family, index);
   };
 
-  return true;
+  return static_cast<jboolean>(true);
 }
 
 pl_render_params render_params = pl_render_fast_params; // default params, others -> pl_render_high_quality_params, pl_render_default_params
@@ -570,7 +572,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   if (!mapped) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to map AVFrame to Placebo frame!");
       av_frame_free(&frame);
-      return ret;
+      return static_cast<jboolean>(ret);
   }
   // set colorspace hint
   if (!pl_color_space_equal(&placebo_frame.color, &m_LastColorspace)) {
@@ -614,7 +616,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
 cleanup:
   pl_unmap_avframe(vulkan->gpu, &placebo_frame);
 
-  return ret;
+  return static_cast<jboolean>(ret);
 }
 
 extern "C"
@@ -638,7 +640,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   if (!mapped) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to map AVFrame to Placebo frame!");
       av_frame_free(&frame);
-      return ret;
+      return static_cast<jboolean>(ret);
   }
   // set colorspace hint
   if (!pl_color_space_equal(&placebo_frame.color, &m_LastColorspace)) {
@@ -692,7 +694,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
 cleanup:
   pl_unmap_avframe(vulkan->gpu, &placebo_frame);
 
-  return ret;
+  return static_cast<jboolean>(ret);
 }
 
 extern "C"
@@ -749,7 +751,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUiOnly
   cleanup:
     pl_unmap_avframe(vulkan->gpu, &target_frame);
   finish:
-    return ret;
+    return static_cast<jboolean>(ret);
 }
 
 extern "C"
