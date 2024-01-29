@@ -87,8 +87,6 @@ public class PlaceboManager {
      */
     public native long plVulkanCreate(long plLog, long vkInst);
 
-    public native long plVulkanCreate2(long plLog, long vkInst);
-
     /**
      * Init the vulkan decoding queue
      * @param vk the vulkan device handle
@@ -212,8 +210,9 @@ public class PlaceboManager {
      * @param swapchain the swapchain handle
      * @param width the new width
      * @param height the new height
+     * @return true if successful, false otherwise
      */
-    public native void plSwapchainResize(long swapchain, int width, int height);
+    public native boolean plSwapchainResize(long swapchain, int width, int height);
 
     /**
      * Resizes the swapchain
@@ -226,7 +225,6 @@ public class PlaceboManager {
     /**
      * Sets the vulkan context from libplacebo to the hardware vulkan context of ffmpeg
      * @param vulkan_hw_dev_ctx_handle the handle to the AVBufferRef
-     * @param vkInst the vk inst handle
      * @param vkInst the vk inst handle
      * @return true when the libplacebo context could be set successfully
      */

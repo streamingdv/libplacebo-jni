@@ -216,32 +216,6 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanCreate
 }
 
 extern "C"
-JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanCreate2
-  (JNIEnv *env, jobject obj, jlong placebo_log, jlong placebo_vk_inst) {
-  pl_log log = reinterpret_cast<pl_log>(placebo_log);
-  pl_vk_inst instance = reinterpret_cast<pl_vk_inst>(placebo_vk_inst);
-
-  /*const char *opt_dev_extensions[] = {
-      VK_KHR_VIDEO_QUEUE_EXTENSION_NAME,
-      VK_KHR_VIDEO_DECODE_QUEUE_EXTENSION_NAME,
-      VK_KHR_VIDEO_DECODE_H264_EXTENSION_NAME,
-      VK_KHR_VIDEO_DECODE_H265_EXTENSION_NAME,
-  };*/
-
-  struct pl_vulkan_params vulkan_params = {
-      .instance = instance->instance,
-      .get_proc_addr = instance->get_proc_addr,
-      .allow_software = true,
-      PL_VULKAN_DEFAULTS
-  };
-
-  LogCallbackFunction(nullptr, PL_LOG_ERR, "plVulkanCreate2!");
-
-  pl_vulkan placebo_vulkan = pl_vulkan_create(log, &vulkan_params);
-  return reinterpret_cast<jlong>(placebo_vulkan);
-}
-
-extern "C"
 JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plInitQueue
   (JNIEnv *env, jobject obj, jlong placebo_vulkan) {
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
@@ -478,12 +452,12 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plDestroyRenderer
 }
 
 extern "C"
-JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plSwapchainResize
+JNIEXPORT bool JNICALL Java_com_grill_placebo_PlaceboManager_plSwapchainResize
   (JNIEnv *env, jobject obj, jlong swapchain, jint width, jint height) {
   pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
   int int_width = static_cast<int>(width);
   int int_height = static_cast<int>(height);
-  pl_swapchain_resize(placebo_swapchain, &int_width, &int_height);
+  return pl_swapchain_resize(placebo_swapchain, &int_width, &int_height);
 }
 
 extern "C"
