@@ -275,6 +275,9 @@ public class PlaceboManager {
      */
     public native boolean plRenderAvFrameWithUi(long avframe, long vk, long swapchain, long renderer, long ui, int width, int height);
 
+    public native boolean plRenderAvFrameWithUi2(long avframe, long vk, long swapchain, long renderer, long ui, int width, int height);
+
+
     public native boolean plRenderUiOnly(long vk, long swapchain, long renderer, long ui, int width, int height);
 
     public native void plCleanupRendererContext(long swapchain);

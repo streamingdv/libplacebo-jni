@@ -698,6 +698,152 @@ cleanup:
 }
 
 extern "C"
+JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrameWithUi2
+  (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer, jlong ui, jint width, jint height) {
+  AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
+  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
+  pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
+  pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
+  bool ret = false;
+
+  struct pl_swapchain_frame sw_frame = {0};
+  struct pl_frame placebo_frame = {0};
+  struct pl_frame target_frame = {0};
+
+  struct pl_avframe_params avparams = {
+      .frame = frame,
+      .tex = placebo_tex_global,
+  };
+  bool mapped = pl_map_avframe_ex(vulkan->gpu, &placebo_frame, &avparams);
+  if (!mapped) {
+      av_frame_free(&frame);
+      return static_cast<jboolean>(ret);
+  }
+  // set colorspace hint
+  if (!pl_color_space_equal(&placebo_frame.color, &m_LastColorspace)) {
+      m_LastColorspace = placebo_frame.color;
+      pl_swapchain_colorspace_hint(placebo_swapchain, &placebo_frame.color);
+  }
+  pl_rect2df crop;
+  if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
+      goto cleanup;
+  }
+  pl_frame_from_swapchain(&target_frame, &sw_frame);
+
+  if(ui != 0) {
+      struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
+      render_ui(ui_instance, width, height);
+  }
+
+  crop = placebo_frame.crop;
+  switch (renderingFormat) {
+      case 0: // normal
+          pl_rect2df_aspect_copy(&target_frame.crop, &crop, 0.0);
+          break;
+      case 1: // stretched
+          // Nothing to do, target.crop already covers the full image
+          break;
+      case 2: // zoomed
+          pl_rect2df_aspect_copy(&target_frame.crop, &crop, 1.0);
+          break;
+  }
+
+  if (!pl_render_image(placebo_renderer, &placebo_frame, &target_frame, &render_params)) {
+      goto cleanup;
+  }
+  if (ui != 0) {
+     struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
+     if (!ui_draw(ui_instance, &sw_frame)) {
+     }
+  }
+  if (!pl_swapchain_submit_frame(placebo_swapchain)) {
+      goto cleanup;
+  }
+
+  m_HasPendingSwapchainFrame = true;
+  pl_swapchain_swap_buffers(placebo_swapchain);
+  ret = true;
+
+cleanup:
+  pl_unmap_avframe(vulkan->gpu, &placebo_frame);
+
+  return static_cast<jboolean>(ret);
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrameWithUi2
+  (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer, jlong ui, jint width, jint height) {
+  AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
+  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
+  pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
+  pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
+  bool ret = false;
+
+  struct pl_swapchain_frame sw_frame = {0};
+  struct pl_frame placebo_frame = {0};
+  struct pl_frame target_frame = {0};
+
+  struct pl_avframe_params avparams = {
+      .frame = frame,
+      .tex = placebo_tex_global,
+  };
+  bool mapped = pl_map_avframe_ex(vulkan->gpu, &placebo_frame, &avparams);
+  if (!mapped) {
+      av_frame_free(&frame);
+      return static_cast<jboolean>(ret);
+  }
+  // set colorspace hint
+  if (!pl_color_space_equal(&placebo_frame.color, &m_LastColorspace)) {
+      m_LastColorspace = placebo_frame.color;
+      pl_swapchain_colorspace_hint(placebo_swapchain, &placebo_frame.color);
+  }
+  pl_rect2df crop;
+  if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
+      goto cleanup;
+  }
+  pl_frame_from_swapchain(&target_frame, &sw_frame);
+
+  if(ui != 0) {
+      struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
+      render_ui(ui_instance, width, height);
+  }
+
+  crop = placebo_frame.crop;
+  switch (renderingFormat) {
+      case 0: // normal
+          pl_rect2df_aspect_copy(&target_frame.crop, &crop, 0.0);
+          break;
+      case 1: // stretched
+          // Nothing to do, target.crop already covers the full image
+          break;
+      case 2: // zoomed
+          pl_rect2df_aspect_copy(&target_frame.crop, &crop, 1.0);
+          break;
+  }
+
+  if (!pl_render_image(placebo_renderer, &placebo_frame, &target_frame, &render_params)) {
+      goto cleanup;
+  }
+  if (ui != 0) {
+     struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
+     if (!ui_draw(ui_instance, &sw_frame)) {
+     }
+  }
+  if (!pl_swapchain_submit_frame(placebo_swapchain)) {
+      goto cleanup;
+  }
+
+  m_HasPendingSwapchainFrame = true;
+  pl_swapchain_swap_buffers(placebo_swapchain);
+  ret = true;
+
+cleanup:
+  pl_unmap_avframe(vulkan->gpu, &placebo_frame);
+
+  return static_cast<jboolean>(ret);
+}
+
+extern "C"
 JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUiOnly
   (JNIEnv *env, jobject obj, jlong placebo_vulkan, jlong swapchain, jlong renderer, jlong ui, jint width, jint height) {
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
