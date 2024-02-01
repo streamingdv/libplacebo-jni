@@ -8,6 +8,7 @@
 #include <iterator>
 #include <iostream>
 #include <algorithm>
+#include <set>
 #include <string.h>
 #include <jni.h>
 
@@ -103,7 +104,7 @@ struct {
     PFN_vkEnumeratePhysicalDevices vkEnumeratePhysicalDevices;
     PFN_vkGetPhysicalDeviceProperties vkGetPhysicalDeviceProperties;
     PFN_vkGetPhysicalDeviceSurfaceSupportKHR vkGetPhysicalDeviceSurfaceSupportKHR;
-    PFN_vkEnumerateDeviceExtensionProperties = vkEnumerateDeviceExtensionProperties;
+    PFN_vkEnumerateDeviceExtensionProperties vkEnumerateDeviceExtensionProperties;
 
 } vk_funcs;
 
