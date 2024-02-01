@@ -54,6 +54,8 @@ public class PlaceboManager {
      */
     public native long plLogCreate(int apiVersion, int logLevel, LogCallback callback);
 
+    public native long plLogCreate2(int apiVersion, int logLevel);
+
     /**
      * Destroys a logger with the log callback
      * @param logHandle the log handle to be deleted, pl_log
