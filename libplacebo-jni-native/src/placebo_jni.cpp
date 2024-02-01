@@ -175,13 +175,13 @@ bool isSurfacePresentationSupportedByPhysicalDevice(VkPhysicalDevice device, VkS
     return false;
 }
 
-bool isColorSpaceSupportedByPhysicalDevice(VkPhysicalDevice device, VkColorSpaceKHR colorSpace)
+bool isColorSpaceSupportedByPhysicalDevice(VkPhysicalDevice device, VkColorSpaceKHR colorSpace, VkSurfaceKHR vkSurfaceKHR)
 {
     uint32_t formatCount = 0;
-    vk_funcs.vkGetPhysicalDeviceSurfaceFormatsKHR(device, m_VkSurface, &formatCount, nullptr);
+    vk_funcs.vkGetPhysicalDeviceSurfaceFormatsKHR(device, vkSurfaceKHR, &formatCount, nullptr);
 
     std::vector<VkSurfaceFormatKHR> formats(formatCount);
-    vk_funcs.vkGetPhysicalDeviceSurfaceFormatsKHR(device, m_VkSurface, &formatCount, formats.data());
+    vk_funcs.vkGetPhysicalDeviceSurfaceFormatsKHR(device, vkSurfaceKHR, &formatCount, formats.data());
 
     for (uint32_t i = 0; i < formatCount; i++) {
         if (formats[i].colorSpace == colorSpace) {
@@ -198,7 +198,7 @@ bool tryInitializeDevice(pl_log log,
                        VkPhysicalDeviceProperties* deviceProps,
                        VkSurfaceKHR vkSurfaceKHR,
                        int decoderType,
-                       bool hdr
+                       bool hdr,
                        pl_vulkan& placebo_vulkan) {
   // Check the Vulkan API version first to ensure it meets libplacebo's minimum
   if (deviceProps->apiVersion < PL_VK_MIN_VERSION) {
@@ -208,13 +208,13 @@ bool tryInitializeDevice(pl_log log,
 
   const char* videoDecodeExtension = nullptr; // Initialize to nullptr to avoid uninitialized usage
 
-  if (decoder == 0) { // h264
+  if (decoderType == 0) { // h264
       videoDecodeExtension = VK_KHR_VIDEO_DECODE_H264_EXTENSION_NAME;
   }
-  else if (decoder == 1) { // h265
+  else if (decoderType == 1) { // h265
       videoDecodeExtension = VK_KHR_VIDEO_DECODE_H265_EXTENSION_NAME;
   } else {
-      LogCallbackFunction(nullptr, PL_LOG_ERR, "Unsupported video decoder format!");
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Unsupported video decoder type format!");
       return false;
   }
 
@@ -228,7 +228,7 @@ bool tryInitializeDevice(pl_log log,
       return false;
   }
 
-  if(hdr && !isColorSpaceSupportedByPhysicalDevice(device, VK_COLOR_SPACE_HDR10_ST2084_EXT)){
+  if(hdr && !isColorSpaceSupportedByPhysicalDevice(device, VK_COLOR_SPACE_HDR10_ST2084_EXT, vkSurfaceKHR)){
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Vulkan device does not support HDR10 (ST.2084 PQ)!");
       return false;
   }
