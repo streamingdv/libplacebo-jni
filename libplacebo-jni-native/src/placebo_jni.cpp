@@ -8,6 +8,7 @@
 #include <iterator>
 #include <iostream>
 #include <algorithm>
+#include <string.h>
 #include <jni.h>
 
 #ifdef _WIN32
@@ -96,7 +97,135 @@ struct {
 #endif
     PFN_vkDestroySurfaceKHR vkDestroySurfaceKHR;
     PFN_vkGetPhysicalDeviceQueueFamilyProperties vkGetPhysicalDeviceQueueFamilyProperties;
+    /** device check methods **/
+    PFN_vkGetPhysicalDeviceSurfacePresentModesKHR vkGetPhysicalDeviceSurfacePresentModesKHR;
+    PFN_vkGetPhysicalDeviceSurfaceFormatsKHR vkGetPhysicalDeviceSurfaceFormatsKHR;
+    PFN_vkEnumeratePhysicalDevices vkEnumeratePhysicalDevices;
+    PFN_vkGetPhysicalDeviceProperties vkGetPhysicalDeviceProperties;
+    PFN_vkGetPhysicalDeviceSurfaceSupportKHR vkGetPhysicalDeviceSurfaceSupportKHR;
+    PFN_vkEnumerateDeviceExtensionProperties = vkEnumerateDeviceExtensionProperties;
+
 } vk_funcs;
+
+   // Keep these in sync with hwcontext_vulkan.c
+static const char *opt_dev_extensions[] = {
+    /* Misc or required by other extensions */
+    VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
+    VK_KHR_SAMPLER_YCBCR_CONVERSION_EXTENSION_NAME,
+    VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
+    VK_EXT_PHYSICAL_DEVICE_DRM_EXTENSION_NAME,
+    VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME,
+    VK_KHR_COOPERATIVE_MATRIX_EXTENSION_NAME,
+
+    /* Imports/exports */
+    VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME,
+    VK_EXT_EXTERNAL_MEMORY_DMA_BUF_EXTENSION_NAME,
+    VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_EXTENSION_NAME,
+    VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME,
+    VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME,
+
+#ifdef _WIN32
+    VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME,
+    VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME,
+#endif
+
+    VK_KHR_VIDEO_QUEUE_EXTENSION_NAME,
+    VK_KHR_VIDEO_DECODE_QUEUE_EXTENSION_NAME,
+    VK_KHR_VIDEO_DECODE_H264_EXTENSION_NAME,
+    VK_KHR_VIDEO_DECODE_H265_EXTENSION_NAME,
+};
+
+bool isExtensionSupportedByPhysicalDevice(VkPhysicalDevice device, const char *extensionName)
+{
+    uint32_t extensionCount = 0;
+    vk_funcs.vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, nullptr);
+    std::vector<VkExtensionProperties> extensions(extensionCount);
+    vk_funcs.vkEnumerateDeviceExtensionProperties(device, nullptr, &extensionCount, extensions.data());
+
+    for (const VkExtensionProperties& extension : extensions) {
+        if (strcmp(extension.extensionName, extensionName) == 0) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool isSurfacePresentationSupportedByPhysicalDevice(VkPhysicalDevice device, VkSurfaceKHR vkSurfaceKHR)
+{
+    uint32_t queueFamilyCount = 0;
+    vk_funcs.vkGetPhysicalDeviceQueueFamilyProperties(device, &queueFamilyCount, nullptr);
+
+    for (uint32_t i = 0; i < queueFamilyCount; i++) {
+        VkBool32 supported = VK_FALSE;
+        if (vk_funcs.vkGetPhysicalDeviceSurfaceSupportKHR(device, i, vkSurfaceKHR, &supported) == VK_SUCCESS && supported == VK_TRUE) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool tryInitializeDevice(pl_log log,
+                       pl_vk_inst instance,
+                       VkPhysicalDevice device,
+                       VkPhysicalDeviceProperties* deviceProps,
+                       VkSurfaceKHR vkSurfaceKHR,
+                       int decoder,
+                       pl_vulkan& placebo_vulkan) {
+  // Check the Vulkan API version first to ensure it meets libplacebo's minimum
+  if (deviceProps->apiVersion < PL_VK_MIN_VERSION) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Vulkan device does not meet minimum Vulkan version!");
+      return false;
+  }
+
+  const char* videoDecodeExtension = nullptr; // Initialize to nullptr to avoid uninitialized usage
+
+  if (decoder == 0) { // h264
+      videoDecodeExtension = VK_KHR_VIDEO_DECODE_H264_EXTENSION_NAME;
+  }
+  else if (decoder == 1) { // h265
+      videoDecodeExtension = VK_KHR_VIDEO_DECODE_H265_EXTENSION_NAME;
+  } else {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Unsupported video decoder format!");
+      return false;
+  }
+
+  if (!isExtensionSupportedByPhysicalDevice(device, videoDecodeExtension)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Vulkan device does not support videoDecodeExtension!");
+      return false;
+  }
+
+  if (!isSurfacePresentationSupportedByPhysicalDevice(device, vkSurfaceKHR)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Vulkan device does not support presenting on window surface!");
+      return false;
+  }
+
+  // Avoid software GPUs
+  if (deviceProps->deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Vulkan device is a (probably slow) software renderer.");
+      return false;
+  }
+
+  struct pl_vulkan_params vulkan_params = {
+      .instance = instance->instance,
+      .get_proc_addr = instance->get_proc_addr,
+      .surface = vkSurfaceKHR,
+      .device = device,
+      .extra_queues = VK_QUEUE_VIDEO_DECODE_BIT_KHR,
+      .opt_extensions = opt_dev_extensions,
+      .num_opt_extensions = std::size(opt_dev_extensions),
+  };
+
+  placebo_vulkan = pl_vulkan_create(log, &vulkan_params); // Modify the passed reference
+  if (placebo_vulkan == nullptr) {
+     LogCallbackFunction(nullptr, PL_LOG_ERR, "Vulkan device could not be created.");
+     return false;
+  }
+
+  return true; // Success
+}
+
 
 /*** define JNI methods ***/
 
@@ -215,34 +344,6 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanCreate
   pl_vk_inst instance = reinterpret_cast<pl_vk_inst>(placebo_vk_inst);
   VkSurfaceKHR vkSurfaceKHR = reinterpret_cast<VkSurfaceKHR>(static_cast<uint64_t>(surface));
 
-   // Keep these in sync with hwcontext_vulkan.c
-  const char *opt_dev_extensions[] = {
-      /* Misc or required by other extensions */
-      VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
-      VK_KHR_SAMPLER_YCBCR_CONVERSION_EXTENSION_NAME,
-      VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
-      VK_EXT_PHYSICAL_DEVICE_DRM_EXTENSION_NAME,
-      VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME,
-      VK_KHR_COOPERATIVE_MATRIX_EXTENSION_NAME,
-
-      /* Imports/exports */
-      VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME,
-      VK_EXT_EXTERNAL_MEMORY_DMA_BUF_EXTENSION_NAME,
-      VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_EXTENSION_NAME,
-      VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME,
-      VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME,
-
-#ifdef _WIN32
-      VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME,
-      VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME,
-#endif
-
-      VK_KHR_VIDEO_QUEUE_EXTENSION_NAME,
-      VK_KHR_VIDEO_DECODE_QUEUE_EXTENSION_NAME,
-      VK_KHR_VIDEO_DECODE_H264_EXTENSION_NAME,
-      VK_KHR_VIDEO_DECODE_H265_EXTENSION_NAME,
-  };
-
   struct pl_vulkan_params vulkan_params = {
       .instance = instance->instance,
       .get_proc_addr = instance->get_proc_addr,
@@ -256,6 +357,82 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanCreate
 
   pl_vulkan placebo_vulkan = pl_vulkan_create(log, &vulkan_params);
   return reinterpret_cast<jlong>(placebo_vulkan);
+}
+
+extern "C"
+JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanCreate2
+  (JNIEnv *env, jobject obj, jlong placebo_log, jlong placebo_vk_inst, jlong surface, jint decoder) {
+  pl_log log = reinterpret_cast<pl_log>(placebo_log);
+  pl_vk_inst instance = reinterpret_cast<pl_vk_inst>(placebo_vk_inst);
+  VkSurfaceKHR vkSurfaceKHR = reinterpret_cast<VkSurfaceKHR>(static_cast<uint64_t>(surface));
+
+  uint32_t physicalDeviceCount = 0;
+  vk_funcs.vkEnumeratePhysicalDevices(instance->instance, &physicalDeviceCount, nullptr);
+  std::vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
+  vk_funcs.vkEnumeratePhysicalDevices(instance->instance, &physicalDeviceCount, physicalDevices.data());
+
+  std::set<uint32_t> devicesTried;
+  VkPhysicalDeviceProperties deviceProps;
+
+  vk_funcs.vkGetPhysicalDeviceProperties(physicalDevices[0], &deviceProps);
+
+  pl_vulkan placebo_vulkan = nullptr;
+  if (tryInitializeDevice(log, instance, physicalDevices[0], &deviceProps, vkSurfaceKHR, decoder, placebo_vulkan)) {
+      return reinterpret_cast<jlong>(placebo_vulkan);
+  }
+  devicesTried.emplace(0);
+
+  // Next, we'll try to match an integrated GPU, since we want to minimize
+  // power consumption and inter-GPU copies.
+  for (uint32_t i = 0; i < physicalDeviceCount; i++) {
+    // Skip devices we've already tried
+    if (devicesTried.find(i) != devicesTried.end()) {
+        continue;
+    }
+
+    VkPhysicalDeviceProperties deviceProps;
+    vk_funcs.vkGetPhysicalDeviceProperties(physicalDevices[i], &deviceProps);
+    if (deviceProps.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) {
+        if (tryInitializeDevice(log, instance, physicalDevices[i], &deviceProps, vkSurfaceKHR, decoder, placebo_vulkan)) {
+            return reinterpret_cast<jlong>(placebo_vulkan);
+        }
+        devicesTried.emplace(i);
+    }
+  }
+
+  // Next, we'll try to match a discrete GPU.
+  for (uint32_t i = 0; i < physicalDeviceCount; i++) {
+    // Skip devices we've already tried
+    if (devicesTried.find(i) != devicesTried.end()) {
+        continue;
+    }
+
+    VkPhysicalDeviceProperties deviceProps;
+    vk_funcs.vkGetPhysicalDeviceProperties(physicalDevices[i], &deviceProps);
+    if (deviceProps.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
+        if (tryInitializeDevice(log, instance, physicalDevices[i], &deviceProps, vkSurfaceKHR, decoder, placebo_vulkan)) {
+            return reinterpret_cast<jlong>(placebo_vulkan);
+        }
+        devicesTried.emplace(i);
+    }
+  }
+
+  // Finally, we'll try matching any non-software device.
+  for (uint32_t i = 0; i < physicalDeviceCount; i++) {
+    // Skip devices we've already tried
+    if (devicesTried.find(i) != devicesTried.end()) {
+        continue;
+    }
+
+    VkPhysicalDeviceProperties deviceProps;
+    vk_funcs.vkGetPhysicalDeviceProperties(physicalDevices[i], &deviceProps);
+    if (tryInitializeDevice(log, instance, physicalDevices[i], &deviceProps, vkSurfaceKHR, decoder, placebo_vulkan)) {
+        return reinterpret_cast<jlong>(placebo_vulkan);
+    }
+    devicesTried.emplace(i);
+  }
+
+  return 0;
 }
 
 extern "C"
@@ -334,10 +511,53 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plInitFunctionP
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to resolve vkDestroySurfaceKHR!");
       return static_cast<jboolean>(false);
   }
+
   vk_funcs.vkGetPhysicalDeviceQueueFamilyProperties = reinterpret_cast<PFN_vkGetPhysicalDeviceQueueFamilyProperties>(
              instance->get_proc_addr(instance->instance, "vkGetPhysicalDeviceQueueFamilyProperties"));
   if(!vk_funcs.vkGetPhysicalDeviceQueueFamilyProperties) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to resolve vkGetPhysicalDeviceQueueFamilyProperties!");
+      return static_cast<jboolean>(false);
+  }
+
+  vk_funcs.vkGetPhysicalDeviceSurfacePresentModesKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceSurfacePresentModesKHR>(
+             instance->get_proc_addr(instance->instance, "vkGetPhysicalDeviceSurfacePresentModesKHR"));
+  if(!vk_funcs.vkGetPhysicalDeviceSurfacePresentModesKHR) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to resolve vkGetPhysicalDeviceSurfacePresentModesKHR!");
+      return static_cast<jboolean>(false);
+  }
+
+  vk_funcs.vkGetPhysicalDeviceSurfaceFormatsKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceSurfaceFormatsKHR>(
+             instance->get_proc_addr(instance->instance, "vkGetPhysicalDeviceSurfaceFormatsKHR"));
+  if(!vk_funcs.vkGetPhysicalDeviceSurfaceFormatsKHR) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to resolve vkGetPhysicalDeviceSurfaceFormatsKHR!");
+      return static_cast<jboolean>(false);
+  }
+
+  vk_funcs.vkEnumeratePhysicalDevices = reinterpret_cast<PFN_vkEnumeratePhysicalDevices>(
+             instance->get_proc_addr(instance->instance, "vkEnumeratePhysicalDevices"));
+  if(!vk_funcs.vkEnumeratePhysicalDevices) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to resolve vkEnumeratePhysicalDevices!");
+      return static_cast<jboolean>(false);
+  }
+
+  vk_funcs.vkGetPhysicalDeviceProperties = reinterpret_cast<PFN_vkGetPhysicalDeviceProperties>(
+             instance->get_proc_addr(instance->instance, "vkGetPhysicalDeviceProperties"));
+  if(!vk_funcs.vkGetPhysicalDeviceProperties) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to resolve vkGetPhysicalDeviceProperties!");
+      return static_cast<jboolean>(false);
+  }
+
+  vk_funcs.vkGetPhysicalDeviceSurfaceSupportKHR = reinterpret_cast<PFN_vkGetPhysicalDeviceSurfaceSupportKHR>(
+             instance->get_proc_addr(instance->instance, "vkGetPhysicalDeviceSurfaceSupportKHR"));
+  if(!vk_funcs.vkGetPhysicalDeviceSurfaceSupportKHR) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to resolve vkGetPhysicalDeviceSurfaceSupportKHR!");
+      return static_cast<jboolean>(false);
+  }
+
+  vk_funcs.vkEnumerateDeviceExtensionProperties = reinterpret_cast<PFN_vkEnumerateDeviceExtensionProperties>(
+             instance->get_proc_addr(instance->instance, "vkEnumerateDeviceExtensionProperties"));
+  if(!vk_funcs.vkEnumerateDeviceExtensionProperties) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to resolve vkEnumerateDeviceExtensionProperties!");
       return static_cast<jboolean>(false);
   }
 
