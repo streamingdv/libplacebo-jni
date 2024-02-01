@@ -6,6 +6,7 @@
 #include <map>
 #include <array>
 #include <iterator>
+#include <iostream>
 #include <algorithm>
 #include <jni.h>
 
@@ -74,6 +75,10 @@ void LogCallbackFunction(void *log_priv, enum pl_log_level level, const char *ms
   }
 }
 
+void LogCallbackFunction2(void *log_priv, enum pl_log_level level, const char *msg) {
+  std::cout << "Log Level " << level << ": " << msg << std::endl;
+}
+
 struct nk_image globalBtnImage;
 
 void render_ui(struct ui *ui, int width, int height);
@@ -127,7 +132,21 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plLogCreate
 
   struct pl_log_params log_params = {
       .log_cb = LogCallbackFunction,
-      .log_priv = nullptr,
+      .log_level = plLevel,
+  };
+
+  pl_log placebo_log = pl_log_create(apiVersion, &log_params);
+
+  return reinterpret_cast<jlong>(placebo_log);
+}
+
+extern "C"
+JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plLogCreate2
+  (JNIEnv *env, jobject obj, jint apiVersion, jint logLevel) {
+  enum pl_log_level plLevel = static_cast<enum pl_log_level>(logLevel);
+
+  struct pl_log_params log_params = {
+      .log_cb = LogCallbackFunction2,
       .log_level = plLevel,
   };
 
