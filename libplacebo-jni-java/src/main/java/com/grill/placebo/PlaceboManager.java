@@ -82,15 +82,24 @@ public class PlaceboManager {
     public native void plVkInstDestroy(long vkInst);
 
     /**
-     * Creates a vulkan device
+     * Creates a vulkan device chosen by libplacebo
      * @param plLog the log handle
      * @param vkInst the vk inst handle
-     * @return the vulkan device handle
      * @param surface the surface handle
+     * @return the vulkan device handle or <= 0 if not successful
      */
     public native long plVulkanCreate(long plLog, long vkInst, long surface);
 
-    public native long plVulkanCreate2(long plLog, long vkInst, long surface, int decoder);
+    /**
+     * Creates a vulkan device and check if the device meets our requirments
+     * @param plLog the log handle
+     * @param vkInst the vk inst handle
+     * @param surface the surface handle
+     * @param decoder 0 for h264 1 for h265
+     * @param hdr true if hdr is enabled, false otherwise
+     * @return the vulkan device handle or <= 0 if not successful
+     */
+    public native long plVulkanCreateForBestDevice(long plLog, long vkInst, long surface, int decoder, boolean hdr);
 
     /**
      * Init the vulkan decoding queue

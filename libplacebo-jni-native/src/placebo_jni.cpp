@@ -136,6 +136,14 @@ static const char *opt_dev_extensions[] = {
     VK_KHR_VIDEO_DECODE_H265_EXTENSION_NAME,
 };
 
+// minimum required extensions
+static const char *opt_dev_extensions_min[] = {
+    VK_KHR_VIDEO_QUEUE_EXTENSION_NAME,
+    VK_KHR_VIDEO_DECODE_QUEUE_EXTENSION_NAME,
+    VK_KHR_VIDEO_DECODE_H264_EXTENSION_NAME,
+    VK_KHR_VIDEO_DECODE_H265_EXTENSION_NAME,
+};
+
 bool isExtensionSupportedByPhysicalDevice(VkPhysicalDevice device, const char *extensionName)
 {
     uint32_t extensionCount = 0;
@@ -167,12 +175,30 @@ bool isSurfacePresentationSupportedByPhysicalDevice(VkPhysicalDevice device, VkS
     return false;
 }
 
+bool isColorSpaceSupportedByPhysicalDevice(VkPhysicalDevice device, VkColorSpaceKHR colorSpace)
+{
+    uint32_t formatCount = 0;
+    vk_funcs.vkGetPhysicalDeviceSurfaceFormatsKHR(device, m_VkSurface, &formatCount, nullptr);
+
+    std::vector<VkSurfaceFormatKHR> formats(formatCount);
+    vk_funcs.vkGetPhysicalDeviceSurfaceFormatsKHR(device, m_VkSurface, &formatCount, formats.data());
+
+    for (uint32_t i = 0; i < formatCount; i++) {
+        if (formats[i].colorSpace == colorSpace) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool tryInitializeDevice(pl_log log,
                        pl_vk_inst instance,
                        VkPhysicalDevice device,
                        VkPhysicalDeviceProperties* deviceProps,
                        VkSurfaceKHR vkSurfaceKHR,
-                       int decoder,
+                       int decoderType,
+                       bool hdr
                        pl_vulkan& placebo_vulkan) {
   // Check the Vulkan API version first to ensure it meets libplacebo's minimum
   if (deviceProps->apiVersion < PL_VK_MIN_VERSION) {
@@ -202,6 +228,11 @@ bool tryInitializeDevice(pl_log log,
       return false;
   }
 
+  if(hdr && !isColorSpaceSupportedByPhysicalDevice(device, VK_COLOR_SPACE_HDR10_ST2084_EXT)){
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Vulkan device does not support HDR10 (ST.2084 PQ)!");
+      return false;
+  }
+
   // Avoid software GPUs
   if (deviceProps->deviceType == VK_PHYSICAL_DEVICE_TYPE_CPU) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Vulkan device is a (probably slow) software renderer.");
@@ -218,7 +249,7 @@ bool tryInitializeDevice(pl_log log,
       .num_opt_extensions = std::size(opt_dev_extensions),
   };
 
-  placebo_vulkan = pl_vulkan_create(log, &vulkan_params); // Modify the passed reference
+  placebo_vulkan = pl_vulkan_create(log, &vulkan_params);
   if (placebo_vulkan == nullptr) {
      LogCallbackFunction(nullptr, PL_LOG_ERR, "Vulkan device could not be created.");
      return false;
@@ -352,8 +383,8 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanCreate
       .allow_software = true,
       PL_VULKAN_DEFAULTS
       .extra_queues = VK_QUEUE_VIDEO_DECODE_BIT_KHR,
-      .opt_extensions = opt_dev_extensions,
-      .num_opt_extensions = std::size(opt_dev_extensions),
+      .opt_extensions = opt_dev_extensions_min,
+      .num_opt_extensions = std::size(opt_dev_extensions_min),
   };
 
   pl_vulkan placebo_vulkan = pl_vulkan_create(log, &vulkan_params);
@@ -361,8 +392,8 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanCreate
 }
 
 extern "C"
-JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanCreate2
-  (JNIEnv *env, jobject obj, jlong placebo_log, jlong placebo_vk_inst, jlong surface, jint decoder) {
+JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanCreateForBestDevice
+  (JNIEnv *env, jobject obj, jlong placebo_log, jlong placebo_vk_inst, jlong surface, jint decoderType, jboolean hdr) {
   pl_log log = reinterpret_cast<pl_log>(placebo_log);
   pl_vk_inst instance = reinterpret_cast<pl_vk_inst>(placebo_vk_inst);
   VkSurfaceKHR vkSurfaceKHR = reinterpret_cast<VkSurfaceKHR>(static_cast<uint64_t>(surface));
@@ -378,7 +409,7 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanCreate2
   vk_funcs.vkGetPhysicalDeviceProperties(physicalDevices[0], &deviceProps);
 
   pl_vulkan placebo_vulkan = nullptr;
-  if (tryInitializeDevice(log, instance, physicalDevices[0], &deviceProps, vkSurfaceKHR, decoder, placebo_vulkan)) {
+  if (tryInitializeDevice(log, instance, physicalDevices[0], &deviceProps, vkSurfaceKHR, decoderType, hdr, placebo_vulkan)) {
       return reinterpret_cast<jlong>(placebo_vulkan);
   }
   devicesTried.emplace(0);
@@ -394,7 +425,7 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanCreate2
     VkPhysicalDeviceProperties deviceProps;
     vk_funcs.vkGetPhysicalDeviceProperties(physicalDevices[i], &deviceProps);
     if (deviceProps.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) {
-        if (tryInitializeDevice(log, instance, physicalDevices[i], &deviceProps, vkSurfaceKHR, decoder, placebo_vulkan)) {
+        if (tryInitializeDevice(log, instance, physicalDevices[i], &deviceProps, vkSurfaceKHR, decoderType, hdr, placebo_vulkan)) {
             return reinterpret_cast<jlong>(placebo_vulkan);
         }
         devicesTried.emplace(i);
@@ -411,7 +442,7 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanCreate2
     VkPhysicalDeviceProperties deviceProps;
     vk_funcs.vkGetPhysicalDeviceProperties(physicalDevices[i], &deviceProps);
     if (deviceProps.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-        if (tryInitializeDevice(log, instance, physicalDevices[i], &deviceProps, vkSurfaceKHR, decoder, placebo_vulkan)) {
+        if (tryInitializeDevice(log, instance, physicalDevices[i], &deviceProps, vkSurfaceKHR, decoderType, hdr, placebo_vulkan)) {
             return reinterpret_cast<jlong>(placebo_vulkan);
         }
         devicesTried.emplace(i);
@@ -427,7 +458,7 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanCreate2
 
     VkPhysicalDeviceProperties deviceProps;
     vk_funcs.vkGetPhysicalDeviceProperties(physicalDevices[i], &deviceProps);
-    if (tryInitializeDevice(log, instance, physicalDevices[i], &deviceProps, vkSurfaceKHR, decoder, placebo_vulkan)) {
+    if (tryInitializeDevice(log, instance, physicalDevices[i], &deviceProps, vkSurfaceKHR, decoderType, hdr, placebo_vulkan)) {
         return reinterpret_cast<jlong>(placebo_vulkan);
     }
     devicesTried.emplace(i);
