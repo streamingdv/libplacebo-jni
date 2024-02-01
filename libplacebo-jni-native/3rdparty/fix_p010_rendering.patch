@@ -1,5 +1,5 @@
 diff --git a/src/include/libplacebo/utils/libav_internal.h b/src/include/libplacebo/utils/libav_internal.h
-index 4c269e5d..bd0d79fa 100644
+index 4c269e5d..62996477 100644
 --- a/src/include/libplacebo/utils/libav_internal.h
 +++ b/src/include/libplacebo/utils/libav_internal.h
 @@ -967,11 +967,6 @@ static void pl_fix_hwframe_sample_depth(struct pl_frame *out, const AVFrame *fra
@@ -24,6 +24,14 @@ index 4c269e5d..bd0d79fa 100644
 +    default: break;
 +    }
 +
+     return true;
+ }
+ 
+@@ -1157,7 +1158,6 @@ static bool pl_map_avframe_vulkan(pl_gpu gpu, struct pl_frame *out,
+ 
+     out->acquire = pl_acquire_avframe;
+     out->release = pl_release_avframe;
+-    pl_fix_hwframe_sample_depth(out, frame);
      return true;
  }
  
