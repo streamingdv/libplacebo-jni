@@ -84,8 +84,9 @@ public class PlaceboManager {
      * @param plLog the log handle
      * @param vkInst the vk inst handle
      * @return the vulkan device handle
+     * @param surface the surface handle
      */
-    public native long plVulkanCreate(long plLog, long vkInst);
+    public native long plVulkanCreate(long plLog, long vkInst, long surface);
 
     /**
      * Init the vulkan decoding queue
@@ -280,6 +281,10 @@ public class PlaceboManager {
 
     public native boolean plRenderUiOnly(long vk, long swapchain, long renderer, long ui, int width, int height);
 
+    /**
+     * Cleanup swapchain context after rendering
+     * @param swapchain the swapchain handle
+     */
     public native void plCleanupRendererContext(long swapchain);
 
     /**

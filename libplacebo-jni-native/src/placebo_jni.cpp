@@ -5,6 +5,7 @@
 #include <vector>
 #include <map>
 #include <array>
+#include <iterator>
 #include <algorithm>
 #include <jni.h>
 
@@ -190,11 +191,33 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plVkInstDestroy
 
 extern "C"
 JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanCreate
-  (JNIEnv *env, jobject obj, jlong placebo_log, jlong placebo_vk_inst) {
+  (JNIEnv *env, jobject obj, jlong placebo_log, jlong placebo_vk_inst, jlong surface) {
   pl_log log = reinterpret_cast<pl_log>(placebo_log);
   pl_vk_inst instance = reinterpret_cast<pl_vk_inst>(placebo_vk_inst);
+  VkSurfaceKHR vkSurfaceKHR = reinterpret_cast<VkSurfaceKHR>(static_cast<uint64_t>(surface));
 
+   // Keep these in sync with hwcontext_vulkan.c
   const char *opt_dev_extensions[] = {
+      /* Misc or required by other extensions */
+      VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME,
+      VK_KHR_SAMPLER_YCBCR_CONVERSION_EXTENSION_NAME,
+      VK_EXT_DESCRIPTOR_BUFFER_EXTENSION_NAME,
+      VK_EXT_PHYSICAL_DEVICE_DRM_EXTENSION_NAME,
+      VK_EXT_SHADER_ATOMIC_FLOAT_EXTENSION_NAME,
+      VK_KHR_COOPERATIVE_MATRIX_EXTENSION_NAME,
+
+      /* Imports/exports */
+      VK_KHR_EXTERNAL_MEMORY_FD_EXTENSION_NAME,
+      VK_EXT_EXTERNAL_MEMORY_DMA_BUF_EXTENSION_NAME,
+      VK_EXT_IMAGE_DRM_FORMAT_MODIFIER_EXTENSION_NAME,
+      VK_KHR_EXTERNAL_SEMAPHORE_FD_EXTENSION_NAME,
+      VK_EXT_EXTERNAL_MEMORY_HOST_EXTENSION_NAME,
+
+#ifdef _WIN32
+      VK_KHR_EXTERNAL_MEMORY_WIN32_EXTENSION_NAME,
+      VK_KHR_EXTERNAL_SEMAPHORE_WIN32_EXTENSION_NAME,
+#else
+
       VK_KHR_VIDEO_QUEUE_EXTENSION_NAME,
       VK_KHR_VIDEO_DECODE_QUEUE_EXTENSION_NAME,
       VK_KHR_VIDEO_DECODE_H264_EXTENSION_NAME,
@@ -204,11 +227,12 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanCreate
   struct pl_vulkan_params vulkan_params = {
       .instance = instance->instance,
       .get_proc_addr = instance->get_proc_addr,
+      .surface = vkSurfaceKHR,
       .allow_software = true,
       PL_VULKAN_DEFAULTS
       .extra_queues = VK_QUEUE_VIDEO_DECODE_BIT_KHR,
       .opt_extensions = opt_dev_extensions,
-      .num_opt_extensions = 4,
+      .num_opt_extensions = std::size(opt_dev_extensions),
   };
 
   pl_vulkan placebo_vulkan = pl_vulkan_create(log, &vulkan_params);
@@ -422,6 +446,7 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plCreateSwapchain
   struct pl_vulkan_swapchain_params swapchain_params = {
       .surface = vkSurfaceKHR,
       .present_mode = present_mode,
+      .swapchain_depth = 1,
   };
 
   pl_swapchain placebo_swapchain = pl_vulkan_create_swapchain(vulkan, &swapchain_params);
