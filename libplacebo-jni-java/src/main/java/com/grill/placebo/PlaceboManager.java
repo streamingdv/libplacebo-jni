@@ -200,6 +200,15 @@ public class PlaceboManager {
     public native long plCreateSwapchain(long vk, long surface, int vkPresentModeKHR);
 
     /**
+     * Creates the swapchain with the best most suitable present mode and returns the handle
+     * @param vk the vulkan device handle
+     * @param surface the surface handle
+     * @param vsyncEnabled true if vsync is enabled
+     * @return the swapchain handle
+     */
+    public native long plCreateSwapchainWithBestPresentMode(long vk, long surface, boolean vsyncEnabled);
+
+    /**
      * Destroys and releases the swapchain
      * @param swapchain the swapchain handle
      */
@@ -288,8 +297,6 @@ public class PlaceboManager {
      * @return true if successfully rendered, false otherwise
      */
     public native boolean plRenderAvFrameWithUi(long avframe, long vk, long swapchain, long renderer, long ui, int width, int height);
-
-    public native boolean plRenderAvFrameWithUi2(long avframe, long vk, long swapchain, long renderer, long ui, int width, int height);
 
 
     public native boolean plRenderUiOnly(long vk, long swapchain, long renderer, long ui, int width, int height);

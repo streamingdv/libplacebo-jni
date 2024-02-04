@@ -74,11 +74,9 @@ void LogCallbackFunction(void *log_priv, enum pl_log_level level, const char *ms
       jstring message = globalEnv->NewStringUTF(msg);
       globalEnv->CallVoidMethod(globalCallback, onLogMethod, (jint)level, message);
       globalEnv->DeleteLocalRef(message);
+  } else {
+      std::cout << "Log Level " << level << ": " << msg << std::endl;
   }
-}
-
-void LogCallbackFunction2(void *log_priv, enum pl_log_level level, const char *msg) {
-  std::cout << "Log Level " << level << ": " << msg << std::endl;
 }
 
 struct nk_image globalBtnImage;
@@ -192,6 +190,23 @@ bool isColorSpaceSupportedByPhysicalDevice(VkPhysicalDevice device, VkColorSpace
     return false;
 }
 
+bool isPresentModeSupportedByPhysicalDevice(VkPhysicalDevice device, VkPresentModeKHR presentMode, VkSurfaceKHR vkSurfaceKHR)
+{
+    uint32_t presentModeCount = 0;
+    vk_funcs.vkGetPhysicalDeviceSurfacePresentModesKHR(device, vkSurfaceKHR, &presentModeCount, nullptr);
+
+    std::vector<VkPresentModeKHR> presentModes(presentModeCount);
+    vk_funcs.vkGetPhysicalDeviceSurfacePresentModesKHR(device, vkSurfaceKHR, &presentModeCount, presentModes.data());
+
+    for (uint32_t i = 0; i < presentModeCount; i++) {
+        if (presentModes[i] == presentMode) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool tryInitializeDevice(pl_log log,
                        pl_vk_inst instance,
                        VkPhysicalDevice device,
@@ -255,7 +270,7 @@ bool tryInitializeDevice(pl_log log,
      return false;
   }
 
-  return true; // Success
+  return true;
 }
 
 
@@ -307,7 +322,7 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plLogCreate2
   enum pl_log_level plLevel = static_cast<enum pl_log_level>(logLevel);
 
   struct pl_log_params log_params = {
-      .log_cb = LogCallbackFunction2,
+      .log_cb = LogCallbackFunction,
       .log_level = plLevel,
   };
 
@@ -725,6 +740,52 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plCreateSwapchain
 }
 
 extern "C"
+JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plCreateSwapchainWithBestPresentMode
+  (JNIEnv *env, jobject obj, jlong placebo_vulkan, jlong surface, jboolean vsync) {
+  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
+  VkSurfaceKHR vkSurfaceKHR = reinterpret_cast<VkSurfaceKHR>(static_cast<uint64_t>(surface));
+  VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR; // Default mode
+
+  if(vsync) {
+      // Use VK_PRESENT_MODE_MAILBOX_KHR if available, otherwise libplacebo will use VK_PRESENT_MODE_FIFO_KHR
+      LogCallbackFunction(nullptr, PL_LOG_INFO, "Using VK_PRESENT_MODE_MAILBOX_KHR present mode with V-Sync enabled");
+      present_mode = VK_PRESENT_MODE_MAILBOX_KHR;
+  } else {
+      if (isPresentModeSupportedByPhysicalDevice(vulkan->phys_device, VK_PRESENT_MODE_IMMEDIATE_KHR, vkSurfaceKHR)) {
+          LogCallbackFunction(nullptr, PL_LOG_INFO, "Using Immediate present mode with V-Sync disabled");
+          present_mode = VK_PRESENT_MODE_IMMEDIATE_KHR;
+      } else {
+          LogCallbackFunction(nullptr, PL_LOG_INFO, "Immediate present mode is not supported.");
+
+          // FIFO Relaxed can tear if the frame is running late
+          if (isPresentModeSupportedByPhysicalDevice(vulkan->phys_device, VK_PRESENT_MODE_FIFO_RELAXED_KHR, vkSurfaceKHR)) {
+              LogCallbackFunction(nullptr, PL_LOG_INFO, "Using VK_PRESENT_MODE_FIFO_RELAXED_KHR present mode with V-Sync disabled");
+              present_mode = VK_PRESENT_MODE_FIFO_RELAXED_KHR;
+          }
+          // Mailbox at least provides non-blocking behavior
+          else if (isPresentModeSupportedByPhysicalDevice(vulkan->phys_device, VK_PRESENT_MODE_MAILBOX_KHR, vkSurfaceKHR)) {
+              LogCallbackFunction(nullptr, PL_LOG_INFO, "Using VK_PRESENT_MODE_MAILBOX_KHR present mode with V-Sync disabled");
+              present_mode = VK_PRESENT_MODE_MAILBOX_KHR;
+          }
+          // FIFO is always supported
+          else {
+              LogCallbackFunction(nullptr, PL_LOG_INFO, "Using VK_PRESENT_MODE_FIFO_KHR present mode with V-Sync disabled");
+              present_mode = VK_PRESENT_MODE_FIFO_KHR;
+          }
+      }
+  }
+
+  struct pl_vulkan_swapchain_params swapchain_params = {
+      .surface = vkSurfaceKHR,
+      .present_mode = present_mode,
+      .swapchain_depth = 1, // do not queue frames
+  };
+
+  pl_swapchain placebo_swapchain = pl_vulkan_create_swapchain(vulkan, &swapchain_params);
+  return reinterpret_cast<jlong>(placebo_swapchain);
+}
+
+extern "C"
 JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plDestroySwapchain
   (JNIEnv *env, jobject obj, jlong swapchain) {
   pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
@@ -980,79 +1041,6 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   }
   if (!pl_swapchain_submit_frame(placebo_swapchain)) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to submit Placebo frame!");
-      goto cleanup;
-  }
-
-  m_HasPendingSwapchainFrame = true;
-  pl_swapchain_swap_buffers(placebo_swapchain);
-  ret = true;
-
-cleanup:
-  pl_unmap_avframe(vulkan->gpu, &placebo_frame);
-
-  return static_cast<jboolean>(ret);
-}
-
-extern "C"
-JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrameWithUi2
-  (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer, jlong ui, jint width, jint height) {
-  AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
-  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
-  pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
-  pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
-  bool ret = false;
-
-  struct pl_swapchain_frame sw_frame = {0};
-  struct pl_frame placebo_frame = {0};
-  struct pl_frame target_frame = {0};
-
-  struct pl_avframe_params avparams = {
-      .frame = frame,
-      .tex = placebo_tex_global,
-  };
-  bool mapped = pl_map_avframe_ex(vulkan->gpu, &placebo_frame, &avparams);
-  if (!mapped) {
-      av_frame_free(&frame);
-      return static_cast<jboolean>(ret);
-  }
-  // set colorspace hint
-  if (!pl_color_space_equal(&placebo_frame.color, &m_LastColorspace)) {
-      m_LastColorspace = placebo_frame.color;
-      pl_swapchain_colorspace_hint(placebo_swapchain, &placebo_frame.color);
-  }
-  pl_rect2df crop;
-  if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
-      goto cleanup;
-  }
-  pl_frame_from_swapchain(&target_frame, &sw_frame);
-
-  if(ui != 0) {
-      struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
-      render_ui(ui_instance, width, height);
-  }
-
-  crop = placebo_frame.crop;
-  switch (renderingFormat) {
-      case 0: // normal
-          pl_rect2df_aspect_copy(&target_frame.crop, &crop, 0.0);
-          break;
-      case 1: // stretched
-          // Nothing to do, target.crop already covers the full image
-          break;
-      case 2: // zoomed
-          pl_rect2df_aspect_copy(&target_frame.crop, &crop, 1.0);
-          break;
-  }
-
-  if (!pl_render_image(placebo_renderer, &placebo_frame, &target_frame, &render_params)) {
-      goto cleanup;
-  }
-  if (ui != 0) {
-     struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
-     if (!ui_draw(ui_instance, &sw_frame)) {
-     }
-  }
-  if (!pl_swapchain_submit_frame(placebo_swapchain)) {
       goto cleanup;
   }
 
