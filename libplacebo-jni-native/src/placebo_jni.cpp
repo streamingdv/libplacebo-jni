@@ -1726,18 +1726,6 @@ Java_com_grill_placebo_PlaceboManager_nkUpdateUIState(JNIEnv *env, jobject obj,
   globalUiState.panelState.fullscreenButtonActive = panelFullscreenButtonActive;
   globalUiState.panelState.closeButtonPressed = panelCloseButtonPressed;
 
-  const char* headerText = popupHeaderText ? env->GetStringUTFChars(popupHeaderText, nullptr) : "";
-  const char* popupText = popupPopupText ? env->GetStringUTFChars(popupPopupText, nullptr) : "";
-  const char* buttonLeft = popupButtonLeft ? env->GetStringUTFChars(popupButtonLeft, nullptr) : "";
-  const char* buttonRight = popupButtonRight ? env->GetStringUTFChars(popupButtonRight, nullptr) : "";
-  const char* checkboxText = popupCheckboxText ? env->GetStringUTFChars(popupCheckboxText, nullptr) : "";
-
-  globalUiState.popupState.headerText = headerText;
-  globalUiState.popupState.popupText = popupText;
-  globalUiState.popupState.popupButtonLeft = buttonLeft;
-  globalUiState.popupState.popupButtonRight = buttonRight;
-  globalUiState.popupState.checkboxText = checkboxText;
-
   delete[] globalUiState.popupState.headerText;
   globalUiState.popupState.headerText = copyString(env, popupHeaderText);
   delete[] globalUiState.popupState.popupText;
@@ -1756,12 +1744,6 @@ Java_com_grill_placebo_PlaceboManager_nkUpdateUIState(JNIEnv *env, jobject obj,
   globalUiState.popupState.leftButtonFocused = popupLeftButtonFocused;
   globalUiState.popupState.rightButtonPressed = popupRightButtonPressed;
   globalUiState.popupState.rightButtonFocused = popupRightButtonFocused;
-
-  if (popupHeaderText) env->ReleaseStringUTFChars(popupHeaderText, headerText);
-  if (popupPopupText) env->ReleaseStringUTFChars(popupPopupText, popupText);
-  if (popupButtonLeft) env->ReleaseStringUTFChars(popupButtonLeft, buttonLeft);
-  if (popupButtonRight) env->ReleaseStringUTFChars(popupButtonRight, buttonRight);
-  if (popupCheckboxText) env->ReleaseStringUTFChars(popupCheckboxText, checkboxText);
 }
 
 extern "C"
