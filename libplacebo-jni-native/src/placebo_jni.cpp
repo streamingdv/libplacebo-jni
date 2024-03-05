@@ -1583,31 +1583,27 @@ void render_ui(struct ui *ui, int width, int height) {
           /*** change font to bold default ***/
 
           nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogPaddingRight, dialog_rect.y + dialogHeadingPaddingTop, dialogWidth - (dialogPaddingRight * 2.5), dialogHeadingHeight)); // Heading
-          nk_label_colored(ctx, "This is an example heading", NK_TEXT_LEFT, dialog_blue);
+          nk_label_colored(ctx, globalUiState.popupState.headerText, NK_TEXT_LEFT, dialog_blue);
 
           /*** change font to default ***/
           nk_style_set_font(ctx, &ui->default_font->handle);
           /*** change font to default ***/
 
-          nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogPaddingRight, dialog_rect.y + dialogTextContentPaddingTop, dialogWidth - (dialogPaddingRight * 2.5), dialogHeight - dialogTextContentPaddingTop)); // Text
-          nk_label_colored_wrap(ctx, "This is a very long line to hopefully get this text to be wrapped into multiple lines to show line wrapping. In case of an error I hope this would work fine and without any issues!", white_button_color);
-
-          // either text or checkbox
-          //nk_bool check = true; // not checked
-          //nk_checkbox_label(ctx, "Put the console in rest mode", &check);
+          nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogPaddingRight, dialog_rect.y + dialogTextContentPaddingTop, dialogWidth - (dialogPaddingRight * 2.5), dialogHeight - dialogTextContentPaddingTop)); // Text/ checkbox
+          if (globalUiState.popupState.showCheckbox) { // either text or checkbox
+              nk_bool check = globalUiState.popupState.checkboxChecked;
+              nk_checkbox_label(ctx, globalUiState.popupState.checkboxText, &check);
+          } else {
+              nk_label_colored_wrap(ctx, globalUiState.popupState.popupText, white_button_color);
+          }
 
           float buttonContainerFullWidth = (dialogButtonWidth * 2) + 14;
           float buttonContainerX = ((dialog_rect.x + dialogWidth) - buttonContainerFullWidth) - 40; // - 40 padding
           nk_layout_space_push(ctx, nk_rect(buttonContainerX, dialog_rect.y + (dialogHeight * 0.80), dialogButtonWidth, dialogButtonHeight)); // Button left
 
-          ctx->style.button.normal = nk_style_item_color(nk_rgba(0,0,0,0));
           ctx->style.button.hover = nk_style_item_color(nk_rgb(255,165,0));
           ctx->style.button.active = nk_style_item_color(nk_rgba(0,0,0,0));
-          ctx->style.button.border_color = dialog_blue;
-          ctx->style.button.text_background = dialog_blue;
-          ctx->style.button.text_normal = dialog_blue;
           ctx->style.button.text_hover = nk_rgb(28,48,62);
-          ctx->style.button.text_active = dialog_blue;
           ctx->style.button.rounding = 15;
           ctx->style.button.border = 4;
 
@@ -1615,13 +1611,35 @@ void render_ui(struct ui *ui, int width, int height) {
           nk_style_set_font(ctx, &ui->default_bold_font->handle);
           /*** change font to bold default ***/
 
-          if (nk_button_label(ctx, "Cancel")) {
-              // event handling (ignored here)
+          if (globalUiState.popupState.popupButtonLeft != NULL && globalUiState.popupState.popupButtonLeft[0] != '\0') {
+              nk_color buttonColor = globalUiState.popupState.leftButtonFocused ? dialog_yellow : dialog_blue;
+              nk_color buttonColorBackground = globalUiState.popupState.leftButtonPressed ? buttonColor : nk_rgba(0,0,0,0);
+              nk_color buttonTextColor = globalUiState.popupState.leftButtonPressed ? black_button_color : buttonColor;
+              ctx->style.button.border_color = buttonColor;
+              ctx->style.button.text_background = buttonColor;
+              ctx->style.button.text_normal = buttonColor;
+              ctx->style.button.text_active = buttonTextColor;
+              ctx->style.button.normal = nk_style_item_color(buttonColorBackground);
+
+              if (nk_button_label(ctx, globalUiState.popupState.popupButtonLeft)) {
+                  // event handling (ignored here)
+              }
           }
+
 
           nk_layout_space_push(ctx, nk_rect(buttonContainerX + (dialogButtonWidth + 14), dialog_rect.y + (dialogHeight * 0.80), dialogButtonWidth, dialogButtonHeight)); // Button right
 
-          if (nk_button_label(ctx, "Yes")) {
+          nk_color buttonColor = globalUiState.popupState.rightButtonFocused ? dialog_yellow : dialog_blue;
+          nk_color buttonColorBackground = globalUiState.popupState.rightButtonPressed ? buttonColor : nk_rgba(0,0,0,0);
+          nk_color buttonTextColor = globalUiState.popupState.rightButtonPressed ? black_button_color : buttonColor;
+          ctx->style.button.border_color = buttonColor;
+          ctx->style.button.text_background = buttonColor;
+          ctx->style.button.text_normal = buttonColor;
+          ctx->style.button.text_active = buttonColor;
+          ctx->style.button.text_active = buttonTextColor;
+          ctx->style.button.normal = nk_style_item_color(buttonColorBackground);
+
+          if (nk_button_label(ctx, globalUiState.popupState.popupButtonRight)) {
               // event handling (ignored here)
           }
 
@@ -1659,8 +1677,9 @@ Java_com_grill_placebo_PlaceboManager_nkUpdateUIState(JNIEnv *env, jobject obj,
   jboolean panelPsButtonPressed, jboolean panelOptionsButtonPressed, jboolean panelFullscreenButtonPressed,
   jboolean panelFullscreenButtonActive, jboolean panelCloseButtonPressed, jstring popupHeaderText, jstring popupPopupText,
   jboolean popupShowCheckbox, jstring popupButtonLeft, jstring popupButtonRight,
-  jboolean popupCheckboxPressed, jboolean popupCheckboxFocused, jboolean popupLeftButtonPressed,
-  jboolean popupLeftButtonFocused, jboolean popupRightButtonPressed, jboolean popupRightButtonFocused ) {
+  jstring popupCheckboxText, jboolean popupCheckboxChecked, jboolean popupCheckboxFocused,
+  jboolean popupLeftButtonPressed, jboolean popupLeftButtonFocused, jboolean popupRightButtonPressed,
+  jboolean popupRightButtonFocused ) {
 
   globalUiState.showTouchpad = showTouchpad;
   globalUiState.showPanel = showPanel;
@@ -1682,14 +1701,16 @@ Java_com_grill_placebo_PlaceboManager_nkUpdateUIState(JNIEnv *env, jobject obj,
   const char* popupText = popupPopupText ? env->GetStringUTFChars(popupPopupText, nullptr) : "";
   const char* buttonLeft = popupButtonLeft ? env->GetStringUTFChars(popupButtonLeft, nullptr) : "";
   const char* buttonRight = popupButtonRight ? env->GetStringUTFChars(popupButtonRight, nullptr) : "";
+  const char* checkboxText = popupCheckboxText ? env->GetStringUTFChars(popupCheckboxText, nullptr) : "";
 
   globalUiState.popupState.headerText = headerText;
   globalUiState.popupState.popupText = popupText;
   globalUiState.popupState.popupButtonLeft = buttonLeft;
   globalUiState.popupState.popupButtonRight = buttonRight;
+  globalUiState.popupState.checkboxText = checkboxText;
 
   globalUiState.popupState.showCheckbox = popupShowCheckbox;
-  globalUiState.popupState.checkboxPressed = popupCheckboxPressed;
+  globalUiState.popupState.checkboxChecked = popupCheckboxChecked;
   globalUiState.popupState.checkboxFocused = popupCheckboxFocused;
   globalUiState.popupState.leftButtonPressed = popupLeftButtonPressed;
   globalUiState.popupState.leftButtonFocused = popupLeftButtonFocused;
@@ -1700,6 +1721,7 @@ Java_com_grill_placebo_PlaceboManager_nkUpdateUIState(JNIEnv *env, jobject obj,
   if (popupPopupText) env->ReleaseStringUTFChars(popupPopupText, popupText);
   if (popupButtonLeft) env->ReleaseStringUTFChars(popupButtonLeft, buttonLeft);
   if (popupButtonRight) env->ReleaseStringUTFChars(popupButtonRight, buttonRight);
+  if (popupCheckboxText) env->ReleaseStringUTFChars(popupCheckboxText, checkboxText);
 }
 
 extern "C"

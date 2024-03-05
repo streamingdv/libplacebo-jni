@@ -331,9 +331,9 @@ public class PlaceboManager {
             boolean panelPsButtonPressed, boolean panelOptionsButtonPressed, boolean panelFullscreenButtonPressed,
             boolean panelFullscreenButtonActive, boolean panelCloseButtonPressed, String popupHeaderText,
             String popupPopupText, boolean popupShowCheckbox, String popupButtonLeft,
-            String popupButtonRight, boolean popupCheckboxPressed, boolean popupCheckboxFocused,
-            boolean popupLeftButtonPressed, boolean popupLeftButtonFocused, boolean popupRightButtonPressed,
-            boolean popupRightButtonFocused
+            String popupButtonRight, String popupCheckboxText, boolean popupCheckboxChecked,
+            boolean popupCheckboxFocused, boolean popupLeftButtonPressed, boolean popupLeftButtonFocused,
+            boolean popupRightButtonPressed, boolean popupRightButtonFocused
     );
 
     /**

@@ -24,3 +24,4 @@ const struct nk_color grey_button_color = nk_rgb(88, 88, 95);
 const struct nk_color pressed_grey_button_color = nk_rgb(60, 60, 67);
 const struct nk_color dialog_background = nk_rgb(35, 35, 35);
 const struct nk_color dialog_blue = nk_rgb(0, 132, 241);
+const struct nk_color dialog_yellow = nk_rgb(255, 255, 0);

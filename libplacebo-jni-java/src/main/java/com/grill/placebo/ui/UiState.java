@@ -40,7 +40,8 @@ public class UiState {
         this.popupState.showCheckbox = uiState.popupState.showCheckbox;
         this.popupState.popupButtonLeft = uiState.popupState.popupButtonLeft;
         this.popupState.popupButtonRight = uiState.popupState.popupButtonRight;
-        this.popupState.checkboxPressed = uiState.popupState.checkboxPressed;
+        this.popupState.popupCheckboxText = uiState.popupState.popupCheckboxText;
+        this.popupState.checkboxChecked = uiState.popupState.checkboxChecked;
         this.popupState.checkboxFocused = uiState.popupState.checkboxFocused;
         this.popupState.leftButtonPressed = uiState.popupState.leftButtonPressed;
         this.popupState.leftButtonFocused = uiState.popupState.leftButtonFocused;
@@ -123,7 +124,8 @@ public class UiState {
         public boolean showCheckbox;
         public String popupButtonLeft = "";
         public String popupButtonRight = "";
-        public boolean checkboxPressed;
+        public String popupCheckboxText = "";
+        public boolean checkboxChecked;
         public boolean checkboxFocused;
         public boolean leftButtonPressed;
         public boolean leftButtonFocused;
@@ -133,30 +135,31 @@ public class UiState {
         @Override
         public boolean equals(Object o) {
             if (this == o) return true;
-            if (o == null || this.getClass() != o.getClass()) return false;
+            if (o == null || getClass() != o.getClass()) return false;
             PopupState that = (PopupState) o;
-            return this.showCheckbox == that.showCheckbox && this.checkboxPressed == that.checkboxPressed && this.checkboxFocused == that.checkboxFocused && this.leftButtonPressed == that.leftButtonPressed && this.leftButtonFocused == that.leftButtonFocused && this.rightButtonPressed == that.rightButtonPressed && this.rightButtonFocused == that.rightButtonFocused && Objects.equals(this.headerText, that.headerText) && Objects.equals(this.popupText, that.popupText) && Objects.equals(this.popupButtonLeft, that.popupButtonLeft) && Objects.equals(this.popupButtonRight, that.popupButtonRight);
+            return showCheckbox == that.showCheckbox && checkboxChecked == that.checkboxChecked && checkboxFocused == that.checkboxFocused && leftButtonPressed == that.leftButtonPressed && leftButtonFocused == that.leftButtonFocused && rightButtonPressed == that.rightButtonPressed && rightButtonFocused == that.rightButtonFocused && Objects.equals(headerText, that.headerText) && Objects.equals(popupText, that.popupText) && Objects.equals(popupButtonLeft, that.popupButtonLeft) && Objects.equals(popupButtonRight, that.popupButtonRight) && Objects.equals(popupCheckboxText, that.popupCheckboxText);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(this.headerText, this.popupText, this.showCheckbox, this.popupButtonLeft, this.popupButtonRight, this.checkboxPressed, this.checkboxFocused, this.leftButtonPressed, this.leftButtonFocused, this.rightButtonPressed, this.rightButtonFocused);
+            return Objects.hash(headerText, popupText, showCheckbox, popupButtonLeft, popupButtonRight, popupCheckboxText, checkboxChecked, checkboxFocused, leftButtonPressed, leftButtonFocused, rightButtonPressed, rightButtonFocused);
         }
 
         @Override
         public String toString() {
             return "PopupState{" +
-                    "headerText='" + this.headerText + '\'' +
-                    ", popupText='" + this.popupText + '\'' +
-                    ", showCheckbox=" + this.showCheckbox +
-                    ", popupButtonLeft='" + this.popupButtonLeft + '\'' +
-                    ", popupButtonRight='" + this.popupButtonRight + '\'' +
-                    ", checkboxPressed=" + this.checkboxPressed +
-                    ", checkboxFocused=" + this.checkboxFocused +
-                    ", leftButtonPressed=" + this.leftButtonPressed +
-                    ", leftButtonFocused=" + this.leftButtonFocused +
-                    ", rightButtonPressed=" + this.rightButtonPressed +
-                    ", rightButtonFocused=" + this.rightButtonFocused +
+                    "headerText='" + headerText + '\'' +
+                    ", popupText='" + popupText + '\'' +
+                    ", showCheckbox=" + showCheckbox +
+                    ", popupButtonLeft='" + popupButtonLeft + '\'' +
+                    ", popupButtonRight='" + popupButtonRight + '\'' +
+                    ", popupCheckboxText='" + popupCheckboxText + '\'' +
+                    ", checkboxChecked=" + checkboxChecked +
+                    ", checkboxFocused=" + checkboxFocused +
+                    ", leftButtonPressed=" + leftButtonPressed +
+                    ", leftButtonFocused=" + leftButtonFocused +
+                    ", rightButtonPressed=" + rightButtonPressed +
+                    ", rightButtonFocused=" + rightButtonFocused +
                     '}';
         }
     }

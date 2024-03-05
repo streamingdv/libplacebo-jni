@@ -16,7 +16,8 @@ struct PopupState {
     bool showCheckbox;
     const char* popupButtonLeft;
     const char* popupButtonRight;
-    bool checkboxPressed;
+    const char* checkboxText;
+    bool checkboxChecked;
     bool checkboxFocused;
     bool leftButtonPressed;
     bool leftButtonFocused;
