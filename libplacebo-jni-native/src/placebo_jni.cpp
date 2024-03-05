@@ -9,6 +9,7 @@
 #include <iostream>
 #include <algorithm>
 #include <set>
+#include <cstring>
 #include <string.h>
 #include <jni.h>
 
@@ -273,6 +274,21 @@ bool tryInitializeDevice(pl_log log,
   return true;
 }
 
+// Helper function to safely allocate and copy strings
+char* copyString(JNIEnv *env, jstring jstr) {
+    if (jstr == nullptr) {
+        char* emptyStr = new char[1];
+        emptyStr[0] = '\0'; // Allocate and return an empty string
+        return emptyStr;
+    }
+
+    const char* tempStr = env->GetStringUTFChars(jstr, nullptr);
+    size_t len = std::strlen(tempStr);
+    char* newStr = new char[len + 1]; // Allocate new memory
+    std::strcpy(newStr, tempStr); // Copy the string
+    env->ReleaseStringUTFChars(jstr, tempStr); // Release JNI string
+    return newStr;
+}
 
 /*** define JNI methods ***/
 
@@ -1185,6 +1201,19 @@ void ui_destroy(struct ui *ui)
   pl_tex_destroy(ui->gpu, &ui->font_tex);
   pl_dispatch_destroy(&ui->dp);
 
+  delete[] globalUiState.popupState.headerText;
+  delete[] globalUiState.popupState.popupText;
+  delete[] globalUiState.popupState.popupButtonLeft;
+  delete[] globalUiState.popupState.popupButtonRight;
+  delete[] globalUiState.popupState.checkboxText;
+
+  // After deleting, set pointers to nullptr to avoid dangling pointers
+  globalUiState.popupState.headerText = nullptr;
+  globalUiState.popupState.popupText = nullptr;
+  globalUiState.popupState.popupButtonLeft = nullptr;
+  globalUiState.popupState.popupButtonRight = nullptr;
+  globalUiState.popupState.checkboxText = nullptr;
+
   delete ui;
 }
 
@@ -1708,6 +1737,17 @@ Java_com_grill_placebo_PlaceboManager_nkUpdateUIState(JNIEnv *env, jobject obj,
   globalUiState.popupState.popupButtonLeft = buttonLeft;
   globalUiState.popupState.popupButtonRight = buttonRight;
   globalUiState.popupState.checkboxText = checkboxText;
+
+  delete[] globalUiState.popupState.headerText;
+  globalUiState.popupState.headerText = copyString(env, popupHeaderText);
+  delete[] globalUiState.popupState.popupText;
+  globalUiState.popupState.popupText = copyString(env, popupPopupText);
+  delete[] globalUiState.popupState.popupButtonLeft;
+  globalUiState.popupState.popupButtonLeft = copyString(env, popupButtonLeft);
+  delete[] globalUiState.popupState.popupButtonRight;
+  globalUiState.popupState.popupButtonRight = copyString(env, popupButtonRight);
+  delete[] globalUiState.popupState.checkboxText;
+  globalUiState.popupState.checkboxText = copyString(env, popupCheckboxText);
 
   globalUiState.popupState.showCheckbox = popupShowCheckbox;
   globalUiState.popupState.checkboxChecked = popupCheckboxChecked;
