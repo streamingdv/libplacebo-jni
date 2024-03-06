@@ -1645,7 +1645,7 @@ void render_ui(struct ui *ui, int width, int height) {
               nk_color buttonColorBackground = globalUiState.popupState.leftButtonPressed ? buttonColor : nk_rgba(0,0,0,0);
               nk_color buttonTextColor = globalUiState.popupState.leftButtonPressed ? black_button_color : buttonColor;
               ctx->style.button.border_color = buttonColor;
-              ctx->style.button.text_background = buttonColor;
+              ctx->style.button.text_background = buttonTextColor;
               ctx->style.button.text_normal = buttonColor;
               ctx->style.button.text_active = buttonTextColor;
               ctx->style.button.normal = nk_style_item_color(buttonColorBackground);
@@ -1662,7 +1662,7 @@ void render_ui(struct ui *ui, int width, int height) {
           nk_color buttonColorBackground = globalUiState.popupState.rightButtonPressed ? buttonColor : nk_rgba(0,0,0,0);
           nk_color buttonTextColor = globalUiState.popupState.rightButtonPressed ? black_button_color : buttonColor;
           ctx->style.button.border_color = buttonColor;
-          ctx->style.button.text_background = buttonColor;
+          ctx->style.button.text_background = buttonTextColor;
           ctx->style.button.text_normal = buttonColor;
           ctx->style.button.text_active = buttonColor;
           ctx->style.button.text_active = buttonTextColor;
