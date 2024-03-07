@@ -763,9 +763,8 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plCreateSwapchainW
   VkPresentModeKHR present_mode = VK_PRESENT_MODE_FIFO_KHR; // Default mode
 
   if(vsync) {
-      // Use VK_PRESENT_MODE_MAILBOX_KHR if available, otherwise libplacebo will use VK_PRESENT_MODE_FIFO_KHR
       LogCallbackFunction(nullptr, PL_LOG_INFO, "Using VK_PRESENT_MODE_MAILBOX_KHR present mode with V-Sync enabled");
-      present_mode = VK_PRESENT_MODE_MAILBOX_KHR;
+      present_mode = VK_PRESENT_MODE_FIFO_KHR;
   } else {
       if (isPresentModeSupportedByPhysicalDevice(vulkan->phys_device, VK_PRESENT_MODE_IMMEDIATE_KHR, vkSurfaceKHR)) {
           LogCallbackFunction(nullptr, PL_LOG_INFO, "Using Immediate present mode with V-Sync disabled");
@@ -1632,7 +1631,6 @@ void render_ui(struct ui *ui, int width, int height) {
 
           ctx->style.button.hover = nk_style_item_color(nk_rgb(255,165,0));
           ctx->style.button.active = nk_style_item_color(nk_rgba(0,0,0,0));
-          ctx->style.button.text_hover = nk_rgb(28,48,62);
           ctx->style.button.rounding = 15;
           ctx->style.button.border = 4;
 
@@ -1646,7 +1644,8 @@ void render_ui(struct ui *ui, int width, int height) {
               nk_color buttonTextColor = globalUiState.popupState.leftButtonPressed ? black_button_color : buttonColor;
               ctx->style.button.border_color = buttonColor;
               ctx->style.button.text_background = buttonTextColor;
-              ctx->style.button.text_normal = buttonColor;
+              ctx->style.button.text_normal = buttonTextColor;
+              ctx->style.button.text_hover = buttonTextColor;
               ctx->style.button.text_active = buttonTextColor;
               ctx->style.button.normal = nk_style_item_color(buttonColorBackground);
 
@@ -1663,8 +1662,8 @@ void render_ui(struct ui *ui, int width, int height) {
           nk_color buttonTextColor = globalUiState.popupState.rightButtonPressed ? black_button_color : buttonColor;
           ctx->style.button.border_color = buttonColor;
           ctx->style.button.text_background = buttonTextColor;
-          ctx->style.button.text_normal = buttonColor;
-          ctx->style.button.text_active = buttonColor;
+          ctx->style.button.text_normal = buttonTextColor;
+          ctx->style.button.text_hover = buttonTextColor;
           ctx->style.button.text_active = buttonTextColor;
           ctx->style.button.normal = nk_style_item_color(buttonColorBackground);
 
