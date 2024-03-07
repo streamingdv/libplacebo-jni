@@ -1617,11 +1617,13 @@ void render_ui(struct ui *ui, int width, int height) {
           nk_style_set_font(ctx, &ui->default_font->handle);
           /*** change font to default ***/
 
-          nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogPaddingRight, dialog_rect.y + dialogTextContentPaddingTop, dialogWidth - (dialogPaddingRight * 2.5), dialogHeight - dialogTextContentPaddingTop)); // Text/ checkbox
+
           if (globalUiState.popupState.showCheckbox) { // either text or checkbox
+              nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogPaddingRight, dialog_rect.y + dialogTextContentPaddingTop, dialogWidth - (dialogPaddingRight * 2.5), dialogButtonHeight)); // checkbox
               nk_bool check = globalUiState.popupState.checkboxChecked;
               nk_checkbox_label(ctx, globalUiState.popupState.checkboxText, &check);
           } else {
+              nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogPaddingRight, dialog_rect.y + dialogTextContentPaddingTop, dialogWidth - (dialogPaddingRight * 2.5), dialogHeight - dialogTextContentPaddingTop)); // Text
               nk_label_colored_wrap(ctx, globalUiState.popupState.popupText, white_button_color);
           }
 
