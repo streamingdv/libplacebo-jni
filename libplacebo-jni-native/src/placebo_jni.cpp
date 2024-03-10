@@ -1267,7 +1267,7 @@ struct ui *ui_create(pl_gpu gpu)
   robotoConfig.oversample_h = 1; robotoConfig.oversample_v = 1;
   robotoConfig.pixel_snap = true;
   ui->default_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 24, &robotoConfig);
-  ui->default_bold_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_bold_font, roboto_bold_font_size, 26, &robotoConfig);
+  ui->default_bold_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_bold_font, roboto_bold_font_size, 28, &robotoConfig);
   ui->default_small_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 14, &robotoConfig);
   struct nk_font_config iconConfig = nk_font_config(0);
   iconConfig.range = ranges_icons;
