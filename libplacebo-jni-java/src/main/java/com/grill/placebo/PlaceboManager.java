@@ -71,9 +71,22 @@ public class PlaceboManager {
     /**
      * Creates a Vulkan instance
      * @param plLog the logHandle
+     * @param windowingSystemType the windowing system type. Only used on Unix systems.
+     *                            1 for xcb and 2 for wayland.
      * @return the handle to the vk instance, placebo_vk_inst
      */
-    public native long plVkInstCreate(long plLog);
+    public native long plVkInstCreate(long plLog, int windowingSystemType);
+
+    /**
+     * Creates a Vulkan instance with default surface extension assuming default windowing system type.
+     * On Windows it is VK_KHR_WIN32_SURFACE_EXTENSION_NAME and on Unix systems VK_KHR_XCB_SURFACE_EXTENSION_NAME
+     * @param plLog the logHandle
+     *
+     * @return the handle to the vk instance, placebo_vk_inst
+     */
+    public long plVkInstCreate(long plLog) {
+        return plVkInstCreate(plLog, 0);
+    }
 
     /**
      * Destroys a vl inst
@@ -182,6 +195,18 @@ public class PlaceboManager {
      * @return the handle to the vkCreateWin32SurfaceKHR function
      */
     public native long plGetWin32SurfaceFunctionPointer();
+
+    /**
+     * Gets the handle to the vkCreateXcbSurfaceKHR function
+     * @return the handle to the vkCreateXcbSurfaceKHR function
+     */
+    public native long plGetXcbSurfaceFunctionPointer();
+
+    /**
+     * Gets the handle to the vkCreateWaylandSurfaceKHR function
+     * @return the handle to the vkCreateWaylandSurfaceKHR function
+     */
+    public native long plGetWaylandSurfaceFunctionPointer();
 
     /**
      * Destroys and releases the native surface

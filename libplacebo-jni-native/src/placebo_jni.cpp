@@ -360,18 +360,22 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plLogDestroy
   }
 }
 
-JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVkInstCreate(JNIEnv *env, jobject obj, jlong placebo_log) {
+JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVkInstCreate(JNIEnv *env, jobject obj, jlong placebo_log, jint windowingSystemType) {
   #ifdef _WIN32
       const char *vk_exts[] = {
           VK_KHR_SURFACE_EXTENSION_NAME,
           VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
       };
   #else
-      // ToDo allow somehow the detection if wayland or not
-      const char *vk_exts[] = {
-          VK_KHR_SURFACE_EXTENSION_NAME,
-          VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME,
-      };
+      const char *vk_exts[2];  // Array to hold Vulkan extensions
+      vk_exts[0] = VK_KHR_SURFACE_EXTENSION_NAME;
+      if (windowingSystemType == 2) {
+          // Wayland surface extension
+          vk_exts[1] = VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME;
+      } else {
+          // XCB surface extension (default for other values)
+          vk_exts[1] = VK_KHR_XCB_SURFACE_EXTENSION_NAME;
+      }
   #endif
 
   const char *opt_extensions[] = {
@@ -555,16 +559,22 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plInitFunctionP
            return static_cast<jboolean>(false);
        }
   #else
+       bool xcbSurface = true;
        vk_funcs.vkCreateXcbSurfaceKHR = reinterpret_cast<PFN_vkCreateXcbSurfaceKHR>(
                instance->get_proc_addr(instance->instance, "vkCreateXcbSurfaceKHR"));
        if(!vk_funcs.vkCreateXcbSurfaceKHR) {
            LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to resolve vkCreateXcbSurfaceKHR!");
-           return static_cast<jboolean>(false);
+           xcbSurface = false;
        }
+       bool waylandSurface = true;
        vk_funcs.vkCreateWaylandSurfaceKHR = reinterpret_cast<PFN_vkCreateWaylandSurfaceKHR>(
                instance->get_proc_addr(instance->instance, "vkCreateWaylandSurfaceKHR"));
        if(!vk_funcs.vkCreateWaylandSurfaceKHR) {
            LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to resolve vkCreateWaylandSurfaceKHR!");
+           waylandSurface = false;
+       }
+
+       if(!xcbSurface && !waylandSurface){
            return static_cast<jboolean>(false);
        }
   #endif
@@ -711,6 +721,26 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plGetWin32SurfaceF
   #ifdef _WIN32
        return reinterpret_cast<jlong>(vk_funcs.vkCreateWin32SurfaceKHR);
   #endif
+
+  return 0;
+}
+
+extern "C"
+JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plGetXcbSurfaceFunctionPointer
+  (JNIEnv *env, jobject obj) {
+  if (vk_funcs.vkCreateXcbSurfaceKHR != nullptr) {
+       return reinterpret_cast<jlong>(vk_funcs.vkCreateXcbSurfaceKHR);
+  }
+
+  return 0;
+}
+
+extern "C"
+JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plGetWaylandSurfaceFunctionPointer
+  (JNIEnv *env, jobject obj) {
+  if (vk_funcs.vkCreateWaylandSurfaceKHR != nullptr) {
+       return reinterpret_cast<jlong>(vk_funcs.vkCreateWaylandSurfaceKHR);
+  }
 
   return 0;
 }
