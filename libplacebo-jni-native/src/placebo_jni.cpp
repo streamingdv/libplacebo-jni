@@ -728,9 +728,11 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plGetWin32SurfaceF
 extern "C"
 JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plGetXcbSurfaceFunctionPointer
   (JNIEnv *env, jobject obj) {
+#ifndef _WIN32
   if (vk_funcs.vkCreateXcbSurfaceKHR != nullptr) {
        return reinterpret_cast<jlong>(vk_funcs.vkCreateXcbSurfaceKHR);
   }
+#endif
 
   return 0;
 }
@@ -738,9 +740,11 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plGetXcbSurfaceFun
 extern "C"
 JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plGetWaylandSurfaceFunctionPointer
   (JNIEnv *env, jobject obj) {
+#ifndef _WIN32
   if (vk_funcs.vkCreateWaylandSurfaceKHR != nullptr) {
        return reinterpret_cast<jlong>(vk_funcs.vkCreateWaylandSurfaceKHR);
   }
+#endif
 
   return 0;
 }
