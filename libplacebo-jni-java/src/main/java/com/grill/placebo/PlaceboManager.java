@@ -21,7 +21,7 @@ public class PlaceboManager {
         public final static int PL_LOG_WARN = 3;    // warning; potentially bad, probably user-relevant
         public final static int PL_LOG_INFO = 4;    // informational message, also potentially harmless errors
         public final static int PL_LOG_DEBUG = 5;   // verbose debug message, informational
-        public final static int PL_LOG_TRACE = 6;   // very noisy trace of activity,, usually benign
+        public final static int PL_LOG_TRACE = 6;   // very noisy trace of activity, usually benign
         public final static int PL_LOG_ALL = PL_LOG_TRACE;
     }
 
