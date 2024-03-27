@@ -35,9 +35,7 @@ This project is licensed under the GNU Lesser General Public License (LGPL), whi
 
 ## Contributions
 
-Feedback is welcome. If you encounter any problems or have suggestions for improvements feel free to let me know.
-
-## Credits
+Feedback is welcome. If you have any suggestions for improvements or ideas for new features, feel free to let me know. I value your input and will consider all feedback to enhance the project. Additionally, if you find this project helpful, consider forking it to customize it for your own needs.
 
 ## Credits
 
