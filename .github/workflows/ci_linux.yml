@@ -64,10 +64,54 @@ jobs:
           repository: 'mm2/Little-CMS'
           path: 'Little-CMS'
 
+      #- name: Install glslang dependencies
+      #  run: |
+      #    sudo apt-get update
+      #    sudo apt-get install -y cmake g++ python3 python-is-python3
+
+      #- name: Checkout glslang repository
+      #  uses: actions/checkout@v2
+      #  with:
+      #    repository: 'KhronosGroup/glslang'
+      #    path: 'glslang'
+      #    ref: '14.0.0'
+
+      #- name: Compile and install glslang
+      #  run: |
+      #    cd glslang
+      #    ./update_glslang_sources.py
+      #    cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DENABLE_HLSL=ON -DENABLE_SPVREMAPPER=ON -DENABLE_OPT=ON -DBUILD_EXTERNAL=ON -DENABLE_RTTI=ON -DENABLE_EXCEPTIONS=ON
+      #    cmake --build build --config Release -- -j$(nproc)
+
+      #- name: Compress glslang directory
+      #  run: tar -czvf glslang-full.tar.gz -C glslang .
+
+      #- name: Upload glslang directory archive
+      #  uses: actions/upload-artifact@v2
+      #  with:
+      #    name: glslang-full-archive
+      #    path: glslang-full.tar.gz
+
+      - name: Extract glslang package
+        run: |
+          unzip glslang-linux-x64_x86-release-14.0.0.zip -d ./glslang-package
+
+      - name: Copy glslang headers to /usr/include/
+        run: |
+          sudo cp -r ./glslang-package/glslang-release-14.0.0/include/glslang /usr/include/
+
+      - name: Copy glslang libs to /usr/lib/x86_64-linux-gnu/
+        run: |
+          sudo cp -r ./glslang-package/glslang-release-14.0.0/lib/x86_64-linux-gnu/* /usr/lib/x86_64-linux-gnu/
+
+      - name: Copy pkgconfig files to /usr/lib/x86_64-linux-gnu/pkgconfig
+        run: |
+          sudo cp ./glslang-package/glslang-release-14.0.0/pkgconfig/* /usr/lib/x86_64-linux-gnu/pkgconfig/
+
       - name: Install dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libavcodec-dev libavformat-dev libegl1-mesa-dev libsdl2-dev libxxhash-dev glslang-dev libvulkan-dev liblcms2-dev build-essential libx11-xcb-dev libxkbcommon-dev libwayland-dev libxrandr-dev cmake
+          sudo apt-get install -y libavcodec-dev libavformat-dev libegl1-mesa-dev libsdl2-dev libxxhash-dev libvulkan-dev liblcms2-dev build-essential libx11-xcb-dev libxkbcommon-dev libwayland-dev libxrandr-dev cmake
 
       - name: Install xbxc dependencies
         run: |
