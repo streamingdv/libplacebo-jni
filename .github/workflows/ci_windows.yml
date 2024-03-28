@@ -67,7 +67,7 @@ jobs:
         with:
           repository: 'google/shaderc'
           path: 'shaderc'
-          ref: 'v2023.7'
+          ref: 'v2024.0'
 
       - name: Checkout glslang repository
         if: env.BUILD_GLSLANG == 'true'
