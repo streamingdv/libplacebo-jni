@@ -446,9 +446,9 @@ public class PlaceboManager {
         String systemName = System.getProperty("os.name", "bare-metal?").toLowerCase();
 
         if (systemName.contains("nux") || systemName.contains("nix")) {
-            return "lib" + library + ".so";
+            return library + ".so";
         } else if (systemName.contains("mac")) {
-            return "lib" + library + ".dylib";
+            return library + ".dylib";
         } else if (systemName.contains("windows")) {
             return library + ".dll";
         } else {
