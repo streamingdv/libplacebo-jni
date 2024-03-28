@@ -142,7 +142,7 @@ public class PlaceboManager {
     public native long plGetVkPhysicalDevice(long vk);
 
     /**
-     * After inititalization fill in all necesarry function pointers
+     * After initialization fill in all necessary function pointers
      * @param vkInst the vk inst handle
      * @return true if all function pointers could be initialized correctly, false otherwise
      */
