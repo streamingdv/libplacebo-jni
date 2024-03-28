@@ -48,7 +48,7 @@ jobs:
           ref: '4.10.7'
 
       - name: Checkout shaderc repository
-        #if: env.BUILD_SHADERC == 'true'
+        if: env.BUILD_SHADERC == 'true'
         uses: actions/checkout@v2
         with:
           repository: 'google/shaderc'
@@ -108,7 +108,7 @@ jobs:
           path: ${{github.workspace}}/Little-CMS
 
       - name: Build shaderc
-        #if: env.BUILD_SHADERC == 'true'
+        if: env.BUILD_SHADERC == 'true'
         working-directory: ./shaderc
         run: |
           ./utils/git-sync-deps
@@ -118,7 +118,7 @@ jobs:
           cmake --build . --config Release
 
       - name: Upload shaderc artefacts
-        #if: env.BUILD_SHADERC == 'true'
+        if: env.BUILD_SHADERC == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: shaderc-artefacts-${{ matrix.arch }}
