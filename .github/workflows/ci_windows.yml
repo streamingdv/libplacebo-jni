@@ -141,7 +141,7 @@ jobs:
           ./utils/git-sync-deps
           mkdir -p build
           cd build
-          cmake -DSHADERC_SKIP_TESTS=ON ..
+          cmake -DSHADERC_SKIP_TESTS=ON -DSHADERC_ENABLE_GLSLC=OFF ..
           cmake --build . --config Release
         shell: msys2 {0}
 
