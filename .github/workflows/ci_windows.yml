@@ -67,7 +67,7 @@ jobs:
         with:
           repository: 'google/shaderc'
           path: 'shaderc'
-          ref: 'v2023.8'
+          ref: 'v2023.7'
 
       - name: Checkout glslang repository
         if: env.BUILD_GLSLANG == 'true'
@@ -141,7 +141,7 @@ jobs:
           ./utils/git-sync-deps
           mkdir -p build
           cd build
-          cmake -DSHADERC_SKIP_TESTS=ON -DSHADERC_ENABLE_GLSLC=OFF ..
+          cmake -DSHADERC_SKIP_TESTS=ON ..
           cmake --build . --config Release
         shell: msys2 {0}
 
