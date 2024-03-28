@@ -36,19 +36,6 @@ if(GENERATED_JNI_HEADERS_DIR STREQUAL "")
     message(FATAL_ERROR "Please run CMake with -DGENERATED_JNI_HEADERS_DIR=/path/to/generated/headers")
 endif()
 
-# Check for GLSLANG_LIBS_DIR
-set(GLSLANG_LIBS_DIR "" CACHE STRING "Path to glslang static libraries")
-if(GLSLANG_LIBS_DIR STREQUAL "")
-    message(FATAL_ERROR "Please run CMake with -DGLSLANG_LIBS_DIR=/path/to/glslang/static/libs")
-endif()
-
-# Check for GLSLANG_HEADERS_DIR
-set(GLSLANG_HEADERS_DIR "" CACHE STRING "Path to glslang headers")
-if(GLSLANG_HEADERS_DIR STREQUAL "")
-    message(FATAL_ERROR "Please run CMake with -DGLSLANG_HEADERS_DIR=/path/to/glslang/include")
-endif()
-include_directories(${GLSLANG_HEADERS_DIR})
-
 # Include JNI headers
 include_directories(${GENERATED_JNI_HEADERS_DIR})
 # Include libplacebo headers
@@ -134,19 +121,19 @@ if(IS_RUNNING_ON_WINDOWS)
         "${FFMPEG_DIR}/libavutil/libavutil.a"
         "${VULKAN_LIB_DIR}/lib/libloader-opt.a"
         "${VULKAN_LIB_DIR}/lib/libvulkan-1.dll.a"
-        "${GLSLANG_LIBS_DIR}/libMachineIndependent.a"
-        "${GLSLANG_LIBS_DIR}/libOSDependent.a"
-        "${GLSLANG_LIBS_DIR}/libglslang.a"
-        "${GLSLANG_LIBS_DIR}/libSPIRV.a"
-        "${GLSLANG_LIBS_DIR}/libSPVRemapper.a"
-        "${GLSLANG_LIBS_DIR}/libglslang-default-resource-limits.a"
-        "${GLSLANG_LIBS_DIR}/libGenericCodeGen.a"
-        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-link.a"
-        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-lint.a"
-        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-reduce.a"
-        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-opt.a"
-        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools.a"
-        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-diff.a"
+        "${SHADERC_LIB_DIR}/libMachineIndependent.a"
+        "${SHADERC_LIB_DIR}/libOSDependent.a"
+        "${SHADERC_LIB_DIR}/libglslang.a"
+        "${SHADERC_LIB_DIR}/libSPIRV.a"
+        "${SHADERC_LIB_DIR}/libSPVRemapper.a"
+        "${SHADERC_LIB_DIR}/libglslang-default-resource-limits.a"
+        "${SHADERC_LIB_DIR}/libGenericCodeGen.a"
+        "${SHADERC_LIB_DIR}/libSPIRV-Tools-link.a"
+        "${SHADERC_LIB_DIR}/libSPIRV-Tools-lint.a"
+        "${SHADERC_LIB_DIR}/libSPIRV-Tools-reduce.a"
+        "${SHADERC_LIB_DIR}/libSPIRV-Tools-opt.a"
+        "${SHADERC_LIB_DIR}/libSPIRV-Tools.a"
+        "${SHADERC_LIB_DIR}/libSPIRV-Tools-diff.a"
         shlwapi
         bcrypt
     )
@@ -173,19 +160,19 @@ else()
         "${FFMPEG_DIR}/libavcodec/libavcodec.a"
         "${FFMPEG_DIR}/libavformat/libavformat.a"
         "${FFMPEG_DIR}/libavutil/libavutil.a"
-        "${GLSLANG_LIBS_DIR}/libMachineIndependent.a"
-        "${GLSLANG_LIBS_DIR}/libOSDependent.a"
-        "${GLSLANG_LIBS_DIR}/libglslang.a"
-        "${GLSLANG_LIBS_DIR}/libSPIRV.a"
-        "${GLSLANG_LIBS_DIR}/libSPVRemapper.a"
-        "${GLSLANG_LIBS_DIR}/libglslang-default-resource-limits.a"
-        "${GLSLANG_LIBS_DIR}/libGenericCodeGen.a"
-        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-link.a"
-        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-lint.a"
-        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-reduce.a"
-        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-opt.a"
-        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools.a"
-        "${GLSLANG_LIBS_DIR}/libSPIRV-Tools-diff.a"
+        "${SHADERC_LIB_DIR}/libMachineIndependent.a"
+        "${SHADERC_LIB_DIR}/libOSDependent.a"
+        "${SHADERC_LIB_DIR}/libglslang.a"
+        "${SHADERC_LIB_DIR}/libSPIRV.a"
+        "${SHADERC_LIB_DIR}/libSPVRemapper.a"
+        "${SHADERC_LIB_DIR}/libglslang-default-resource-limits.a"
+        "${SHADERC_LIB_DIR}/libGenericCodeGen.a"
+        "${SHADERC_LIB_DIR}/libSPIRV-Tools-link.a"
+        "${SHADERC_LIB_DIR}/libSPIRV-Tools-lint.a"
+        "${SHADERC_LIB_DIR}/libSPIRV-Tools-reduce.a"
+        "${SHADERC_LIB_DIR}/libSPIRV-Tools-opt.a"
+        "${SHADERC_LIB_DIR}/libSPIRV-Tools.a"
+        "${SHADERC_LIB_DIR}/libSPIRV-Tools-diff.a"
     )
 endif()
 

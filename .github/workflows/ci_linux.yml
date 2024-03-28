@@ -2,10 +2,6 @@ name: CI Linux
 on:
   workflow_dispatch:
     inputs:
-      build_glslang:
-        description: 'Build glslang (true/false)'
-        required: true
-        default: 'false' # to save time, actual build is already in libs folder
       build_libplacebo:
         description: 'Build libplacebo (true/false)'
         required: true
@@ -28,7 +24,6 @@ jobs:
     name: Build unix lib
     runs-on: ubuntu-latest
     env:
-      BUILD_GLSLANG: ${{ github.event.inputs.build_glslang }}
       BUILD_LIBPLACEBO: ${{ github.event.inputs.build_libplacebo }}
       BUILD_SHADERC: ${{ github.event.inputs.build_shaderc }}
       BUILD_VULKAN_LOADER: ${{ github.event.inputs.build_vulkan }}
@@ -48,19 +43,12 @@ jobs:
           ref: '4.10.7'
 
       - name: Checkout shaderc repository
-        #if: env.BUILD_SHADERC == 'true'
+        if: env.BUILD_SHADERC == 'true'
         uses: actions/checkout@v2
         with:
           repository: 'google/shaderc'
           path: 'shaderc'
           ref: 'v2024.0'
-
-      - name: Checkout glslang repository
-        if: env.BUILD_GLSLANG == 'true'
-        uses: actions/checkout@v2
-        with:
-          repository: 'KhronosGroup/glslang'
-          path: 'glslang'
 
       - name: Checkout vulkan-loader repository
         if: env.BUILD_VULKAN_LOADER == 'true'
@@ -108,7 +96,7 @@ jobs:
           path: ${{github.workspace}}/Little-CMS
 
       - name: Build shaderc
-        #if: env.BUILD_SHADERC == 'true'
+        if: env.BUILD_SHADERC == 'true'
         working-directory: ./shaderc
         run: |
           ./utils/git-sync-deps
@@ -118,7 +106,7 @@ jobs:
           cmake --build . --config Release
 
       - name: Upload shaderc artefacts
-        #if: env.BUILD_SHADERC == 'true'
+        if: env.BUILD_SHADERC == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: shaderc-artefacts-${{ matrix.arch }}
@@ -137,25 +125,6 @@ jobs:
         with:
           name: vulkan-loader-artefacts-x64
           path: ${{github.workspace}}/vulkan-loader
-
-      - name: Update glslang sources
-        if: env.BUILD_GLSLANG == 'true'
-        working-directory: ./glslang
-        run: ./update_glslang_sources.py
-
-      - name: Build glslang
-        if: env.BUILD_GLSLANG == 'true'
-        working-directory: ./glslang
-        run: |
-          cmake -DCMAKE_BUILD_TYPE=Release -DBUILD_SHARED_LIBS=OFF -DCMAKE_INSTALL_PREFIX="$(pwd)/install" .
-          cmake --build . --config Release --target install
-
-      - name: Upload gslang artefacts
-        if: env.BUILD_GLSLANG == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: gslang-artefacts-x64
-          path: ${{github.workspace}}/glslang/install
 
       - name: Apply fix_p010_rendering patch to libplacebo
         #if: env.BUILD_LIBPLACEBO == 'true'
@@ -193,13 +162,6 @@ jobs:
 
       - name: Configure and Build libplacebo-jni with CMake
         run: |
-          if [ "${{ env.BUILD_GLSLANG }}" = "true" ]; then
-            GLSLANG_LIBS_DIR=${{github.workspace}}/glslang/install/lib
-            GLSLANG_HEADERS_DIR=${{github.workspace}}/glslang/install/include
-          else
-            GLSLANG_LIBS_DIR=${{github.workspace}}/libs/glslang/linux/x64/lib
-            GLSLANG_HEADERS_DIR=${{github.workspace}}/libs/glslang/linux/x64/include
-          fi
           
           LIBPLACEBO_LIB_PATH=${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/lib/x86_64-linux-gnu/libplacebo.a
           LIBPLACEBO_HEADERS_DIR=${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/include
@@ -213,8 +175,6 @@ jobs:
             -DCMAKE_LIBRARY_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries \
             -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries \
             -DGENERATED_JNI_HEADERS_DIR=${{ github.workspace }}/build/generatedHeaders \
-            -DGLSLANG_LIBS_DIR=${GLSLANG_LIBS_DIR} \
-            -DGLSLANG_HEADERS_DIR=${GLSLANG_HEADERS_DIR} \
             -DSHADERC_LIB_DIR=${{github.workspace}}/libs/shaderc/linux/x64/lib \
             -DSHADERC_HEADERS_DIR=${{github.workspace}}/libs/shaderc/linux/x64/include \
             -DFFMPEG_DIR=${{github.workspace}}/libs/ffmpeg/linux/x64 \
