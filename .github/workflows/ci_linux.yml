@@ -114,7 +114,7 @@ jobs:
           ./utils/git-sync-deps
           mkdir -p build
           cd build
-          cmake -DSHADERC_SKIP_TESTS=ON -DSHADERC_SKIP_EXAMPLES=ON -DSPIRV_SKIP_EXECUTABLES=ON -DENABLE_GLSLANG_BINARIES=OFF ..
+          cmake -DSHADERC_SKIP_TESTS=ON -DSHADERC_SKIP_EXAMPLES=ON ..
           cmake --build . --config Release
 
       - name: Upload shaderc artefacts
