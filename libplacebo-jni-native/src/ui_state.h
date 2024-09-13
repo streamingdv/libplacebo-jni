@@ -1,5 +1,6 @@
 struct PanelState {
     bool showMicButton;
+    bool showFullscreenButton;
     bool micButtonPressed;
     bool micButtonActive;
     bool shareButtonPressed;

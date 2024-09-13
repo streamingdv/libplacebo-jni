@@ -18,7 +18,7 @@ public class UiState {
 
     public final PopupState popupState = new PopupState();
 
-    public void clone(UiState uiState) {
+    public void clone(final UiState uiState) {
         this.showTouchpad = uiState.showTouchpad;
         this.showPanel = uiState.showPanel;
         this.showPopup = uiState.showPopup;
@@ -26,6 +26,7 @@ public class UiState {
         this.panelPressed = uiState.panelPressed;
         // panel state
         this.panelState.showMicButton = uiState.panelState.showMicButton;
+        this.panelState.showFullscreenButton = uiState.panelState.showFullscreenButton;
         this.panelState.micButtonPressed = uiState.panelState.micButtonPressed;
         this.panelState.micButtonActive = uiState.panelState.micButtonActive;
         this.panelState.shareButtonPressed = uiState.panelState.shareButtonPressed;
@@ -50,10 +51,14 @@ public class UiState {
     }
 
     @Override
-    public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || this.getClass() != o.getClass()) return false;
-        UiState uiState = (UiState) o;
+    public boolean equals(final Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || this.getClass() != o.getClass()) {
+            return false;
+        }
+        final UiState uiState = (UiState) o;
         // no touchpadPressed and panelPressed as these are just internal config states
         return this.showTouchpad == uiState.showTouchpad && this.showPanel == uiState.showPanel && this.showPopup == uiState.showPopup && Objects.equals(this.panelState, uiState.panelState) && Objects.equals(this.popupState, uiState.popupState);
     }
@@ -80,6 +85,7 @@ public class UiState {
 
     public static class PanelState {
         public boolean showMicButton = true;
+        public boolean showFullscreenButton = true;
         public boolean micButtonPressed;
         public boolean micButtonActive;
         public boolean shareButtonPressed;
@@ -90,22 +96,27 @@ public class UiState {
         public boolean closeButtonPressed;
 
         @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || this.getClass() != o.getClass()) return false;
-            PanelState that = (PanelState) o;
-            return this.showMicButton == that.showMicButton && this.micButtonPressed == that.micButtonPressed && this.micButtonActive == that.micButtonActive && this.shareButtonPressed == that.shareButtonPressed && this.psButtonPressed == that.psButtonPressed && this.optionsButtonPressed == that.optionsButtonPressed && this.fullscreenButtonPressed == that.fullscreenButtonPressed && this.fullscreenButtonActive == that.fullscreenButtonActive && this.closeButtonPressed == that.closeButtonPressed;
+        public boolean equals(final Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || this.getClass() != o.getClass()) {
+                return false;
+            }
+            final PanelState that = (PanelState) o;
+            return this.showMicButton == that.showMicButton && this.showFullscreenButton == that.showFullscreenButton && this.micButtonPressed == that.micButtonPressed && this.micButtonActive == that.micButtonActive && this.shareButtonPressed == that.shareButtonPressed && this.psButtonPressed == that.psButtonPressed && this.optionsButtonPressed == that.optionsButtonPressed && this.fullscreenButtonPressed == that.fullscreenButtonPressed && this.fullscreenButtonActive == that.fullscreenButtonActive && this.closeButtonPressed == that.closeButtonPressed;
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(this.showMicButton, this.micButtonPressed, this.micButtonActive, this.shareButtonPressed, this.psButtonPressed, this.optionsButtonPressed, this.fullscreenButtonPressed, this.fullscreenButtonActive, this.closeButtonPressed);
+            return Objects.hash(this.showMicButton, this.showFullscreenButton, this.micButtonPressed, this.micButtonActive, this.shareButtonPressed, this.psButtonPressed, this.optionsButtonPressed, this.fullscreenButtonPressed, this.fullscreenButtonActive, this.closeButtonPressed);
         }
 
         @Override
         public String toString() {
             return "PanelState{" +
                     "showMicButton=" + this.showMicButton +
+                    ", showFullscreenButton=" + this.showFullscreenButton +
                     ", micButtonPressed=" + this.micButtonPressed +
                     ", micButtonActive=" + this.micButtonActive +
                     ", shareButtonPressed=" + this.shareButtonPressed +
@@ -133,33 +144,37 @@ public class UiState {
         public boolean rightButtonFocused;
 
         @Override
-        public boolean equals(Object o) {
-            if (this == o) return true;
-            if (o == null || getClass() != o.getClass()) return false;
-            PopupState that = (PopupState) o;
-            return showCheckbox == that.showCheckbox && checkboxChecked == that.checkboxChecked && checkboxFocused == that.checkboxFocused && leftButtonPressed == that.leftButtonPressed && leftButtonFocused == that.leftButtonFocused && rightButtonPressed == that.rightButtonPressed && rightButtonFocused == that.rightButtonFocused && Objects.equals(headerText, that.headerText) && Objects.equals(popupText, that.popupText) && Objects.equals(popupButtonLeft, that.popupButtonLeft) && Objects.equals(popupButtonRight, that.popupButtonRight) && Objects.equals(popupCheckboxText, that.popupCheckboxText);
+        public boolean equals(final Object o) {
+            if (this == o) {
+                return true;
+            }
+            if (o == null || this.getClass() != o.getClass()) {
+                return false;
+            }
+            final PopupState that = (PopupState) o;
+            return this.showCheckbox == that.showCheckbox && this.checkboxChecked == that.checkboxChecked && this.checkboxFocused == that.checkboxFocused && this.leftButtonPressed == that.leftButtonPressed && this.leftButtonFocused == that.leftButtonFocused && this.rightButtonPressed == that.rightButtonPressed && this.rightButtonFocused == that.rightButtonFocused && Objects.equals(this.headerText, that.headerText) && Objects.equals(this.popupText, that.popupText) && Objects.equals(this.popupButtonLeft, that.popupButtonLeft) && Objects.equals(this.popupButtonRight, that.popupButtonRight) && Objects.equals(this.popupCheckboxText, that.popupCheckboxText);
         }
 
         @Override
         public int hashCode() {
-            return Objects.hash(headerText, popupText, showCheckbox, popupButtonLeft, popupButtonRight, popupCheckboxText, checkboxChecked, checkboxFocused, leftButtonPressed, leftButtonFocused, rightButtonPressed, rightButtonFocused);
+            return Objects.hash(this.headerText, this.popupText, this.showCheckbox, this.popupButtonLeft, this.popupButtonRight, this.popupCheckboxText, this.checkboxChecked, this.checkboxFocused, this.leftButtonPressed, this.leftButtonFocused, this.rightButtonPressed, this.rightButtonFocused);
         }
 
         @Override
         public String toString() {
             return "PopupState{" +
-                    "headerText='" + headerText + '\'' +
-                    ", popupText='" + popupText + '\'' +
-                    ", showCheckbox=" + showCheckbox +
-                    ", popupButtonLeft='" + popupButtonLeft + '\'' +
-                    ", popupButtonRight='" + popupButtonRight + '\'' +
-                    ", popupCheckboxText='" + popupCheckboxText + '\'' +
-                    ", checkboxChecked=" + checkboxChecked +
-                    ", checkboxFocused=" + checkboxFocused +
-                    ", leftButtonPressed=" + leftButtonPressed +
-                    ", leftButtonFocused=" + leftButtonFocused +
-                    ", rightButtonPressed=" + rightButtonPressed +
-                    ", rightButtonFocused=" + rightButtonFocused +
+                    "headerText='" + this.headerText + '\'' +
+                    ", popupText='" + this.popupText + '\'' +
+                    ", showCheckbox=" + this.showCheckbox +
+                    ", popupButtonLeft='" + this.popupButtonLeft + '\'' +
+                    ", popupButtonRight='" + this.popupButtonRight + '\'' +
+                    ", popupCheckboxText='" + this.popupCheckboxText + '\'' +
+                    ", checkboxChecked=" + this.checkboxChecked +
+                    ", checkboxFocused=" + this.checkboxFocused +
+                    ", leftButtonPressed=" + this.leftButtonPressed +
+                    ", leftButtonFocused=" + this.leftButtonFocused +
+                    ", rightButtonPressed=" + this.rightButtonPressed +
+                    ", rightButtonFocused=" + this.rightButtonFocused +
                     '}';
         }
     }

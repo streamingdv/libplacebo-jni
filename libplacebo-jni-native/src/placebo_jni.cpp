@@ -1554,34 +1554,36 @@ void render_ui(struct ui *ui, int width, int height) {
 
           // **** Fullscreen
 
-          if(globalUiState.panelState.fullscreenButtonPressed){
-              ctx->style.button.normal = nk_style_item_color(pressed_white_button_color_alpha);
-              ctx->style.button.hover = nk_style_item_color(pressed_white_button_color_alpha);
-              ctx->style.button.active = nk_style_item_color(pressed_white_button_color_alpha);
-          } else {
-              ctx->style.button.normal = nk_style_item_color(white_button_color_alpha);
-              ctx->style.button.hover = nk_style_item_color(white_button_color_alpha);
-              ctx->style.button.active = nk_style_item_color(white_button_color_alpha);
-          }
-          ctx->style.button.border_color = black_button_color;
-          ctx->style.button.text_background = black_button_color;
-          ctx->style.button.text_normal = black_button_color;
-          ctx->style.button.text_hover = black_button_color;
-          ctx->style.button.text_active = black_button_color;
-          ctx->style.button.rounding = 8;
-          ctx->style.button.border = 0;
-          nk_layout_space_push(ctx, nk_rect((bounds.w - (buttonSize * 2)) - (edgePadding * 1.5), (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
-          if(globalUiState.panelState.fullscreenButtonActive) {
-              if (nk_button_label(ctx, "\ue804")) {
-                  // event handling (ignored here)
+          if(globalUiState.panelState.showFullscreenButton) {
+              if(globalUiState.panelState.fullscreenButtonPressed){
+                  ctx->style.button.normal = nk_style_item_color(pressed_white_button_color_alpha);
+                  ctx->style.button.hover = nk_style_item_color(pressed_white_button_color_alpha);
+                  ctx->style.button.active = nk_style_item_color(pressed_white_button_color_alpha);
+              } else {
+                  ctx->style.button.normal = nk_style_item_color(white_button_color_alpha);
+                  ctx->style.button.hover = nk_style_item_color(white_button_color_alpha);
+                  ctx->style.button.active = nk_style_item_color(white_button_color_alpha);
               }
-          } else {
-              if (nk_button_label(ctx, "\ue802")) {
-                  // event handling (ignored here)
+              ctx->style.button.border_color = black_button_color;
+              ctx->style.button.text_background = black_button_color;
+              ctx->style.button.text_normal = black_button_color;
+              ctx->style.button.text_hover = black_button_color;
+              ctx->style.button.text_active = black_button_color;
+              ctx->style.button.rounding = 8;
+              ctx->style.button.border = 0;
+              nk_layout_space_push(ctx, nk_rect((bounds.w - (buttonSize * 2)) - (edgePadding * 1.5), (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
+              if(globalUiState.panelState.fullscreenButtonActive) {
+                  if (nk_button_label(ctx, "\ue804")) {
+                      // event handling (ignored here)
+                  }
+              } else {
+                  if (nk_button_label(ctx, "\ue802")) {
+                      // event handling (ignored here)
+                  }
               }
-          }
 
-          ctx->style.button = cachedButtonStyle;
+              ctx->style.button = cachedButtonStyle;
+          }
 
           // **** Close
 
@@ -1737,13 +1739,13 @@ extern "C" JNIEXPORT void JNICALL
 Java_com_grill_placebo_PlaceboManager_nkUpdateUIState(JNIEnv *env, jobject obj,
   jboolean showTouchpad, jboolean showPanel, jboolean showPopup,
   jboolean touchpadPressed, jboolean panelPressed, jboolean panelShowMicButton,
-  jboolean panelMicButtonPressed, jboolean panelMicButtonActive, jboolean panelShareButtonPressed,
-  jboolean panelPsButtonPressed, jboolean panelOptionsButtonPressed, jboolean panelFullscreenButtonPressed,
-  jboolean panelFullscreenButtonActive, jboolean panelCloseButtonPressed, jstring popupHeaderText, jstring popupPopupText,
-  jboolean popupShowCheckbox, jstring popupButtonLeft, jstring popupButtonRight,
-  jstring popupCheckboxText, jboolean popupCheckboxChecked, jboolean popupCheckboxFocused,
-  jboolean popupLeftButtonPressed, jboolean popupLeftButtonFocused, jboolean popupRightButtonPressed,
-  jboolean popupRightButtonFocused ) {
+  jboolean panelShowFullscreenButton, jboolean panelMicButtonPressed, jboolean panelMicButtonActive,
+  jboolean panelShareButtonPressed, jboolean panelPsButtonPressed, jboolean panelOptionsButtonPressed,
+  jboolean panelFullscreenButtonPressed, jboolean panelFullscreenButtonActive, jboolean panelCloseButtonPressed,
+  jstring popupHeaderText, jstring popupPopupText, jboolean popupShowCheckbox,
+  jstring popupButtonLeft, jstring popupButtonRight, jstring popupCheckboxText,
+  jboolean popupCheckboxChecked, jboolean popupCheckboxFocused, jboolean popupLeftButtonPressed,
+  jboolean popupLeftButtonFocused, jboolean popupRightButtonPressed, jboolean popupRightButtonFocused ) {
 
   globalUiState.showTouchpad = showTouchpad;
   globalUiState.showPanel = showPanel;
@@ -1752,6 +1754,7 @@ Java_com_grill_placebo_PlaceboManager_nkUpdateUIState(JNIEnv *env, jobject obj,
   globalUiState.panelPressed = panelPressed;
 
   globalUiState.panelState.showMicButton = panelShowMicButton;
+  globalUiState.panelState.showFullscreenButton = panelShowFullscreenButton;
   globalUiState.panelState.micButtonPressed = panelMicButtonPressed;
   globalUiState.panelState.micButtonActive = panelMicButtonActive;
   globalUiState.panelState.shareButtonPressed = panelShareButtonPressed;
