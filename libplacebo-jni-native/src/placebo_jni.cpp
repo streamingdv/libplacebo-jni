@@ -64,6 +64,10 @@
 #include <libavutil/hwcontext.h>
 #include <libavutil/hwcontext_vulkan.h>
 
+/*** global color space variable ***/
+
+pl_color_space m_LastColorspace = {};
+
 /*** define helper functions ***/
 
 JNIEnv *globalEnv;
@@ -402,6 +406,9 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plVkInstDestroy
   if (instance != nullptr) {
       pl_vk_inst_destroy(&instance);
   }
+
+  // reset stored color space
+  m_LastColorspace = {};
 }
 
 extern "C"
@@ -955,7 +962,6 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plSetRenderingForma
 }
 
 pl_tex placebo_tex_global[4] = {nullptr, nullptr, nullptr, nullptr};
-pl_color_space m_LastColorspace = {};
 
 extern "C"
 JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
