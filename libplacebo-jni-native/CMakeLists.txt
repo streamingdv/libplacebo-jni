@@ -9,7 +9,9 @@ project(libplacebo-jni-native)
 # Set C and C++ standards
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-Bsymbolic")
+if(NOT APPLE)
+  set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-Bsymbolic")
+endif()
 
 # Set the variable with a default value (windows default)
 set(LIBPLACEBO_LIB_PATH "${CMAKE_SOURCE_DIR}/3rdparty/libplacebo/install/lib/libplacebo.a" CACHE STRING "Path to libplacebo library")
@@ -141,39 +143,70 @@ else()
     # Find packages using PkgConfig with static linking preference
     find_package(PkgConfig REQUIRED)
 
-    pkg_check_modules(VULKAN REQUIRED vulkan)
-    link_directories(${VULKAN_LIBRARY_DIRS})
-
     pkg_check_modules(XCB REQUIRED xcb)
     include_directories(${XCB_INCLUDE_DIRS})
     link_directories(${XCB_LIBRARY_DIRS})
     add_definitions(${XCB_CFLAGS_OTHER})
 
-    target_link_libraries(libplacebo-jni-native PRIVATE
-        ${LIBPLACEBO_LIB_PATH}
-        ${JNI_LIBRARIES}
-        ${VULKAN_LIBRARIES}
-        ${XCB_LIBRARIES}
-        "${LCMS2_DIR}/lib/liblcms2.a"
-        "${SHADERC_LIB_DIR}/libshaderc.a"
-        "${SHADERC_LIB_DIR}/libshaderc_util.a"
-        "${FFMPEG_DIR}/libavcodec/libavcodec.a"
-        "${FFMPEG_DIR}/libavformat/libavformat.a"
-        "${FFMPEG_DIR}/libavutil/libavutil.a"
-        "${SHADERC_LIB_DIR}/libMachineIndependent.a"
-        "${SHADERC_LIB_DIR}/libOSDependent.a"
-        "${SHADERC_LIB_DIR}/libglslang.a"
-        "${SHADERC_LIB_DIR}/libSPIRV.a"
-        "${SHADERC_LIB_DIR}/libSPVRemapper.a"
-        "${SHADERC_LIB_DIR}/libglslang-default-resource-limits.a"
-        "${SHADERC_LIB_DIR}/libGenericCodeGen.a"
-        "${SHADERC_LIB_DIR}/libSPIRV-Tools-link.a"
-        "${SHADERC_LIB_DIR}/libSPIRV-Tools-lint.a"
-        "${SHADERC_LIB_DIR}/libSPIRV-Tools-reduce.a"
-        "${SHADERC_LIB_DIR}/libSPIRV-Tools-opt.a"
-        "${SHADERC_LIB_DIR}/libSPIRV-Tools.a"
-        "${SHADERC_LIB_DIR}/libSPIRV-Tools-diff.a"
-    )
+    pkg_check_modules(VULKAN REQUIRED vulkan)
+    link_directories(${VULKAN_LIBRARY_DIRS})
+
+    if(APPLE)
+           target_link_libraries(libplacebo-jni-native PRIVATE
+               ${LIBPLACEBO_LIB_PATH}
+               ${JNI_LIBRARIES}
+               "${VULKAN_LIB_DIR}/lib/libvulkan.1.dylib"
+               "${LCMS2_DIR}/lib/liblcms2.a"
+               "${SHADERC_LIB_DIR}/libshaderc.a"
+               "${SHADERC_LIB_DIR}/libshaderc_util.a"
+               "${FFMPEG_DIR}/libavcodec/libavcodec.a"
+               "${FFMPEG_DIR}/libavformat/libavformat.a"
+               "${FFMPEG_DIR}/libavutil/libavutil.a"
+               "${SHADERC_LIB_DIR}/libMachineIndependent.a"
+               "${SHADERC_LIB_DIR}/libOSDependent.a"
+               "${SHADERC_LIB_DIR}/libglslang.a"
+               "${SHADERC_LIB_DIR}/libSPIRV.a"
+               "${SHADERC_LIB_DIR}/libSPVRemapper.a"
+               "${SHADERC_LIB_DIR}/libglslang-default-resource-limits.a"
+               "${SHADERC_LIB_DIR}/libGenericCodeGen.a"
+               "${SHADERC_LIB_DIR}/libSPIRV-Tools-link.a"
+               "${SHADERC_LIB_DIR}/libSPIRV-Tools-lint.a"
+               "${SHADERC_LIB_DIR}/libSPIRV-Tools-reduce.a"
+               "${SHADERC_LIB_DIR}/libSPIRV-Tools-opt.a"
+               "${SHADERC_LIB_DIR}/libSPIRV-Tools.a"
+               "${SHADERC_LIB_DIR}/libSPIRV-Tools-diff.a"
+               "-framework CoreFoundation"
+               "-framework CoreMedia"
+               "-framework CoreVideo"
+               "-framework VideoToolbox"
+           )
+    else()
+        target_link_libraries(libplacebo-jni-native PRIVATE
+            ${LIBPLACEBO_LIB_PATH}
+            ${JNI_LIBRARIES}
+            ${VULKAN_LIBRARIES}
+            ${XCB_LIBRARIES}
+            "${LCMS2_DIR}/lib/liblcms2.a"
+            "${SHADERC_LIB_DIR}/libshaderc.a"
+            "${SHADERC_LIB_DIR}/libshaderc_util.a"
+            "${FFMPEG_DIR}/libavcodec/libavcodec.a"
+            "${FFMPEG_DIR}/libavformat/libavformat.a"
+            "${FFMPEG_DIR}/libavutil/libavutil.a"
+            "${SHADERC_LIB_DIR}/libMachineIndependent.a"
+            "${SHADERC_LIB_DIR}/libOSDependent.a"
+            "${SHADERC_LIB_DIR}/libglslang.a"
+            "${SHADERC_LIB_DIR}/libSPIRV.a"
+            "${SHADERC_LIB_DIR}/libSPVRemapper.a"
+            "${SHADERC_LIB_DIR}/libglslang-default-resource-limits.a"
+            "${SHADERC_LIB_DIR}/libGenericCodeGen.a"
+            "${SHADERC_LIB_DIR}/libSPIRV-Tools-link.a"
+            "${SHADERC_LIB_DIR}/libSPIRV-Tools-lint.a"
+            "${SHADERC_LIB_DIR}/libSPIRV-Tools-reduce.a"
+            "${SHADERC_LIB_DIR}/libSPIRV-Tools-opt.a"
+            "${SHADERC_LIB_DIR}/libSPIRV-Tools.a"
+            "${SHADERC_LIB_DIR}/libSPIRV-Tools-diff.a"
+        )
+    endif()
 endif()
 
 # Set the PREFIX property to empty
