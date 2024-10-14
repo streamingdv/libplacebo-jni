@@ -214,6 +214,13 @@ public class PlaceboManager {
      * @return the handle to the vkCreateWin32SurfaceKHR function
      */
     public native long plGetWin32SurfaceFunctionPointer();
+    
+    /**
+     * Gets the handle to the vkCreateMetalSurfaceEXT function
+     *
+     * @return the handle to the vkCreateMetalSurfaceEXT function
+     */
+    public native long plGetMetalSurfaceEXT();
 
     /**
      * Gets the handle to the vkCreateXcbSurfaceKHR function

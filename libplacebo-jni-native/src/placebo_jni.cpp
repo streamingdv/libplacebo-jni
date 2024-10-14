@@ -32,6 +32,8 @@
 #include <vulkan/vulkan.h>
 #ifdef _WIN32
     #include <vulkan/vulkan_win32.h>
+#elif defined(__APPLE__)
+    #include <vulkan/vulkan_metal.h>
 #else
     #include <vulkan/vulkan_xcb.h>
     #include <vulkan/vulkan_wayland.h>
@@ -95,6 +97,8 @@ int vk_decode_queue_index = -1;
 struct {
 #ifdef _WIN32
     PFN_vkCreateWin32SurfaceKHR vkCreateWin32SurfaceKHR;
+#elif defined(__APPLE__)
+    PFN_vkCreateMetalSurfaceEXT vkCreateMetalSurfaceEXT;
 #else
     PFN_vkCreateXcbSurfaceKHR vkCreateXcbSurfaceKHR;
     PFN_vkCreateWaylandSurfaceKHR vkCreateWaylandSurfaceKHR;
@@ -370,6 +374,11 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVkInstCreate(JNI
           VK_KHR_SURFACE_EXTENSION_NAME,
           VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
       };
+  #elif defined(__APPLE__)
+      const char *vk_exts[] = {
+          VK_KHR_SURFACE_EXTENSION_NAME,
+          VK_EXT_METAL_SURFACE_EXTENSION_NAME,
+       };
   #else
       const char *vk_exts[2];  // Array to hold Vulkan extensions
       vk_exts[0] = VK_KHR_SURFACE_EXTENSION_NAME;
@@ -565,6 +574,13 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plInitFunctionP
            LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to resolve vkCreateWin32SurfaceKHR!");
            return static_cast<jboolean>(false);
        }
+  #elif defined(__APPLE__)
+      vk_funcs.vkCreateMetalSurfaceEXT = reinterpret_cast<PFN_vkCreateMetalSurfaceEXT>(
+               instance->get_proc_addr(instance->instance, "vkCreateMetalSurfaceEXT"));
+      if(!vk_funcs.vkCreateMetalSurfaceEXT) {
+          LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to resolve vkCreateMetalSurfaceEXT!");
+          return static_cast<jboolean>(false);
+      }
   #else
        bool xcbSurface = true;
        vk_funcs.vkCreateXcbSurfaceKHR = reinterpret_cast<PFN_vkCreateXcbSurfaceKHR>(
@@ -733,9 +749,19 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plGetWin32SurfaceF
 }
 
 extern "C"
+JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plGetMetalSurfaceEXT
+  (JNIEnv *env, jobject obj) {
+  #ifdef __APPLE__
+       return reinterpret_cast<jlong>(vk_funcs.vkCreateMetalSurfaceEXT);
+  #endif
+
+  return 0;
+}
+
+extern "C"
 JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plGetXcbSurfaceFunctionPointer
   (JNIEnv *env, jobject obj) {
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__APPLE__)
   if (vk_funcs.vkCreateXcbSurfaceKHR != nullptr) {
        return reinterpret_cast<jlong>(vk_funcs.vkCreateXcbSurfaceKHR);
   }
@@ -747,7 +773,7 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plGetXcbSurfaceFun
 extern "C"
 JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plGetWaylandSurfaceFunctionPointer
   (JNIEnv *env, jobject obj) {
-#ifndef _WIN32
+#if !defined(_WIN32) && !defined(__APPLE__)
   if (vk_funcs.vkCreateWaylandSurfaceKHR != nullptr) {
        return reinterpret_cast<jlong>(vk_funcs.vkCreateWaylandSurfaceKHR);
   }
