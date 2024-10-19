@@ -155,7 +155,7 @@ else()
            target_link_libraries(libplacebo-jni-native PRIVATE
                ${LIBPLACEBO_LIB_PATH}
                ${JNI_LIBRARIES}
-               "${VULKAN_LIB_DIR}/lib/libvulkan.1.dylib"
+               #"${VULKAN_LIB_DIR}/lib/libvulkan.1.dylib"
                "${LCMS2_DIR}/lib/liblcms2.a"
                "${SHADERC_LIB_DIR}/libshaderc.a"
                "${SHADERC_LIB_DIR}/libshaderc_util.a"
