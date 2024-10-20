@@ -183,6 +183,13 @@ else()
             "-framework CoreMedia"
             "-framework CoreVideo"
             "-framework VideoToolbox"
+            "-framework CoreGraphics"
+            "-framework Metal"
+            "-framework IOSurface"
+            "-framework Foundation"
+            "-framework AppKit"
+            "-framework IOKit"
+            "-framework QuartzCore"
         )
     else()
         pkg_check_modules(VULKAN REQUIRED vulkan)

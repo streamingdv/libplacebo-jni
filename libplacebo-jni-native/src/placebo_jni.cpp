@@ -397,24 +397,11 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVkInstCreate(JNI
       .num_opt_extensions = 1,
   };
 
+  //#if defined(__APPLE__)
+  //  pl_vk_inst_params.get_proc_addr = (PFN_vkGetInstanceProcAddr)SDL_Vulkan_GetVkGetInstanceProcAddr();
+  //#endif
   pl_log log = reinterpret_cast<pl_log>(placebo_log);
   pl_vk_inst instance = pl_vk_inst_create(log, &vk_inst_params);
-  LogCallbackFunction(nullptr, PL_LOG_ERR, "pl_vk_inst_create was called");
-  // Dynamically load Vulkan functions on macOS
-  #if defined(__APPLE__)
-    if (instance) {
-        LogCallbackFunction(nullptr, PL_LOG_ERR, "Try to set function pointer");
-        #define GET_PROC(name_) { \
-            void* proc = pl_vk_inst_get_proc_addr(instance, #name_); \
-            if (!proc) { \
-                LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to resolve " #name_ "!"); \
-                return 0; \
-            } \
-            vk_##name_ = reinterpret_cast<decltype(vk_##name_)>(proc); \
-        }
-        #undef GET_PROC
-    }
-  #endif
 
   return reinterpret_cast<jlong>(instance);
 }
