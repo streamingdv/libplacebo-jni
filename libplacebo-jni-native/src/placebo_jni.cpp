@@ -399,10 +399,11 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVkInstCreate(JNI
 
   pl_log log = reinterpret_cast<pl_log>(placebo_log);
   pl_vk_inst instance = pl_vk_inst_create(log, &vk_inst_params);
-
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "pl_vk_inst_create was called");
   // Dynamically load Vulkan functions on macOS
   #if defined(__APPLE__)
     if (instance) {
+        LogCallbackFunction(nullptr, PL_LOG_ERR, "Try to set function pointer");
         #define GET_PROC(name_) { \
             void* proc = pl_vk_inst_get_proc_addr(instance, #name_); \
             if (!proc) { \
