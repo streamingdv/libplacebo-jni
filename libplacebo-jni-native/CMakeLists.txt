@@ -44,12 +44,18 @@ include_directories(${GENERATED_JNI_HEADERS_DIR})
 set(LIBPLACEBO_HEADERS_DIR "${CMAKE_SOURCE_DIR}/3rdparty/libplacebo/install/include" CACHE STRING "Path to libplacebo headers")
 include_directories(${LIBPLACEBO_HEADERS_DIR})
 
-# Check for VULKAN_LIB_DIR
-set(VULKAN_LIB_DIR "" CACHE STRING "Path to vulkan headers")
-if(VULKAN_LIB_DIR STREQUAL "")
-    message(FATAL_ERROR "Please run CMake with -DVULKAN_LIB_DIR=/path/to/vulkan/include")
+if(APPLE)
+   # Include MoltenVK headers (for macOS)
+   set(MOLTENVK_INCLUDE_DIR "${MOLTENVK_INCLUDE}" CACHE STRING "MoltenVK include directory")
+   include_directories(${MOLTENVK_INCLUDE_DIR})
+else()
+   # Check for VULKAN_LIB_DIR
+   set(VULKAN_LIB_DIR "" CACHE STRING "Path to vulkan headers")
+   if(VULKAN_LIB_DIR STREQUAL "")
+       message(FATAL_ERROR "Please run CMake with -DVULKAN_LIB_DIR=/path/to/vulkan/include")
+   endif()
+   include_directories(${VULKAN_LIB_DIR}/include)
 endif()
-include_directories(${VULKAN_LIB_DIR}/include)
 
 # Check for Shaderc
 set(SHADERC_HEADERS_DIR "" CACHE STRING "Path to shaderc headers")
@@ -148,39 +154,40 @@ else()
     link_directories(${XCB_LIBRARY_DIRS})
     add_definitions(${XCB_CFLAGS_OTHER})
 
-    pkg_check_modules(VULKAN REQUIRED vulkan)
-    link_directories(${VULKAN_LIBRARY_DIRS})
-
     if(APPLE)
-           target_link_libraries(libplacebo-jni-native PRIVATE
-               ${LIBPLACEBO_LIB_PATH}
-               ${JNI_LIBRARIES}
-               #"${VULKAN_LIB_DIR}/lib/libvulkan.1.dylib"
-               "${LCMS2_DIR}/lib/liblcms2.a"
-               "${SHADERC_LIB_DIR}/libshaderc.a"
-               "${SHADERC_LIB_DIR}/libshaderc_util.a"
-               "${FFMPEG_DIR}/libavcodec/libavcodec.a"
-               "${FFMPEG_DIR}/libavformat/libavformat.a"
-               "${FFMPEG_DIR}/libavutil/libavutil.a"
-               "${SHADERC_LIB_DIR}/libMachineIndependent.a"
-               "${SHADERC_LIB_DIR}/libOSDependent.a"
-               "${SHADERC_LIB_DIR}/libglslang.a"
-               "${SHADERC_LIB_DIR}/libSPIRV.a"
-               "${SHADERC_LIB_DIR}/libSPVRemapper.a"
-               "${SHADERC_LIB_DIR}/libglslang-default-resource-limits.a"
-               "${SHADERC_LIB_DIR}/libGenericCodeGen.a"
-               "${SHADERC_LIB_DIR}/libSPIRV-Tools-link.a"
-               "${SHADERC_LIB_DIR}/libSPIRV-Tools-lint.a"
-               "${SHADERC_LIB_DIR}/libSPIRV-Tools-reduce.a"
-               "${SHADERC_LIB_DIR}/libSPIRV-Tools-opt.a"
-               "${SHADERC_LIB_DIR}/libSPIRV-Tools.a"
-               "${SHADERC_LIB_DIR}/libSPIRV-Tools-diff.a"
-               "-framework CoreFoundation"
-               "-framework CoreMedia"
-               "-framework CoreVideo"
-               "-framework VideoToolbox"
-           )
+        set(MOLTENVK_LIB "${MOLTENVK_LIB_PATH}" CACHE STRING "MoltenVK static library path")
+        target_link_libraries(libplacebo-jni-native PRIVATE
+            ${LIBPLACEBO_LIB_PATH}
+            ${JNI_LIBRARIES}
+            ${MOLTENVK_LIB}
+            "${LCMS2_DIR}/lib/liblcms2.a"
+            "${SHADERC_LIB_DIR}/libshaderc.a"
+            "${SHADERC_LIB_DIR}/libshaderc_util.a"
+            "${FFMPEG_DIR}/libavcodec/libavcodec.a"
+            "${FFMPEG_DIR}/libavformat/libavformat.a"
+            "${FFMPEG_DIR}/libavutil/libavutil.a"
+            "${SHADERC_LIB_DIR}/libMachineIndependent.a"
+            "${SHADERC_LIB_DIR}/libOSDependent.a"
+            "${SHADERC_LIB_DIR}/libglslang.a"
+            "${SHADERC_LIB_DIR}/libSPIRV.a"
+            "${SHADERC_LIB_DIR}/libSPVRemapper.a"
+            "${SHADERC_LIB_DIR}/libglslang-default-resource-limits.a"
+            "${SHADERC_LIB_DIR}/libGenericCodeGen.a"
+            "${SHADERC_LIB_DIR}/libSPIRV-Tools-link.a"
+            "${SHADERC_LIB_DIR}/libSPIRV-Tools-lint.a"
+            "${SHADERC_LIB_DIR}/libSPIRV-Tools-reduce.a"
+            "${SHADERC_LIB_DIR}/libSPIRV-Tools-opt.a"
+            "${SHADERC_LIB_DIR}/libSPIRV-Tools.a"
+            "${SHADERC_LIB_DIR}/libSPIRV-Tools-diff.a"
+            "-framework CoreFoundation"
+            "-framework CoreMedia"
+            "-framework CoreVideo"
+            "-framework VideoToolbox"
+        )
     else()
+        pkg_check_modules(VULKAN REQUIRED vulkan)
+        link_directories(${VULKAN_LIBRARY_DIRS})
+
         target_link_libraries(libplacebo-jni-native PRIVATE
             ${LIBPLACEBO_LIB_PATH}
             ${JNI_LIBRARIES}
