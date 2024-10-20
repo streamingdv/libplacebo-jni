@@ -369,19 +369,14 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plLogDestroy
 }
 
 JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVkInstCreate(JNIEnv *env, jobject obj, jlong placebo_log, jint windowingSystemType) {
+  const char *vk_exts[2];  // Array to hold Vulkan extensions
+  vk_exts[0] = VK_KHR_SURFACE_EXTENSION_NAME;
+
   #ifdef _WIN32
-      const char *vk_exts[] = {
-          VK_KHR_SURFACE_EXTENSION_NAME,
-          VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
-      };
+      vk_exts[1] = VK_KHR_WIN32_SURFACE_EXTENSION_NAME;
   #elif defined(__APPLE__)
-      const char *vk_exts[] = {
-          VK_KHR_SURFACE_EXTENSION_NAME,
-          VK_EXT_METAL_SURFACE_EXTENSION_NAME,
-       };
+      vk_exts[1] = VK_EXT_METAL_SURFACE_EXTENSION_NAME;
   #else
-      const char *vk_exts[2];  // Array to hold Vulkan extensions
-      vk_exts[0] = VK_KHR_SURFACE_EXTENSION_NAME;
       if (windowingSystemType == 2) {
           // Wayland surface extension
           vk_exts[1] = VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME;
@@ -404,6 +399,21 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVkInstCreate(JNI
 
   pl_log log = reinterpret_cast<pl_log>(placebo_log);
   pl_vk_inst instance = pl_vk_inst_create(log, &vk_inst_params);
+
+  // Dynamically load Vulkan functions on macOS
+  #if defined(__APPLE__)
+    if (instance) {
+        #define GET_PROC(name_) { \
+            void* proc = pl_vk_inst_get_proc_addr(instance, #name_); \
+            if (!proc) { \
+                LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to resolve " #name_ "!"); \
+                return 0; \
+            } \
+            vk_##name_ = reinterpret_cast<decltype(vk_##name_)>(proc); \
+        }
+        #undef GET_PROC
+    }
+  #endif
 
   return reinterpret_cast<jlong>(instance);
 }
