@@ -397,9 +397,6 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVkInstCreate(JNI
       .num_opt_extensions = 1,
   };
 
-  //#if defined(__APPLE__)
-  //  pl_vk_inst_params.get_proc_addr = (PFN_vkGetInstanceProcAddr)SDL_Vulkan_GetVkGetInstanceProcAddr();
-  //#endif
   pl_log log = reinterpret_cast<pl_log>(placebo_log);
   pl_vk_inst instance = pl_vk_inst_create(log, &vk_inst_params);
 
