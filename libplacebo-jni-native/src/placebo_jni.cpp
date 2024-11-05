@@ -984,6 +984,281 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plSetRenderingForma
 
 pl_tex placebo_tex_global[4] = {nullptr, nullptr, nullptr, nullptr};
 
+// ToDo delete start
+
+extern "C"
+JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame_1
+  (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer) {
+  AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
+  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
+  pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
+  pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
+  bool ret = false;
+  bool mapped = false;
+
+  struct pl_swapchain_frame sw_frame = {0};
+  struct pl_frame placebo_frame = {0};
+  struct pl_frame target_frame = {0};
+  struct pl_avframe_params avparams = {
+      .frame = frame,
+      .tex = placebo_tex_global,
+  };
+
+  if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
+      goto cleanup;
+  }
+
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "Test 1!");
+  ret = true;
+
+cleanup:
+  pl_unmap_avframe(vulkan->gpu, &placebo_frame);
+
+  return static_cast<jboolean>(ret);
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame_2
+  (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer) {
+  AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
+  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
+  pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
+  pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
+  bool ret = false;
+  bool mapped = false;
+
+  struct pl_swapchain_frame sw_frame = {0};
+  struct pl_frame placebo_frame = {0};
+  struct pl_frame target_frame = {0};
+  struct pl_avframe_params avparams = {
+      .frame = frame,
+      .tex = placebo_tex_global,
+  };
+
+  if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
+      goto cleanup;
+  }
+
+  mapped = pl_map_avframe_ex(vulkan->gpu, &placebo_frame, &avparams);
+  if (!mapped) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to map AVFrame to Placebo frame!");
+      av_frame_free(&frame);
+      return static_cast<jboolean>(ret);
+  }
+  // set colorspace hint
+  if (!pl_color_space_equal(&placebo_frame.color, &m_LastColorspace)) {
+      m_LastColorspace = placebo_frame.color;
+      pl_swapchain_colorspace_hint(placebo_swapchain, &placebo_frame.color);
+  }
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "Test 2!");
+  ret = true;
+
+cleanup:
+  pl_unmap_avframe(vulkan->gpu, &placebo_frame);
+
+  return static_cast<jboolean>(ret);
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame_3
+  (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer) {
+  AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
+  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
+  pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
+  pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
+  bool ret = false;
+  bool mapped = false;
+
+  struct pl_swapchain_frame sw_frame = {0};
+  struct pl_frame placebo_frame = {0};
+  struct pl_frame target_frame = {0};
+  struct pl_avframe_params avparams = {
+      .frame = frame,
+      .tex = placebo_tex_global,
+  };
+
+  if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
+      goto cleanup;
+  }
+
+  mapped = pl_map_avframe_ex(vulkan->gpu, &placebo_frame, &avparams);
+  if (!mapped) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to map AVFrame to Placebo frame!");
+      av_frame_free(&frame);
+      return static_cast<jboolean>(ret);
+  }
+  // set colorspace hint
+  if (!pl_color_space_equal(&placebo_frame.color, &m_LastColorspace)) {
+      m_LastColorspace = placebo_frame.color;
+      pl_swapchain_colorspace_hint(placebo_swapchain, &placebo_frame.color);
+  }
+  pl_rect2df crop;
+  pl_frame_from_swapchain(&target_frame, &sw_frame);
+
+  crop = placebo_frame.crop;
+  switch (renderingFormat) {
+      case 0: // normal
+          pl_rect2df_aspect_copy(&target_frame.crop, &crop, 0.0);
+          break;
+      case 1: // stretched
+          // Nothing to do, target.crop already covers the full image
+          break;
+      case 2: // zoomed
+          pl_rect2df_aspect_copy(&target_frame.crop, &crop, 1.0);
+          break;
+  }
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "Test 3!");
+  ret = true;
+
+cleanup:
+  pl_unmap_avframe(vulkan->gpu, &placebo_frame);
+
+  return static_cast<jboolean>(ret);
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame_4
+  (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer) {
+  AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
+  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
+  pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
+  pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
+  bool ret = false;
+  bool mapped = false;
+
+  struct pl_swapchain_frame sw_frame = {0};
+  struct pl_frame placebo_frame = {0};
+  struct pl_frame target_frame = {0};
+  struct pl_avframe_params avparams = {
+      .frame = frame,
+      .tex = placebo_tex_global,
+  };
+
+  if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
+      goto cleanup;
+  }
+
+  mapped = pl_map_avframe_ex(vulkan->gpu, &placebo_frame, &avparams);
+  if (!mapped) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to map AVFrame to Placebo frame!");
+      av_frame_free(&frame);
+      return static_cast<jboolean>(ret);
+  }
+  // set colorspace hint
+  if (!pl_color_space_equal(&placebo_frame.color, &m_LastColorspace)) {
+      m_LastColorspace = placebo_frame.color;
+      pl_swapchain_colorspace_hint(placebo_swapchain, &placebo_frame.color);
+  }
+  pl_rect2df crop;
+  pl_frame_from_swapchain(&target_frame, &sw_frame);
+
+  crop = placebo_frame.crop;
+  switch (renderingFormat) {
+      case 0: // normal
+          pl_rect2df_aspect_copy(&target_frame.crop, &crop, 0.0);
+          break;
+      case 1: // stretched
+          // Nothing to do, target.crop already covers the full image
+          break;
+      case 2: // zoomed
+          pl_rect2df_aspect_copy(&target_frame.crop, &crop, 1.0);
+          break;
+  }
+
+  if (!pl_render_image(placebo_renderer, &placebo_frame, &target_frame, &render_params)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to render Placebo frame!");
+      goto cleanup;
+  }
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "Test 4!");
+
+  m_HasPendingSwapchainFrame = true;
+  pl_swapchain_swap_buffers(placebo_swapchain);
+  ret = true;
+
+cleanup:
+  pl_unmap_avframe(vulkan->gpu, &placebo_frame);
+
+  return static_cast<jboolean>(ret);
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame_5
+  (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer) {
+  AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
+  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
+  pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
+  pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
+  bool ret = false;
+  bool mapped = false;
+
+  struct pl_swapchain_frame sw_frame = {0};
+  struct pl_frame placebo_frame = {0};
+  struct pl_frame target_frame = {0};
+  struct pl_avframe_params avparams = {
+      .frame = frame,
+      .tex = placebo_tex_global,
+  };
+
+  if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
+      goto cleanup;
+  }
+
+  mapped = pl_map_avframe_ex(vulkan->gpu, &placebo_frame, &avparams);
+  if (!mapped) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to map AVFrame to Placebo frame!");
+      av_frame_free(&frame);
+      return static_cast<jboolean>(ret);
+  }
+  // set colorspace hint
+  if (!pl_color_space_equal(&placebo_frame.color, &m_LastColorspace)) {
+      m_LastColorspace = placebo_frame.color;
+      pl_swapchain_colorspace_hint(placebo_swapchain, &placebo_frame.color);
+  }
+  pl_rect2df crop;
+  pl_frame_from_swapchain(&target_frame, &sw_frame);
+
+  crop = placebo_frame.crop;
+  switch (renderingFormat) {
+      case 0: // normal
+          pl_rect2df_aspect_copy(&target_frame.crop, &crop, 0.0);
+          break;
+      case 1: // stretched
+          // Nothing to do, target.crop already covers the full image
+          break;
+      case 2: // zoomed
+          pl_rect2df_aspect_copy(&target_frame.crop, &crop, 1.0);
+          break;
+  }
+
+  if (!pl_render_image(placebo_renderer, &placebo_frame, &target_frame, &render_params)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to render Placebo frame!");
+      goto cleanup;
+  }
+  if (!pl_swapchain_submit_frame(placebo_swapchain)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to submit Placebo frame!");
+      goto cleanup;
+  }
+
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "Test 5!");
+
+  m_HasPendingSwapchainFrame = true;
+  pl_swapchain_swap_buffers(placebo_swapchain);
+  ret = true;
+
+cleanup:
+  pl_unmap_avframe(vulkan->gpu, &placebo_frame);
+
+  return static_cast<jboolean>(ret);
+}
+
+// ToDo delete end
+
+
 extern "C"
 JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer) {

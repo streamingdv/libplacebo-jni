@@ -349,6 +349,17 @@ public class PlaceboManager {
      */
     public native boolean plRenderAvFrame(long avframe, long vk, long swapchain, long renderer);
 
+    public native boolean plRenderAvFrame_1(long avframe, long vk, long swapchain, long renderer);
+
+    public native boolean plRenderAvFrame_2(long avframe, long vk, long swapchain, long renderer);
+
+    public native boolean plRenderAvFrame_3(long avframe, long vk, long swapchain, long renderer);
+
+    public native boolean plRenderAvFrame_4(long avframe, long vk, long swapchain, long renderer);
+
+    public native boolean plRenderAvFrame_5(long avframe, long vk, long swapchain, long renderer);
+
+
     /**
      * Renders an avframe with UI overlay
      *
