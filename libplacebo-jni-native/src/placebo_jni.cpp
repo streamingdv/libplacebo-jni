@@ -987,7 +987,7 @@ pl_tex placebo_tex_global[4] = {nullptr, nullptr, nullptr, nullptr};
 // ToDo delete start
 
 extern "C"
-JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame_1
+JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame1
   (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer) {
   AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
@@ -1019,7 +1019,7 @@ cleanup:
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame_2
+JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame2
   (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer) {
   AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
@@ -1062,7 +1062,7 @@ cleanup:
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame_3
+JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame3
   (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer) {
   AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
@@ -1120,7 +1120,7 @@ cleanup:
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame_4
+JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame4
   (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer) {
   AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
@@ -1186,7 +1186,7 @@ cleanup:
 }
 
 extern "C"
-JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame_5
+JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame5
   (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer) {
   AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
