@@ -992,16 +992,22 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
   pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
   bool ret = false;
+  bool mapped = false;
 
   struct pl_swapchain_frame sw_frame = {0};
   struct pl_frame placebo_frame = {0};
   struct pl_frame target_frame = {0};
-
   struct pl_avframe_params avparams = {
       .frame = frame,
       .tex = placebo_tex_global,
   };
-  bool mapped = pl_map_avframe_ex(vulkan->gpu, &placebo_frame, &avparams);
+
+  if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
+      goto cleanup;
+  }
+
+  mapped = pl_map_avframe_ex(vulkan->gpu, &placebo_frame, &avparams);
   if (!mapped) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to map AVFrame to Placebo frame!");
       av_frame_free(&frame);
@@ -1013,11 +1019,6 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
       pl_swapchain_colorspace_hint(placebo_swapchain, &placebo_frame.color);
   }
   pl_rect2df crop;
-
-  if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
-      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
-      goto cleanup;
-  }
   pl_frame_from_swapchain(&target_frame, &sw_frame);
 
   crop = placebo_frame.crop;
@@ -1060,16 +1061,22 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
   pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
   bool ret = false;
+  bool mapped = false;
 
   struct pl_swapchain_frame sw_frame = {0};
   struct pl_frame placebo_frame = {0};
   struct pl_frame target_frame = {0};
-
   struct pl_avframe_params avparams = {
       .frame = frame,
       .tex = placebo_tex_global,
   };
-  bool mapped = pl_map_avframe_ex(vulkan->gpu, &placebo_frame, &avparams);
+
+  if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
+      goto cleanup;
+  }
+
+  mapped = pl_map_avframe_ex(vulkan->gpu, &placebo_frame, &avparams);
   if (!mapped) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to map AVFrame to Placebo frame!");
       av_frame_free(&frame);
@@ -1081,10 +1088,6 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
       pl_swapchain_colorspace_hint(placebo_swapchain, &placebo_frame.color);
   }
   pl_rect2df crop;
-  if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
-      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
-      goto cleanup;
-  }
   pl_frame_from_swapchain(&target_frame, &sw_frame);
 
   if(ui != 0) {
@@ -1140,21 +1143,22 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUiOnly
 
     struct pl_swapchain_frame sw_frame = {0};
     struct pl_frame target_frame = {0};
-
     struct pl_color_space hint = {
         .primaries = PL_COLOR_PRIM_UNKNOWN,
         .transfer = PL_COLOR_TRC_UNKNOWN,
         .hdr = PL_HDR_METADATA_NONE
     };
-    if (!pl_color_space_equal(&hint, &m_LastColorspace)) { // reset color space hint if needed
-        m_LastColorspace = hint;
-        pl_swapchain_colorspace_hint(placebo_swapchain, &hint);
-    }
 
     if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
         LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
         goto finish;
     }
+
+    if (!pl_color_space_equal(&hint, &m_LastColorspace)) { // reset color space hint if needed
+        m_LastColorspace = hint;
+        pl_swapchain_colorspace_hint(placebo_swapchain, &hint);
+    }
+
     pl_frame_from_swapchain(&target_frame, &sw_frame);
 
     if(ui != 0) {
