@@ -359,6 +359,7 @@ public class PlaceboManager {
 
     public native boolean plRenderAvFrame5(long avframe, long vk, long swapchain, long renderer);
 
+    public native long getVkGetInstanceProcAddr();
 
     /**
      * Renders an avframe with UI overlay
