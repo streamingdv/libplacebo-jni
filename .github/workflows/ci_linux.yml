@@ -170,11 +170,11 @@ jobs:
           name: vulkan-loader-artefacts-x64
           path: ${{github.workspace}}/vulkan-loader
 
-      - name: Apply fix_p010_rendering patch to libplacebo
+      - name: Apply fix_reuse_swapchain patch to libplacebo
         #if: env.BUILD_LIBPLACEBO == 'true'
         working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
         run: |
-          git apply ../fix_p010_rendering.patch
+          git apply ../fix_reuse_swapchain.patch
 
       - name: Build libplacebo
         #if: env.BUILD_LIBPLACEBO == 'true'
