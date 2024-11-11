@@ -111,7 +111,7 @@ public class PlaceboManager {
     public native long plVulkanCreate(long plLog, long vkInst, long surface, boolean hwAccelBackend);
 
     /**
-     * Creates a vulkan device and check if the device meets our requirments
+     * Creates a vulkan device and check if the device meets our requirements
      *
      * @param plLog          the log handle
      * @param vkInst         the vk inst handle
