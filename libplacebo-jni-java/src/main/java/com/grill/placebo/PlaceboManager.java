@@ -102,12 +102,13 @@ public class PlaceboManager {
     /**
      * Creates a vulkan device chosen by libplacebo
      *
-     * @param plLog   the log handle
-     * @param vkInst  the vk inst handle
-     * @param surface the surface handle
+     * @param plLog          the log handle
+     * @param vkInst         the vk inst handle
+     * @param surface        the surface handle
+     * @param hwAccelBackend true if acting as the decoder backend; a physical device with Vulkan video support is required
      * @return the vulkan device handle or <= 0 if not successful
      */
-    public native long plVulkanCreate(long plLog, long vkInst, long surface);
+    public native long plVulkanCreate(long plLog, long vkInst, long surface, boolean hwAccelBackend);
 
     /**
      * Creates a vulkan device and check if the device meets our requirments

@@ -271,7 +271,7 @@ bool tryInitializeDevice(pl_log log,
       .get_proc_addr = instance->get_proc_addr,
       .surface = vkSurfaceKHR,
       .device = device,
-      .extra_queues = VK_QUEUE_VIDEO_DECODE_BIT_KHR,
+      .extra_queues = hwAccelBackend ? VK_QUEUE_VIDEO_DECODE_BIT_KHR : 0,
       .opt_extensions = opt_dev_extensions,
       .num_opt_extensions = std::size(opt_dev_extensions),
   };
@@ -420,7 +420,7 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plVkInstDestroy
 
 extern "C"
 JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanCreate
-  (JNIEnv *env, jobject obj, jlong placebo_log, jlong placebo_vk_inst, jlong surface) {
+  (JNIEnv *env, jobject obj, jlong placebo_log, jlong placebo_vk_inst, jlong surface, jboolean hwAccelBackend) {
   pl_log log = reinterpret_cast<pl_log>(placebo_log);
   pl_vk_inst instance = reinterpret_cast<pl_vk_inst>(placebo_vk_inst);
   VkSurfaceKHR vkSurfaceKHR = reinterpret_cast<VkSurfaceKHR>(static_cast<uint64_t>(surface));
@@ -431,7 +431,7 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanCreate
       .surface = vkSurfaceKHR,
       .allow_software = true,
       PL_VULKAN_DEFAULTS
-      .extra_queues = VK_QUEUE_VIDEO_DECODE_BIT_KHR,
+      .extra_queues = hwAccelBackend ? VK_QUEUE_VIDEO_DECODE_BIT_KHR : 0,
       .opt_extensions = opt_dev_extensions_min,
       .num_opt_extensions = std::size(opt_dev_extensions_min),
   };
