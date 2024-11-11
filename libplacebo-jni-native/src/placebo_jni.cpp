@@ -271,7 +271,7 @@ bool tryInitializeDevice(pl_log log,
       .get_proc_addr = instance->get_proc_addr,
       .surface = vkSurfaceKHR,
       .device = device,
-      .extra_queues = hwAccelBackend ? VK_QUEUE_VIDEO_DECODE_BIT_KHR : 0,
+      .extra_queues = hwAccelBackend ? static_cast<VkQueueFlags>(VK_QUEUE_VIDEO_DECODE_BIT_KHR) : static_cast<VkQueueFlags>(0),
       .opt_extensions = opt_dev_extensions,
       .num_opt_extensions = std::size(opt_dev_extensions),
   };
@@ -431,7 +431,7 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanCreate
       .surface = vkSurfaceKHR,
       .allow_software = true,
       PL_VULKAN_DEFAULTS
-      .extra_queues = hwAccelBackend ? VK_QUEUE_VIDEO_DECODE_BIT_KHR : 0,
+      .extra_queues = hwAccelBackend ? static_cast<VkQueueFlags>(VK_QUEUE_VIDEO_DECODE_BIT_KHR) : static_cast<VkQueueFlags>(0),
       .opt_extensions = opt_dev_extensions_min,
       .num_opt_extensions = std::size(opt_dev_extensions_min),
   };
