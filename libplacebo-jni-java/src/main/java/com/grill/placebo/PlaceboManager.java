@@ -112,14 +112,15 @@ public class PlaceboManager {
     /**
      * Creates a vulkan device and check if the device meets our requirments
      *
-     * @param plLog   the log handle
-     * @param vkInst  the vk inst handle
-     * @param surface the surface handle
-     * @param decoder 0 for h264 1 for h265
-     * @param hdr     true if hdr is enabled, false otherwise
+     * @param plLog          the log handle
+     * @param vkInst         the vk inst handle
+     * @param surface        the surface handle
+     * @param decoder        0 for h264 1 for h265
+     * @param hdr            true if hdr is enabled, false otherwise
+     * @param hwAccelBackend true if acting as the decoder backend; a physical device with Vulkan video support is required
      * @return the vulkan device handle or <= 0 if not successful
      */
-    public native long plVulkanCreateForBestDevice(long plLog, long vkInst, long surface, int decoder, boolean hdr);
+    public native long plVulkanCreateForBestDevice(long plLog, long vkInst, long surface, int decoder, boolean hdr, boolean hwAccelBackend);
 
     /**
      * Init the vulkan decoding queue
@@ -214,7 +215,7 @@ public class PlaceboManager {
      * @return the handle to the vkCreateWin32SurfaceKHR function
      */
     public native long plGetWin32SurfaceFunctionPointer();
-    
+
     /**
      * Gets the handle to the vkCreateMetalSurfaceEXT function
      *

@@ -223,6 +223,7 @@ bool tryInitializeDevice(pl_log log,
                        VkSurfaceKHR vkSurfaceKHR,
                        int decoderType,
                        bool hdr,
+                       bool hwAccelBackend,
                        pl_vulkan& placebo_vulkan) {
   // Check the Vulkan API version first to ensure it meets libplacebo's minimum
   if (deviceProps->apiVersion < PL_VK_MIN_VERSION) {
@@ -230,21 +231,23 @@ bool tryInitializeDevice(pl_log log,
       return false;
   }
 
-  const char* videoDecodeExtension = nullptr; // Initialize to nullptr to avoid uninitialized usage
+  if (hwAccelBackend) {
+    const char* videoDecodeExtension = nullptr; // Initialize to nullptr to avoid uninitialized usage
 
-  if (decoderType == 0) { // h264
-      videoDecodeExtension = VK_KHR_VIDEO_DECODE_H264_EXTENSION_NAME;
-  }
-  else if (decoderType == 1) { // h265
-      videoDecodeExtension = VK_KHR_VIDEO_DECODE_H265_EXTENSION_NAME;
-  } else {
-      LogCallbackFunction(nullptr, PL_LOG_ERR, "Unsupported video decoder type format!");
-      return false;
-  }
+    if (decoderType == 0) { // h264
+        videoDecodeExtension = VK_KHR_VIDEO_DECODE_H264_EXTENSION_NAME;
+    }
+    else if (decoderType == 1) { // h265
+        videoDecodeExtension = VK_KHR_VIDEO_DECODE_H265_EXTENSION_NAME;
+    } else {
+        LogCallbackFunction(nullptr, PL_LOG_ERR, "Unsupported video decoder type format!");
+        return false;
+    }
 
-  if (!isExtensionSupportedByPhysicalDevice(device, videoDecodeExtension)) {
-      LogCallbackFunction(nullptr, PL_LOG_ERR, "Vulkan device does not support videoDecodeExtension!");
-      return false;
+    if (!isExtensionSupportedByPhysicalDevice(device, videoDecodeExtension)) {
+        LogCallbackFunction(nullptr, PL_LOG_ERR, "Vulkan device does not support videoDecodeExtension!");
+        return false;
+    }
   }
 
   if (!isSurfacePresentationSupportedByPhysicalDevice(device, vkSurfaceKHR)) {
@@ -439,7 +442,7 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanCreate
 
 extern "C"
 JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanCreateForBestDevice
-  (JNIEnv *env, jobject obj, jlong placebo_log, jlong placebo_vk_inst, jlong surface, jint decoderType, jboolean hdr) {
+  (JNIEnv *env, jobject obj, jlong placebo_log, jlong placebo_vk_inst, jlong surface, jint decoderType, jboolean hdr, jboolean hwAccelBackend) {
   pl_log log = reinterpret_cast<pl_log>(placebo_log);
   pl_vk_inst instance = reinterpret_cast<pl_vk_inst>(placebo_vk_inst);
   VkSurfaceKHR vkSurfaceKHR = reinterpret_cast<VkSurfaceKHR>(static_cast<uint64_t>(surface));
@@ -455,7 +458,7 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanCreateForB
   vk_funcs.vkGetPhysicalDeviceProperties(physicalDevices[0], &deviceProps);
 
   pl_vulkan placebo_vulkan = nullptr;
-  if (tryInitializeDevice(log, instance, physicalDevices[0], &deviceProps, vkSurfaceKHR, decoderType, hdr, placebo_vulkan)) {
+  if (tryInitializeDevice(log, instance, physicalDevices[0], &deviceProps, vkSurfaceKHR, decoderType, hdr, hwAccelBackend, placebo_vulkan)) {
       return reinterpret_cast<jlong>(placebo_vulkan);
   }
   devicesTried.emplace(0);
@@ -471,7 +474,7 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanCreateForB
     VkPhysicalDeviceProperties deviceProps;
     vk_funcs.vkGetPhysicalDeviceProperties(physicalDevices[i], &deviceProps);
     if (deviceProps.deviceType == VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU) {
-        if (tryInitializeDevice(log, instance, physicalDevices[i], &deviceProps, vkSurfaceKHR, decoderType, hdr, placebo_vulkan)) {
+        if (tryInitializeDevice(log, instance, physicalDevices[i], &deviceProps, vkSurfaceKHR, decoderType, hdr, hwAccelBackend, placebo_vulkan)) {
             return reinterpret_cast<jlong>(placebo_vulkan);
         }
         devicesTried.emplace(i);
@@ -488,7 +491,7 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanCreateForB
     VkPhysicalDeviceProperties deviceProps;
     vk_funcs.vkGetPhysicalDeviceProperties(physicalDevices[i], &deviceProps);
     if (deviceProps.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU) {
-        if (tryInitializeDevice(log, instance, physicalDevices[i], &deviceProps, vkSurfaceKHR, decoderType, hdr, placebo_vulkan)) {
+        if (tryInitializeDevice(log, instance, physicalDevices[i], &deviceProps, vkSurfaceKHR, decoderType, hdr, hwAccelBackend, placebo_vulkan)) {
             return reinterpret_cast<jlong>(placebo_vulkan);
         }
         devicesTried.emplace(i);
@@ -504,7 +507,7 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanCreateForB
 
     VkPhysicalDeviceProperties deviceProps;
     vk_funcs.vkGetPhysicalDeviceProperties(physicalDevices[i], &deviceProps);
-    if (tryInitializeDevice(log, instance, physicalDevices[i], &deviceProps, vkSurfaceKHR, decoderType, hdr, placebo_vulkan)) {
+    if (tryInitializeDevice(log, instance, physicalDevices[i], &deviceProps, vkSurfaceKHR, decoderType, hdr, hwAccelBackend, placebo_vulkan)) {
         return reinterpret_cast<jlong>(placebo_vulkan);
     }
     devicesTried.emplace(i);
