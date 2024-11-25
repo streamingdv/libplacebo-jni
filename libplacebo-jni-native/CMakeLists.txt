@@ -8,9 +8,16 @@ project(libplacebo-jni-native)
 
 # Set C and C++ standards
 set(CMAKE_C_STANDARD 11)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 if(NOT APPLE)
   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -Wl,-Bsymbolic")
+endif()
+
+# Set macOS-specific flags
+if(APPLE)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET "11.0") # Ensure compatibility with macOS 11
+    set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC -fstack-protector -mmacosx-version-min=11.0")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fPIC -fstack-protector -mmacosx-version-min=11.0")
 endif()
 
 # Set the variable with a default value (windows default)

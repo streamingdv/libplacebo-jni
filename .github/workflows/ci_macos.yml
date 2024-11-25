@@ -109,7 +109,7 @@ jobs:
             eval "$(/opt/homebrew/bin/brew shellenv)"
           fi
           brew update
-          brew install pkg-config cmake ninja jq lcms2 sdl2 meson
+          brew install pkgconf cmake ninja jq lcms2 sdl2 meson
 
       - name: Build Little-CMS
         if: ${{ github.event.inputs.build_lcms2 == 'true' }}
@@ -174,6 +174,9 @@ jobs:
           cmake -G "Ninja" -B build -S ./libplacebo-jni-native \
             -DCMAKE_BUILD_TYPE=Release \
             -DCMAKE_OSX_ARCHITECTURES=${{ matrix.arch }} \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=11.0 \
+            -DCMAKE_C_FLAGS="-arch ${{ matrix.arch }} -mmacosx-version-min=11.0" \
+            -DCMAKE_CXX_FLAGS="-arch ${{ matrix.arch }} -mmacosx-version-min=11.0" \
             -DLIBPLACEBO_LIB_PATH=${LIBPLACEBO_LIB_PATH} \
             -DLIBPLACEBO_HEADERS_DIR=${LIBPLACEBO_HEADERS_DIR} \
             -DMOLTENVK_LIB=$MOLTENVK_LIB_PATH \
