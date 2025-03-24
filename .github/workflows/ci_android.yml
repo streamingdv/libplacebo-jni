@@ -1,0 +1,121 @@
+name: CI Android
+on:
+  workflow_dispatch:
+
+jobs:
+  build-android:
+    name: Build libplacebo for Android
+    runs-on: ubuntu-22.04
+    strategy:
+      matrix:
+        arch:
+          - arm64-v8a
+          - armeabi-v7a
+          - x86
+          - x86_64
+    env:
+      BUILD_LIBPLACEBO: 'true'
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          submodules: 'recursive'
+
+      - name: Set up JDK
+        uses: actions/setup-java@v2
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      #- name: Install dependencies
+      #  run: |
+      #    sudo apt-get update
+      #    sudo apt-get install -y libavcodec-dev libavformat-dev libegl1-mesa-dev libsdl2-dev libxxhash-dev libvulkan-dev liblcms2-dev build-essential libx11-xcb-dev libxkbcommon-dev libwayland-dev libxrandr-dev cmake ninja-build gcc-multilib
+      #- name: Install dependencies
+      #  run: |
+      #    sudo apt-get update
+      #    sudo apt-get install -y liblcms2-dev build-essential cmake ninja-build
+
+      - name: Install Meson and Ninja
+        run: |
+          sudo apt-get install -y python3-pip
+          pip3 install --upgrade meson==1.3.0
+          pip3 install --upgrade ninja==1.11.1
+
+      - name: Download Android SDK
+        run: |
+          wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip
+          unzip commandlinetools-linux-9477386_latest.zip -d $HOME/android-sdk
+          yes | $HOME/android-sdk/cmdline-tools/bin/sdkmanager --sdk_root=$HOME/android-sdk "platforms;android-30" "build-tools;30.0.3" "ndk;27.2.12479018"
+          rm -f commandlinetools-linux-9477386_latest.zip
+
+      - name: Set up environment variables
+        run: |
+          echo "export ANDROID_SDK_ROOT=$HOME/android-sdk" >> $GITHUB_ENV
+          echo "export PATH=$ANDROID_SDK_ROOT/cmdline-tools/bin:$PATH" >> $GITHUB_ENV
+          echo "export PATH=$ANDROID_SDK_ROOT/platforms/android-30:$PATH" >> $GITHUB_ENV
+          echo "export PATH=$ANDROID_SDK_ROOT/build-tools/30.0.3:$PATH" >> $GITHUB_ENV
+
+      - name: Download Android NDK
+        run: |
+          wget https://dl.google.com/android/repository/android-ndk-r27c-linux.zip
+          unzip android-ndk-r27c-linux.zip
+          mv android-ndk-r27c $HOME/android-ndk
+          rm -f android-ndk-r27c-linux.zip
+
+      - name: Set up environment variables for NDK
+        run: |
+          echo "export ANDROID_NDK_HOME=$HOME/android-ndk" >> $GITHUB_ENV
+          echo "export PATH=$ANDROID_NDK_HOME/toolchains/llvm/prebuilt/linux-x86_64/bin:$PATH" >> $GITHUB_ENV
+
+      - name: Generate Crossfiles for Android Architectures
+        run: bash ${{github.workspace}}/libplacebo-android/generate_crossfile.sh
+
+      - name: Clean Build Environment
+        run: |
+          rm -rf ./libplacebo-jni-native/3rdparty/libplacebo/build_${{ matrix.arch }}
+
+      - name: Build libplacebo
+        working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
+        run: |
+          meson setup build_${{ matrix.arch }} \
+            --prefix=${{ github.workspace }}/libplacebo-jni-native/3rdparty/libplacebo/install \
+            --cross-file ${{github.workspace}}/android_build/crossfile_${{ matrix.arch }}.txt \
+            --buildtype release \
+            --default-library=static \
+            -Ddemos=false \
+            -Dvulkan=disabled \
+            -Dlcms=disabled
+          meson compile -vC build_${{ matrix.arch }}
+          meson install -C build_${{ matrix.arch }}
+
+      - name: Upload libplacebo Artefacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: libplacebo-artefacts-android-${{ matrix.arch }}
+          path: ${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install
+
+      - name: Configure and Build libplacebo-jni with CMake
+        run: |
+          LIBPLACEBO_LIB_PATH=${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/lib/libplacebo.a
+          LIBPLACEBO_HEADERS_DIR=${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/include
+
+          cmake -G "Ninja" -B build_${{ matrix.arch }} -S ./libplacebo-android \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_TOOLCHAIN_FILE=$ANDROID_NDK_HOME/build/cmake/android.toolchain.cmake \
+            -DANDROID_ABI=${{ matrix.arch }} \
+            -DANDROID_PLATFORM=android-21 \
+            -DLIBPLACEBO_LIB_PATH=${LIBPLACEBO_LIB_PATH} \
+            -DLIBPLACEBO_HEADERS_DIR=${LIBPLACEBO_HEADERS_DIR} \
+            -DFFMPEG_DIR=${{github.workspace}}/libs/ffmpeg/android/${{ matrix.arch }} \
+            -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries/${{ matrix.arch }} \
+            -DCMAKE_LIBRARY_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries/${{ matrix.arch }} \
+            -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries/${{ matrix.arch }}
+          cmake --build build_${{ matrix.arch }}
+
+      - name: Upload Native Binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-libplacebo-jni-native-${{ matrix.arch }}
+          path: ${{github.workspace}}/build/nativeBinaries/${{ matrix.arch }}/libplacebo-jni-native.so

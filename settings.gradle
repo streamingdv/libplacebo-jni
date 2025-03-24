@@ -1,3 +1,4 @@
 rootProject.name = "libplacebo-jni"
 include 'libplacebo-jni-java'
 include 'libplacebo-jni-native'
+include ':libplacebo-android'
