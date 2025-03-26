@@ -42,6 +42,9 @@ set(SOURCES
 # Create shared library for JNI
 add_library(libplacebo-jni-native SHARED ${SOURCES})
 
+# Enable EGL/GLES extension prototypes
+target_compile_definitions(libplacebo-jni-native PRIVATE EGL_EGLEXT_PROTOTYPES GL_GLEXT_PROTOTYPES)
+
 # Link dependencies
 target_link_libraries(libplacebo-jni-native
     ${LIBPLACEBO_HEADERS_DIR}/../lib/libplacebo.a
@@ -52,6 +55,7 @@ target_link_libraries(libplacebo-jni-native
     GLESv3
     log    # Android logging
     android # Android native APIs
+    mediandk # Needed for av_mediacodec_* symbols
 )
 
 # Set the PREFIX property to empty to avoid "liblib" prefix issues

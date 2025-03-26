@@ -1,24 +1,41 @@
 #include "com_grill_libplacebo_PlaceboManager.h"
 #include <jni.h>
+#include <android/native_window_jni.h>
 #include <iostream>
+
+#define EGL_EGLEXT_PROTOTYPES
+#define GL_GLEXT_PROTOTYPES
+
 #include <GLES3/gl3.h>
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <GLES2/gl2ext.h>
-#include <android/native_window_jni.h>
 #include <libplacebo/gpu.h>
 #include <libplacebo/options.h>
 #include <libplacebo/renderer.h>
 #include <libplacebo/opengl.h>
+#include <libplacebo/swapchain.h>
 #include <libplacebo/log.h>
 #include <libplacebo/cache.h>
 
 #define PL_LIBAV_IMPLEMENTATION 0
 #include <libplacebo/utils/libav.h>
 
-static pl_opengl *placebo_gl = NULL;
-static pl_renderer *placebo_renderer = NULL;
-static pl_swapchain *placebo_swapchain = NULL;
+extern "C" {
+#include <libavcodec/avcodec.h>
+#include <libavcodec/mediacodec.h>
+#include <libavcodec/jni.h>
+#include <libavutil/hwcontext.h>
+#include <libavutil/avutil.h>
+#include <libavutil/error.h>
+#include <libavutil/frame.h>
+}
+
+static pl_opengl placebo_gl = NULL;
+static pl_renderer placebo_renderer = NULL;
+static pl_swapchain placebo_swapchain = NULL;
+
+static  AVMediaCodecContext *mMediaCodecContext = nullptr;
 
 /*** define helper functions ***/
 
@@ -73,87 +90,32 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plLogDestroy
   }
 }
 
-JNIEXPORT jlong JNICALL
-Java_com_grill_placebo_PlaceboManager_createEGLImageFromSurface(
-    JNIEnv *env, jobject thiz, jlong eglDisplay, jlong eglContext, jobject surface) {
-
-    EGLDisplay display = (EGLDisplay) eglDisplay;
-    EGLContext context = (EGLContext) eglContext;
-
-    ANativeWindow *nativeWindow = ANativeWindow_fromSurface(env, surface);
-    if (!nativeWindow) {
-        return 0; // Failed to retrieve ANativeWindow
-    }
-
-    EGLClientBuffer clientBuffer = eglGetNativeClientBufferANDROID(nativeWindow);
-    if (!clientBuffer) {
-        LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to create native client buffer.");
-        ANativeWindow_release(nativeWindow);
-        return 0; // Failed to get EGLClientBuffer
-    }
-
-    EGLint eglImageAttribs[] = {
-        EGL_IMAGE_PRESERVED_KHR, EGL_TRUE,
-        EGL_NONE
-    };
-
-    EGLImageKHR eglImage = eglCreateImageKHR(
-        display,
-        context,
-        EGL_NATIVE_BUFFER_ANDROID,
-        clientBuffer,
-        eglImageAttribs
-    );
-
-    if (eglImage == EGL_NO_IMAGE_KHR) {
-        LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to create EGLImage.");
-        ANativeWindow_release(nativeWindow);
-        return 0; // Failed
-    }
-
-    GLuint texture;
-    glGenTextures(1, &texture);
-    glBindTexture(GL_TEXTURE_2D, texture);
-    glEGLImageTargetTexture2DOES(GL_TEXTURE_2D, eglImage);
-
-    if (!texture) {
-        LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to create Texture2DOES.");
-        eglDestroyImageKHR(display, eglImage); // Cleanup EGLImage if texture creation fails
-        ANativeWindow_release(nativeWindow);
-        return 0;
-    }
-
-    ANativeWindow_release(nativeWindow);
-    return (jlong)(intptr_t)texture;
-}
-
 // OpenGL ES + Swapchain Initialization
-JNIEXPORT jlong JNICALL
+JNIEXPORT jboolean JNICALL
 Java_com_grill_placebo_PlaceboManager_plOpenGLCreate(
     JNIEnv *env, jobject thiz, jlong logHandle, jlong eglDisplay, jlong eglContext,
     jint width, jint height, jint colorTransfer) {
 
+    pl_log log = reinterpret_cast<pl_log>(logHandle);
+
     struct pl_opengl_params params = {
-        .get_proc_address = (pl_get_proc_address)eglGetProcAddress,
+        .get_proc_addr = (pl_voidfunc_t (*)(const char *)) eglGetProcAddress,
         .egl_display = (EGLDisplay)eglDisplay,
         .egl_context = (EGLContext)eglContext
     };
 
-    pl_log *log = (pl_log *)logHandle;
-
     placebo_gl = pl_opengl_create(log, &params);
     if (!placebo_gl) {
-        return 0; // Failed
+        return JNI_FALSE;
     }
 
     placebo_renderer = pl_renderer_create(log, placebo_gl->gpu);
     if (!placebo_renderer) {
         pl_opengl_destroy(&placebo_gl);
         placebo_gl = nullptr;
-        return 0; // Failed
+        return JNI_FALSE;
     }
 
-    // Create the swapchain for optimal presentation
     struct pl_opengl_swapchain_params swapchain_params = {
         .framebuffer = {
             .flipped = false
@@ -167,28 +129,28 @@ Java_com_grill_placebo_PlaceboManager_plOpenGLCreate(
         placebo_renderer = nullptr;
         pl_opengl_destroy(&placebo_gl);
         placebo_gl = nullptr;
-        return 0; // Failed
+        return JNI_FALSE;
     }
 
-
-    return (jlong)placebo_renderer;
+    return JNI_TRUE;
 }
 
 extern "C"
 JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plSwapchainResize
-  (JNIEnv *env, jobject obj, jlong swapchainHandle, jint width, jint height) {
-    pl_swapchain swapchain = reinterpret_cast<pl_swapchain>(swapchainHandle);
+  (JNIEnv *env, jobject obj, jint width, jint height) {
+    if (!placebo_swapchain)
+        return JNI_FALSE;
+
     int w = static_cast<int>(width);
     int h = static_cast<int>(height);
-    bool success = pl_swapchain_resize(swapchain, &w, &h);
+    bool success = pl_swapchain_resize(placebo_swapchain, &w, &h);
     return static_cast<jboolean>(success);
 }
 
-
-// Rendering EGLImage via libplacebo
+// Rendering external texture via libplacebo
 JNIEXPORT jboolean JNICALL
 Java_com_grill_placebo_PlaceboManager_renderEGLImage(
-    JNIEnv *env, jobject thiz, jlong rendererHandle, jlong eglImageHandle,
+    JNIEnv *env, jobject thiz, jlong textureHandle,
     jint width, jint height, jint colorTransfer, jint colorRange) {
 
     if (!placebo_renderer) {
@@ -196,21 +158,20 @@ Java_com_grill_placebo_PlaceboManager_renderEGLImage(
         return JNI_FALSE;
     }
 
-    pl_renderer *renderer = (pl_renderer *)rendererHandle;
-    GLuint texture = (GLuint)(uintptr_t)eglImageHandle;
+    GLuint texture = (GLuint)(uintptr_t)textureHandle;
 
     struct pl_opengl_wrap_params wrap_params = {
-            .texture = texture,
-            .target = GL_TEXTURE_EXTERNAL_OES,   // Correct target for EGLImage textures
-            .iformat = (colorTransfer == 6) ? GL_RGBA16F : GL_RGB8,                  // Not sure...
-            .width = width,
-            .height = height,
-            .depth = 1
-        };
+        .iformat = (colorTransfer == 6) ? GL_RGBA16F : GL_RGB8, // Not sure...
+        .width = width,
+        .height = height,
+        .depth = 1,
+        .texture = texture,
+        .target = GL_TEXTURE_EXTERNAL_OES,
+    };
 
-    pl_tex *egl_tex = pl_opengl_wrap(placebo_gl->gpu, &wrap_params);
-    if (!egl_tex) {
-        LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to wrap EGLImage as pl_tex!");
+    pl_tex ext_tex = pl_opengl_wrap(placebo_gl->gpu, &wrap_params);
+    if (!ext_tex) {
+        LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to wrap external texture as pl_tex!");
         return JNI_FALSE;
     }
 
@@ -219,26 +180,24 @@ Java_com_grill_placebo_PlaceboManager_renderEGLImage(
 
     placebo_frame.num_planes = 1;
     placebo_frame.planes[0] = (struct pl_plane) {
-        .texture = egl_tex,
-        .dimensions.w = width,
-        .dimensions.h = height,
+        .texture = ext_tex,
         .components = 3,
         .component_mapping = {0, 1, 2, -1},  // YUV mapping for EGLImage
     };
     //placebo_frame.color = pl_color_space_unknown;
     // Manage color space (SDR/HDR)
     placebo_frame.color = (struct pl_color_space) {
-        .primaries = (colorTransfer == 6) ? PL_COLOR_PRIM_BT2020 : PL_COLOR_PRIM_BT709,
+        .primaries = (colorTransfer == 6) ? PL_COLOR_PRIM_BT_2020 : PL_COLOR_PRIM_BT_709,
         .transfer = (colorTransfer == 6) ? PL_COLOR_TRC_PQ : PL_COLOR_TRC_GAMMA22,
-        .hdr = (colorTransfer == 6) ? PL_HDR_METADATA_PQ : PL_HDR_METADATA_NONE
+        //.hdr = (colorTransfer == 6) ? PL_HDR_METADATA_HDR10 : PL_HDR_METADATA_NONE // ToDo check
     };
     //placebo_frame.repr = pl_color_repr_unknown;
     placebo_frame.repr = (struct pl_color_repr) {
-        .sys = (colorTransfer == 6) ? PL_COLOR_SYSTEM_BT2020 : PL_COLOR_SYSTEM_BT709,
+        .sys = (colorTransfer == 6) ? PL_COLOR_SYSTEM_BT_2020_NC : PL_COLOR_SYSTEM_BT_709,
         .levels = (colorRange == 2) ? PL_COLOR_LEVELS_LIMITED : PL_COLOR_LEVELS_FULL,
         .alpha = PL_ALPHA_INDEPENDENT
     };
-    placebo_frame.crop = (pl_rect2df){ 0, 0, width, height };
+    placebo_frame.crop = (pl_rect2df){ 0.0f, 0.0f, (float)width, (float)height };
 
     // Crop Handling
     pl_rect2df crop = {
@@ -252,28 +211,223 @@ Java_com_grill_placebo_PlaceboManager_renderEGLImage(
     struct pl_swapchain_frame sw_frame = {0};
     if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
         LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start swapchain frame!");
-        pl_tex_destroy(placebo_gl->gpu, &egl_tex);
+        pl_tex_destroy(placebo_gl->gpu, &ext_tex);
         return JNI_FALSE;
     }
     pl_frame_from_swapchain(&target_frame, &sw_frame);
 
-    if (!pl_render_image(renderer, &placebo_frame, &target_frame, NULL)) {
+    if (!pl_render_image(placebo_renderer, &placebo_frame, &target_frame, NULL)) {
         LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to render Placebo frame!");
-        pl_tex_destroy(placebo_gl->gpu, &egl_tex);
+        pl_tex_destroy(placebo_gl->gpu, &ext_tex);
         return JNI_FALSE;
     }
 
     if (!pl_swapchain_submit_frame(placebo_swapchain)) {
         LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to submit swapchain frame!");
-        pl_tex_destroy(placebo_gl->gpu, &egl_tex);
+        pl_tex_destroy(placebo_gl->gpu, &ext_tex);
         return JNI_FALSE;
     }
 
     pl_swapchain_swap_buffers(placebo_swapchain);
-    pl_tex_destroy(placebo_gl->gpu, &egl_tex);
+    pl_tex_destroy(placebo_gl->gpu, &ext_tex);
 
     return JNI_TRUE;
 }
+
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_grill_placebo_PlaceboManager_bindSurfaceToHwDevice(JNIEnv* env, jclass clazz,
+                                                             jlong avCodecContexHandle, jobject javaSurface) {
+    JavaVM* javaVm = nullptr;
+    env->GetJavaVM(&javaVm);
+    av_jni_set_java_vm(javaVm, nullptr);
+
+    LogCallbackFunction(env, PL_LOG_INFO, "0");
+
+    if (avCodecContexHandle == 0) {
+        LogCallbackFunction(env, PL_LOG_ERR, "avCodecContexHandle is null");
+        return JNI_FALSE;
+    }
+
+    AVCodecContext* mCodecContext = reinterpret_cast<AVCodecContext*>(avCodecContexHandle);
+    if (!mCodecContext) {
+        LogCallbackFunction(env, PL_LOG_ERR, "mCodecContext is null");
+        return JNI_FALSE;
+    }
+
+    LogCallbackFunction(env, PL_LOG_INFO, "1");
+
+    if (javaSurface == nullptr) {
+        LogCallbackFunction(env, PL_LOG_ERR, "javaSurface is null");
+        return JNI_FALSE;
+    }
+
+    LogCallbackFunction(env, PL_LOG_INFO, "2");
+
+    mMediaCodecContext = av_mediacodec_alloc_context();
+    if (!mMediaCodecContext) {
+        LogCallbackFunction(env, PL_LOG_ERR, "Failed to allocate AVMediaCodecContext");
+        return JNI_FALSE;
+    }
+    LogCallbackFunction(env, PL_LOG_INFO, "3");
+
+    int ret = av_mediacodec_default_init(mCodecContext, mMediaCodecContext, javaSurface);
+    if (ret < 0) {
+        if (mMediaCodecContext != nullptr) {
+            av_mediacodec_default_free(mCodecContext);
+            mMediaCodecContext = nullptr;
+        }
+        char errbuf[AV_ERROR_MAX_STRING_SIZE];
+        av_strerror(ret, errbuf, sizeof(errbuf));
+        char buf[512];
+        snprintf(buf, sizeof(buf), "av_mediacodec_default_init() failed: %s (%d)", errbuf, ret);
+        LogCallbackFunction(env, PL_LOG_ERR, buf);
+        return JNI_FALSE;
+    }
+
+    LogCallbackFunction(env, PL_LOG_INFO, "4");
+    return JNI_TRUE;
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_grill_placebo_PlaceboManager_plRenderAvFrame(
+    JNIEnv *env, jobject obj,
+    jlong avframeHandle) {
+
+    LogCallbackFunction(env, PL_LOG_INFO, "plRenderAvFrame() called");
+
+    AVFrame *frame = reinterpret_cast<AVFrame *>(avframeHandle);
+    if (!frame) {
+        LogCallbackFunction(env, PL_LOG_ERR, "AVFrame is null!");
+        return JNI_FALSE;
+    }
+
+    if (!placebo_gl) {
+        LogCallbackFunction(env, PL_LOG_ERR, "placebo_gl is null!");
+        return JNI_FALSE;
+    }
+
+    if (!placebo_renderer) {
+        LogCallbackFunction(env, PL_LOG_ERR, "placebo_renderer is null!");
+        return JNI_FALSE;
+    }
+
+    if (!placebo_swapchain) {
+        LogCallbackFunction(env, PL_LOG_ERR, "placebo_swapchain is null!");
+        return JNI_FALSE;
+    }
+
+    struct pl_frame placebo_frame = {0};
+    struct pl_frame target_frame = {0};
+    struct pl_swapchain_frame sw_frame = {0};
+
+    struct pl_avframe_params avparams = {
+        .frame = frame,
+    };
+
+    LogCallbackFunction(env, PL_LOG_INFO, "Calling pl_map_avframe_ex...");
+    if (!pl_map_avframe_ex(placebo_gl->gpu, &placebo_frame, &avparams)) {
+        LogCallbackFunction(env, PL_LOG_ERR, "Failed to map AVFrame!");
+        return JNI_FALSE;
+    }
+
+    LogCallbackFunction(env, PL_LOG_INFO, "Mapped AVFrame, updating colorspace hint");
+    pl_swapchain_colorspace_hint(placebo_swapchain, &placebo_frame.color);
+
+    LogCallbackFunction(env, PL_LOG_INFO, "Starting swapchain frame...");
+    if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
+        LogCallbackFunction(env, PL_LOG_ERR, "Failed to start swapchain frame!");
+        pl_unmap_avframe(placebo_gl->gpu, &placebo_frame);
+        return JNI_FALSE;
+    }
+
+    pl_frame_from_swapchain(&target_frame, &sw_frame);
+    pl_rect2df_aspect_copy(&target_frame.crop, &placebo_frame.crop, 0.0f);
+
+    LogCallbackFunction(env, PL_LOG_INFO, "Calling pl_render_image...");
+    if (!pl_render_image(placebo_renderer, &placebo_frame, &target_frame, nullptr)) {
+        LogCallbackFunction(env, PL_LOG_ERR, "Failed to render image!");
+        pl_unmap_avframe(placebo_gl->gpu, &placebo_frame);
+        return JNI_FALSE;
+    }
+
+    LogCallbackFunction(env, PL_LOG_INFO, "Submitting swapchain frame...");
+    if (!pl_swapchain_submit_frame(placebo_swapchain)) {
+        LogCallbackFunction(env, PL_LOG_ERR, "Failed to submit swapchain frame!");
+        pl_unmap_avframe(placebo_gl->gpu, &placebo_frame);
+        return JNI_FALSE;
+    }
+
+    LogCallbackFunction(env, PL_LOG_INFO, "Swapping buffers...");
+    pl_swapchain_swap_buffers(placebo_swapchain);
+
+    LogCallbackFunction(env, PL_LOG_INFO, "Unmapping AVFrame...");
+    pl_unmap_avframe(placebo_gl->gpu, &placebo_frame);
+
+    LogCallbackFunction(env, PL_LOG_INFO, "plRenderAvFrame() completed successfully");
+    return JNI_TRUE;
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_grill_placebo_PlaceboManager_plRenderAvFrameDirect(
+    JNIEnv *env, jobject obj,
+    jlong avframeHandle) {
+    AVFrame *frame = reinterpret_cast<AVFrame *>(avframeHandle);
+    if (!frame) {
+        LogCallbackFunction(env, PL_LOG_ERR, "AVFrame is null!");
+        return JNI_FALSE;
+    }
+
+    av_mediacodec_release_buffer((AVMediaCodecBuffer *)frame->data[3], 1);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_grill_placebo_PlaceboManager_releaseMediaCodecContext(JNIEnv *env, jclass clazz,
+                                                                jlong codecCtxHandle) {
+    AVCodecContext* codecCtx = reinterpret_cast<AVCodecContext*>(codecCtxHandle);
+    if (codecCtx != nullptr && mMediaCodecContext != nullptr) {
+        av_mediacodec_default_free(codecCtx);
+        mMediaCodecContext = nullptr;
+    }
+}
+
+#include <jni.h>
+#include <libavutil/hwcontext.h>
+#include <libavutil/hwcontext_mediacodec.h>
+#include <libavutil/log.h>
+
+extern "C"
+JNIEXPORT jboolean JNICALL
+Java_com_grill_placebo_PlaceboManager_bindSurfaceToDeviceRef(
+        JNIEnv *env, jclass clazz,
+        jlong deviceRefHandle, jobject javaSurface) {
+
+    if (deviceRefHandle == 0) {
+        LogCallbackFunction(env, PL_LOG_ERR, "deviceRefHandle is null");
+        return JNI_FALSE;
+    }
+
+    if (!javaSurface) {
+        LogCallbackFunction(env, PL_LOG_ERR, "Java Surface is null");
+        return JNI_FALSE;
+    }
+
+    AVBufferRef *device_ref = reinterpret_cast<AVBufferRef *>(deviceRefHandle);
+    AVHWDeviceContext *ctx = reinterpret_cast<AVHWDeviceContext *>(device_ref->data);
+
+    if (!ctx || !ctx->hwctx) {
+        LogCallbackFunction(env, PL_LOG_ERR, "Invalid AVHWDeviceContext");
+        return JNI_FALSE;
+    }
+
+    AVMediaCodecDeviceContext *hwctx = static_cast<AVMediaCodecDeviceContext *>(ctx->hwctx);
+    hwctx->surface = javaSurface;
+
+    LogCallbackFunction(env, PL_LOG_ERR, "Successfully set surface on MediaCodec device");
+    return JNI_TRUE;
+}
+
 
 JNIEXPORT void JNICALL
 Java_com_grill_placebo_PlaceboManager_cleanupResources(JNIEnv *env, jobject thiz) {
