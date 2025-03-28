@@ -289,6 +289,8 @@ Java_com_grill_placebo_PlaceboManager_bindSurfaceToHwDevice(JNIEnv* env, jclass 
     return JNI_TRUE;
 }
 
+pl_tex placebo_tex_global[4] = {nullptr, nullptr, nullptr, nullptr};
+
 extern "C"
 JNIEXPORT jboolean JNICALL
 Java_com_grill_placebo_PlaceboManager_plRenderAvFrame(
@@ -324,6 +326,7 @@ Java_com_grill_placebo_PlaceboManager_plRenderAvFrame(
 
     struct pl_avframe_params avparams = {
         .frame = frame,
+        .tex = placebo_tex_global,
     };
 
     LogCallbackFunction(env, PL_LOG_INFO, "Calling pl_map_avframe_ex...");
@@ -459,6 +462,11 @@ Java_com_grill_placebo_PlaceboManager_assignHwDeviceToCodecContext(
 
 JNIEXPORT void JNICALL
 Java_com_grill_placebo_PlaceboManager_cleanupResources(JNIEnv *env, jobject thiz) {
+    for (int i = 0; i < 4; i++) {
+        if (placebo_tex_global[i])
+            pl_tex_destroy(placebo_gl->gpu, &placebo_tex_global[i]);
+    }
+
     if (placebo_swapchain) {
         pl_swapchain_destroy(&placebo_swapchain);
         placebo_swapchain = nullptr;
