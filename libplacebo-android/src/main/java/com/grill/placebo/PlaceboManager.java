@@ -138,14 +138,12 @@ public class PlaceboManager {
     public native boolean plRenderAvFrameDirect(long avframeHandle);
 
     /**
-     * Binds the given Java Surface to an existing AVBufferRef for MediaCodec (AV_HWDEVICE_TYPE_MEDIACODEC).
-     * You must call av_hwdevice_ctx_init() afterward.
+     * Creates an AV_HWDEVICE_TYPE_MEDIACODEC device and binds a Java Surface.
      *
-     * @param deviceRefHandle native pointer to AVBufferRef (as long)
-     * @param surface         Java Surface to be bound to MediaCodec device
-     * @return true if surface was set successfully, false on error
+     * @param surface Java Surface to bind to the MediaCodec device.
+     * @return Native pointer to AVBufferRef or -1 on failure.
      */
-    public static native boolean bindSurfaceToDeviceRef(long deviceRefHandle, Surface surface);
+    public static native long createMediaCodecHwDevice(Object surface);
 
     /**
      * Destroys a logger with the log callback

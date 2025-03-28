@@ -29,6 +29,7 @@ extern "C" {
 #include <libavutil/avutil.h>
 #include <libavutil/error.h>
 #include <libavutil/frame.h>
+#include <libavutil/hwcontext_mediacodec.h>
 }
 
 static pl_opengl placebo_gl = NULL;
@@ -392,40 +393,40 @@ Java_com_grill_placebo_PlaceboManager_releaseMediaCodecContext(JNIEnv *env, jcla
     }
 }
 
-#include <jni.h>
-#include <libavutil/hwcontext.h>
-#include <libavutil/hwcontext_mediacodec.h>
-#include <libavutil/log.h>
-
 extern "C"
-JNIEXPORT jboolean JNICALL
-Java_com_grill_placebo_PlaceboManager_bindSurfaceToDeviceRef(
-        JNIEnv *env, jclass clazz,
-        jlong deviceRefHandle, jobject javaSurface) {
-
-    if (deviceRefHandle == 0) {
-        LogCallbackFunction(env, PL_LOG_ERR, "deviceRefHandle is null");
-        return JNI_FALSE;
-    }
-
+JNIEXPORT jlong JNICALL
+Java_com_grill_placebo_PlaceboManager_createMediaCodecHwDevice(JNIEnv *env, jclass clazz, jobject javaSurface) {
     if (!javaSurface) {
         LogCallbackFunction(env, PL_LOG_ERR, "Java Surface is null");
-        return JNI_FALSE;
+        return -1;
     }
 
-    AVBufferRef *device_ref = reinterpret_cast<AVBufferRef *>(deviceRefHandle);
-    AVHWDeviceContext *ctx = reinterpret_cast<AVHWDeviceContext *>(device_ref->data);
+    // Set JavaVM if not already done elsewhere
+    JavaVM* javaVm = nullptr;
+    if (env->GetJavaVM(&javaVm) != JNI_OK) {
+        LogCallbackFunction(env, PL_LOG_ERR, "Failed to get JavaVM");
+        return -1;
+    }
+    av_jni_set_java_vm(javaVm, nullptr);
 
+    AVBufferRef *device_ref = av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_MEDIACODEC);
+    if (!device_ref) {
+        LogCallbackFunction(env, PL_LOG_ERR, "Failed to allocate device_ref");
+        return -1;
+    }
+
+    AVHWDeviceContext *ctx = reinterpret_cast<AVHWDeviceContext *>(device_ref->data);
     if (!ctx || !ctx->hwctx) {
         LogCallbackFunction(env, PL_LOG_ERR, "Invalid AVHWDeviceContext");
-        return JNI_FALSE;
+        av_buffer_unref(&device_ref);
+        return -1;
     }
 
     AVMediaCodecDeviceContext *hwctx = static_cast<AVMediaCodecDeviceContext *>(ctx->hwctx);
     hwctx->surface = javaSurface;
 
-    LogCallbackFunction(env, PL_LOG_ERR, "Successfully set surface on MediaCodec device");
-    return JNI_TRUE;
+    LogCallbackFunction(env, PL_LOG_ERR, "Surface set successfully on hwctx");
+    return reinterpret_cast<jlong>(device_ref);
 }
 
 

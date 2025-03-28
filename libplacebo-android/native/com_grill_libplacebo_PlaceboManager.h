@@ -77,8 +77,13 @@ Java_com_grill_placebo_PlaceboManager_plRenderAvFrameDirect(
 JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_releaseMediaCodecContext
   (JNIEnv *, jclass, jlong);
 
-JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_bindSurfaceToDeviceRef
-  (JNIEnv *, jclass, jlong, jobject);
+/*
+ * Class:     com_grill_placebo_PlaceboManager
+ * Method:    createMediaCodecHwDevice
+ * Signature: (Ljava/lang/Object;)J
+ */
+JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_createMediaCodecHwDevice
+  (JNIEnv *, jclass, jobject);
 
 /*
  * Class:     com_grill_placebo_PlaceboManager
