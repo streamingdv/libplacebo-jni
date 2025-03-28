@@ -401,7 +401,6 @@ Java_com_grill_placebo_PlaceboManager_createMediaCodecHwDevice(JNIEnv *env, jcla
         return -1;
     }
 
-    // Set JavaVM if not already done elsewhere
     JavaVM* javaVm = nullptr;
     if (env->GetJavaVM(&javaVm) != JNI_OK) {
         LogCallbackFunction(env, PL_LOG_ERR, "Failed to get JavaVM");
@@ -417,7 +416,7 @@ Java_com_grill_placebo_PlaceboManager_createMediaCodecHwDevice(JNIEnv *env, jcla
 
     AVHWDeviceContext *ctx = reinterpret_cast<AVHWDeviceContext *>(device_ref->data);
     if (!ctx || !ctx->hwctx) {
-        LogCallbackFunction(env, PL_LOG_ERR, "Invalid AVHWDeviceContext");
+        LogCallbackFunction(env, PL_LOG_ERR, "Invalid AVHWDeviceContext or hwctx");
         av_buffer_unref(&device_ref);
         return -1;
     }
@@ -425,8 +424,36 @@ Java_com_grill_placebo_PlaceboManager_createMediaCodecHwDevice(JNIEnv *env, jcla
     AVMediaCodecDeviceContext *hwctx = static_cast<AVMediaCodecDeviceContext *>(ctx->hwctx);
     hwctx->surface = javaSurface;
 
-    LogCallbackFunction(env, PL_LOG_ERR, "Surface set successfully on hwctx");
+    if (av_hwdevice_ctx_init(device_ref) < 0) {
+        LogCallbackFunction(env, PL_LOG_ERR, "av_hwdevice_ctx_init failed");
+        av_buffer_unref(&device_ref);
+        return -1;
+    }
+
+    LogCallbackFunction(env, PL_LOG_INFO, "MediaCodec device initialized successfully");
     return reinterpret_cast<jlong>(device_ref);
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_grill_placebo_PlaceboManager_assignHwDeviceToCodecContext(
+        JNIEnv *env, jclass clazz,
+        jlong codecCtxHandle, jlong deviceRefHandle) {
+
+    if (!codecCtxHandle || !deviceRefHandle) {
+        LogCallbackFunction(env, PL_LOG_ERR, "Invalid codecCtx or deviceRef handle");
+        return JNI_FALSE;
+    }
+
+    AVCodecContext *ctx = reinterpret_cast<AVCodecContext *>(codecCtxHandle);
+    AVBufferRef *device_ref = reinterpret_cast<AVBufferRef *>(deviceRefHandle);
+
+    ctx->hw_device_ctx = av_buffer_ref(device_ref);
+    if (!ctx->hw_device_ctx) {
+        LogCallbackFunction(env, PL_LOG_ERR, "Failed to ref and assign hw_device_ctx");
+        return JNI_FALSE;
+    }
+
+    return JNI_TRUE;
 }
 
 

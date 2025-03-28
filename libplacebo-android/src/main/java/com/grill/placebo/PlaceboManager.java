@@ -143,7 +143,17 @@ public class PlaceboManager {
      * @param surface Java Surface to bind to the MediaCodec device.
      * @return Native pointer to AVBufferRef or -1 on failure.
      */
-    public static native long createMediaCodecHwDevice(Object surface);
+    public static native long createMediaCodecHwDevice(Surface surface);
+
+    /**
+     * Assigns a hardware device context (AVBufferRef) to a codec context (AVCodecContext).
+     * This allows the decoder to use a hardware acceleration context such as MediaCodec.
+     *
+     * @param codecCtxHandle  Pointer to an AVCodecContext (as a long)
+     * @param deviceRefHandle Pointer to an AVBufferRef (as a long)
+     * @return true if the assignment was successful; false otherwise
+     */
+    public static native boolean assignHwDeviceToCodecContext(long codecCtxHandle, long deviceRefHandle);
 
     /**
      * Destroys a logger with the log callback

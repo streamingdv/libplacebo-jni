@@ -85,6 +85,9 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_releaseMediaCodecCo
 JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_createMediaCodecHwDevice
   (JNIEnv *, jclass, jobject);
 
+JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_assignHwDeviceToCodecContext
+  (JNIEnv *, jclass, jlong, jlong);
+
 /*
  * Class:     com_grill_placebo_PlaceboManager
  * Method:    cleanupResources
