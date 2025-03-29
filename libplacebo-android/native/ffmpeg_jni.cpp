@@ -1,5 +1,7 @@
 #include "com_grill_libplacebo_FFmpegManager.h"
 #include <iostream>
+#include <cstdarg>
+#include <cstdio>
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavutil/avutil.h>
@@ -23,14 +25,17 @@ static bool            firstFrameDecoded = false;
 static int             failCount         = 0;
 static JavaVM*         globalVm          = nullptr;
 
-static void LogCallbackFunction(void *log_priv, int level, const char *msg) {
+static void LogCallbackFunction(void *log_priv, int level, const char *fmt, va_list vl) {
+    char buffer[1024];
+    vsnprintf(buffer, sizeof(buffer), fmt, vl);
+
     JNIEnv *env = reinterpret_cast<JNIEnv*>(log_priv);
     if (env && globalLogCallback && midOnLog) {
-        jstring jmsg = env->NewStringUTF(msg);
+        jstring jmsg = env->NewStringUTF(buffer);
         env->CallVoidMethod(globalLogCallback, midOnLog, (jint)level, jmsg);
         env->DeleteLocalRef(jmsg);
     } else {
-        std::cerr << "FFmpeg [level " << level << "]: " << msg;
+        std::cerr << "FFmpeg [level " << level << "]: " << buffer;
     }
 }
 
@@ -66,9 +71,9 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
         jclass logCls = env->GetObjectClass(logCb);
         midOnLog = env->GetMethodID(logCls, "onLog", "(ILjava/lang/String;)V");
         globalLogCallback = env->NewGlobalRef(logCb);
-        //av_log_set_callback(LogCallbackFunction);
-        //av_log_set_level(AV_LOG_DEBUG);
-        //av_log(nullptr, AV_LOG_INFO, "[FFmpeg JNI] Log callback initialized\n");
+        av_log_set_callback(LogCallbackFunction);
+        av_log_set_level(AV_LOG_DEBUG);
+        av_log(nullptr, AV_LOG_INFO, "[FFmpeg JNI] Log callback initialized\n");
     }
     if (surface) globalSurfaceRef = env->NewGlobalRef(surface);
 
@@ -241,7 +246,7 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_FFmpegManager_disposeDecoder
         env->DeleteGlobalRef(globalLogCallback);
         globalLogCallback = nullptr;
     }
-    //av_log_set_callback(av_log_default_callback);
+    av_log_set_callback(av_log_default_callback);
     firstFrameDecoded = false;
     failCount = 0;
 }
