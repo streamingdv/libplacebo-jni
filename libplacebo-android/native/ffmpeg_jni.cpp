@@ -44,7 +44,7 @@ static enum AVPixelFormat getHWPixelFormat(AVCodecContext *ctx, const enum AVPix
 JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
   (JNIEnv *env, jobject thiz, jobject surface, jlong bufferAddr,
    jobject listener, jint codecType, jint width, jint height,
-   jboolean useSoftware, jboolean enableFallback, jobject logCb) {
+   jboolean useSoftware, jboolean enableFallback, jobject logCb, jint cpuCount) {
     // Prevent double-initialization: if already initialized, return false.
     if (codecCtx != nullptr) {
         return JNI_FALSE;
@@ -66,9 +66,9 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
         jclass logCls = env->GetObjectClass(logCb);
         midOnLog = env->GetMethodID(logCls, "onLog", "(ILjava/lang/String;)V");
         globalLogCallback = env->NewGlobalRef(logCb);
-        av_log_set_callback(LogCallbackFunction);
-        av_log_set_level(AV_LOG_DEBUG);
-        av_log(nullptr, AV_LOG_INFO, "[FFmpeg JNI] Log callback initialized\n");
+        //av_log_set_callback(LogCallbackFunction);
+        //av_log_set_level(AV_LOG_DEBUG);
+        //av_log(nullptr, AV_LOG_INFO, "[FFmpeg JNI] Log callback initialized\n");
     }
     if (surface) globalSurfaceRef = env->NewGlobalRef(surface);
 
@@ -241,7 +241,7 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_FFmpegManager_disposeDecoder
         env->DeleteGlobalRef(globalLogCallback);
         globalLogCallback = nullptr;
     }
-    av_log_set_callback(av_log_default_callback);
+    //av_log_set_callback(av_log_default_callback);
     firstFrameDecoded = false;
     failCount = 0;
 }
