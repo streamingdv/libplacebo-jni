@@ -40,7 +40,7 @@ public class FFmpegManager {
                                 DecoderListener listener,
                                 int codecType, int width, int height,
                                 boolean useSoftware, boolean enableFallback,
-                                LogCallback logCb);
+                                LogCallback logCb, int cpuCount);
 
     private native long decodeFrame(boolean isKeyFrame, int limit);
 
@@ -51,16 +51,16 @@ public class FFmpegManager {
                                      final DecoderListener listener, final int codecType,
                                      final int width, final int height,
                                      final boolean useSoftware, final boolean enableFallback,
-                                     final LogCallback logCb) {
+                                     final LogCallback logCb, final int cpuCount) {
         if (this.initialized) {
-            // If already initialized, first dispose the existing decoder
             this.disposeDecoder();
         }
         final boolean ok = this.init(surface, bufferAddr, listener, codecType, width, height,
-                useSoftware, enableFallback, logCb);
+                useSoftware, enableFallback, logCb, cpuCount);
         this.initialized = ok;
         return ok;
     }
+
 
     public long decodeNextFrame(final boolean isKeyFrame, final int limit) {
         if (!this.initialized) {

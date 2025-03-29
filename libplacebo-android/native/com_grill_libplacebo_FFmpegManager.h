@@ -9,7 +9,7 @@ extern "C" {
 #endif
 
 JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
-  (JNIEnv *, jobject, jobject, jlong, jobject, jint, jint, jint, jboolean, jboolean, jobject);
+  (JNIEnv *, jobject, jobject, jlong, jobject, jint, jint, jint, jboolean, jboolean, jobject, jint);
 
 JNIEXPORT jlong JNICALL Java_com_grill_placebo_FFmpegManager_decodeFrame
   (JNIEnv *, jobject, jboolean, jint);

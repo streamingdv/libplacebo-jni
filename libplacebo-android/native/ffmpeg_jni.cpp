@@ -93,6 +93,11 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
     codecCtx->width = width;
     codecCtx->height = height;
 
+    codecCtx->flags |= AV_CODEC_FLAG_LOW_DELAY;
+    codecCtx->flags |= AV_CODEC_FLAG_OUTPUT_CORRUPT;
+    codecCtx->flags2 |= AV_CODEC_FLAG2_SHOW_ALL;
+    codecCtx->err_recognition |= AV_EF_EXPLODE;
+
     if (useHW) {
         AVBufferRef* device_ref = av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_MEDIACODEC);
         if (!device_ref) {
@@ -115,6 +120,13 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
                 codecCtx->get_format = getHWPixelFormat;
             }
         }
+    }
+
+    if (!useHW) {
+        codecCtx->thread_type |= FF_THREAD_SLICE;
+        codecCtx->thread_count = cpuCount;
+    } else {
+        codecCtx->thread_count = 1;
     }
 
     if (avcodec_open2(codecCtx, decoder, nullptr) < 0) {
