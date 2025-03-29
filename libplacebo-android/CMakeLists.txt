@@ -37,6 +37,7 @@ include_directories(${FFMPEG_DIR}/include)
 set(SOURCES
     native/libav_impl.c
     native/placebo_jni.cpp
+    native/ffmpeg_jni.cpp
 )
 
 # Create shared library for JNI
