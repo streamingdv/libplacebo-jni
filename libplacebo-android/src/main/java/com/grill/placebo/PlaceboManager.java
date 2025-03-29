@@ -155,8 +155,6 @@ public class PlaceboManager {
      */
     public static native boolean assignHwDeviceToCodecContext(long codecCtxHandle, long deviceRefHandle);
 
-    public static native long nativeReceiveFrame(long codecCtxPtr);
-
     /**
      * Destroys a logger with the log callback
      *

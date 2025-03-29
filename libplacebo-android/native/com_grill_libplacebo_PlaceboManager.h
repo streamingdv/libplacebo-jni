@@ -88,12 +88,6 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_createMediaCodecHw
 JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_assignHwDeviceToCodecContext
   (JNIEnv *, jclass, jlong, jlong);
 
-JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_nativeReceiveFrame(
-    JNIEnv *env,
-    jobject thiz,
-    jlong codecCtxPtr
-);
-
 /*
  * Class:     com_grill_placebo_PlaceboManager
  * Method:    cleanupResources
