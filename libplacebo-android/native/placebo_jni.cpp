@@ -320,6 +320,20 @@ Java_com_grill_placebo_PlaceboManager_plRenderAvFrame(
         return JNI_FALSE;
     }
 
+    if (!frame->buf[0]) {
+        LogCallbackFunction(env, PL_LOG_ERR, "AVFrame buf[0] is null! Likely not backed.");
+        return JNI_FALSE;
+    }
+
+    if (!frame->data[3]) {
+        LogCallbackFunction(env, PL_LOG_WARN, "AVFrame data[3] is null. Possibly no hardware buffer.");
+    } else {
+        uintptr_t handle = reinterpret_cast<uintptr_t>(frame->data[3]);
+        char msg[128];
+        snprintf(msg, sizeof(msg), "AVFrame data[3] (likely AHardwareBuffer*) = 0x%" PRIxPTR, handle);
+        LogCallbackFunction(env, PL_LOG_INFO, msg);
+    }
+
     struct pl_frame placebo_frame = {0};
     struct pl_frame target_frame = {0};
     struct pl_swapchain_frame sw_frame = {0};
