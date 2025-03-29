@@ -473,6 +473,30 @@ Java_com_grill_placebo_PlaceboManager_assignHwDeviceToCodecContext(
     return JNI_TRUE;
 }
 
+JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_nativeReceiveFrame(
+    JNIEnv *env,
+    jobject thiz,
+    jlong codecCtxPtr)
+{
+    AVCodecContext *ctx = (AVCodecContext *) codecCtxPtr;
+    AVFrame *frame = av_frame_alloc();
+    if (!frame) return 0;
+
+    int ret = avcodec_receive_frame(ctx, frame);
+    if (ret < 0) {
+        av_frame_free(&frame);
+        return 0;
+    }
+
+    // Optional: check if frame->buf[0] is valid
+    if (!frame->buf[0]) {
+        av_frame_free(&frame);
+        return 0;
+    }
+
+    return (jlong) (intptr_t) frame;
+}
+
 
 JNIEXPORT void JNICALL
 Java_com_grill_placebo_PlaceboManager_cleanupResources(JNIEnv *env, jobject thiz) {
