@@ -1,4 +1,4 @@
-#include "com_grill_placebo_FFmpegManager.h"
+#include "com_grill_libplacebo_FFmpegManager.h"
 #include <iostream>
 extern "C" {
 #include <libavcodec/avcodec.h>
