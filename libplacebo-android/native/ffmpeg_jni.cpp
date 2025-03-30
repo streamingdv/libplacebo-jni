@@ -39,6 +39,13 @@ static void LogCallbackFunction(void *log_priv, int level, const char *fmt, va_l
     }
 }
 
+static void LogCallbackPrint(JNIEnv *env, int level, const char *fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    LogCallbackFunction(env, level, fmt, args);
+    va_end(args);
+}
+
 static enum AVPixelFormat getHWPixelFormat(AVCodecContext *ctx, const enum AVPixelFormat *pix_fmts) {
     for (const enum AVPixelFormat *p = pix_fmts; *p != AV_PIX_FMT_NONE; ++p) {
         if (*p == AV_PIX_FMT_MEDIACODEC) return AV_PIX_FMT_MEDIACODEC;
@@ -57,7 +64,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
 
     // Store the Java VM pointer and set it to ffmpeg
     if (env->GetJavaVM(&globalVm) != JNI_OK) {
-        LogCallbackFunction(env, PL_LOG_ERR, "Failed to get JavaVM");
+        LogCallbackPrint(env, AV_LOG_ERROR, "Failed to get JavaVM");
         return -1;
     }
     av_jni_set_java_vm(globalVm, nullptr);
