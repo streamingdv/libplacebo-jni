@@ -128,7 +128,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
     // Store the Java VM pointer and set it to ffmpeg
     if (env->GetJavaVM(&globalVm) != JNI_OK) {
         LogCallbackPrint(env, AV_LOG_ERROR, "Failed to get JavaVM");
-        return -1;
+        return JNI_FALSE;
     }
     av_jni_set_java_vm(globalVm, nullptr);
 
@@ -141,14 +141,18 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
         midOnIDRNeeded  = env->GetMethodID(listenerCls, "onIDRFrameNeeded", "()V");
         globalDecoderListener = env->NewGlobalRef(listener);
     }
+
     if (logCb) {
         jclass logCls = env->GetObjectClass(logCb);
         midOnLog = env->GetMethodID(logCls, "onLog", "(ILjava/lang/String;)V");
-        globalLogCallback = env->NewGlobalRef(logCb);
-        //av_log_set_callback(LogCallbackFunction);
-        //av_log_set_level(AV_LOG_DEBUG);
-        //av_log(env, AV_LOG_INFO, "[FFmpeg JNI] Log callback initialized\n");
+        if (midOnLog != nullptr) {
+            globalLogCallback = env->NewGlobalRef(logCb);
+            av_log_set_callback(LogCallbackFunction);
+            av_log_set_level(AV_LOG_DEBUG);
+            av_log(nullptr, AV_LOG_INFO, "[FFmpeg JNI] Log callback initialized\n");
+        }
     }
+
     if (surface) globalSurfaceRef = env->NewGlobalRef(surface);
 
     const AVCodec* decoder = nullptr;
@@ -159,18 +163,18 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
         decoder = useHW ? avcodec_find_decoder_by_name("hevc_mediacodec") : avcodec_find_decoder(AV_CODEC_ID_HEVC);
     }
     if (!decoder) {
-        av_log(env, AV_LOG_ERROR, "Decoder not found\n");
+        av_log(nullptr, AV_LOG_ERROR, "Decoder not found\n");
         return JNI_FALSE;
     }
 
-    av_log(env, AV_LOG_INFO, "[FFmpeg JNI] avcodec_alloc_context3\n");
+    av_log(nullptr, AV_LOG_INFO, "[FFmpeg JNI] avcodec_alloc_context3\n");
     codecCtx = avcodec_alloc_context3(decoder);
     if (!codecCtx) {
-        av_log(env, AV_LOG_ERROR, "Failed to allocate codec context\n");
+        av_log(nullptr, AV_LOG_ERROR, "Failed to allocate codec context\n");
         return JNI_FALSE;
     }
 
-    av_log(env, AV_LOG_INFO, "[FFmpeg JNI] set codec flags\n");
+    av_log(nullptr, AV_LOG_INFO, "[FFmpeg JNI] set codec flags\n");
     codecCtx->width = width;
     codecCtx->height = height;
 
@@ -180,21 +184,21 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
     codecCtx->err_recognition |= AV_EF_EXPLODE;
 
     if (useHW) {
-        av_log(env, AV_LOG_INFO, "[FFmpeg JNI] av_hwdevice_ctx_alloc\n");
+        av_log(nullptr, AV_LOG_INFO, "[FFmpeg JNI] av_hwdevice_ctx_alloc\n");
         AVBufferRef* device_ref = av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_MEDIACODEC);
         if (!device_ref) {
-            av_log(env, AV_LOG_ERROR, "Failed to allocate hwdevice context\n");
+            av_log(nullptr, AV_LOG_ERROR, "Failed to allocate hwdevice context\n");
             if (!enableFallback) return JNI_FALSE;
             useHW = false;
         } else {
-            av_log(env, AV_LOG_INFO, "[FFmpeg JNI] AVMediaCodecDeviceContext\n");
+            av_log(nullptr, AV_LOG_INFO, "[FFmpeg JNI] AVMediaCodecDeviceContext\n");
             AVHWDeviceContext *ctx = reinterpret_cast<AVHWDeviceContext *>(device_ref->data);
             AVMediaCodecDeviceContext *hwctx = reinterpret_cast<AVMediaCodecDeviceContext *>(ctx->hwctx);
             hwctx->surface = globalSurfaceRef;
 
-            av_log(env, AV_LOG_INFO, "[FFmpeg JNI] av_hwdevice_ctx_init\n");
+            av_log(nullptr, AV_LOG_INFO, "[FFmpeg JNI] av_hwdevice_ctx_init\n");
             if (av_hwdevice_ctx_init(device_ref) < 0) {
-                av_log(env, AV_LOG_ERROR, "Failed to init hwdevice context\n");
+                av_log(nullptr, AV_LOG_ERROR, "Failed to init hwdevice context\n");
                 av_buffer_unref(&device_ref);
                 if (!enableFallback) return JNI_FALSE;
                 useHW = false;
@@ -202,12 +206,12 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
                 hwDeviceCtx = device_ref;
                 codecCtx->hw_device_ctx = av_buffer_ref(hwDeviceCtx);
                 codecCtx->get_format = getHWPixelFormat;
-                av_log(env, AV_LOG_INFO, "[FFmpeg JNI] successfully initialized hw acceleration\n");
+                av_log(nullptr, AV_LOG_INFO, "[FFmpeg JNI] successfully initialized hw acceleration\n");
             }
         }
     }
 
-    av_log(env, AV_LOG_INFO, "codecCtx thread_count\n");
+    av_log(nullptr, AV_LOG_INFO, "codecCtx thread_count\n");
     if (!useHW) {
         codecCtx->thread_type |= FF_THREAD_SLICE;
         codecCtx->thread_count = cpuCount;
@@ -215,18 +219,18 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
         codecCtx->thread_count = 1;
     }
 
-    av_log(env, AV_LOG_INFO, "avcodec_open2\n");
+    av_log(nullptr, AV_LOG_INFO, "avcodec_open2\n");
     if (avcodec_open2(codecCtx, decoder, nullptr) < 0) {
-        av_log(env, AV_LOG_ERROR, "Failed to open decoder\n");
+        av_log(nullptr, AV_LOG_ERROR, "Failed to open decoder\n");
         if (useHW && enableFallback) {
             const AVCodec* swDecoder = (codecType == 0) ? avcodec_find_decoder(AV_CODEC_ID_H264) : avcodec_find_decoder(AV_CODEC_ID_HEVC);
             if (hwDeviceCtx) av_buffer_unref(&hwDeviceCtx);
             codecCtx->hw_device_ctx = nullptr;
             codecCtx->get_format = nullptr;
             if (swDecoder && avcodec_open2(codecCtx, swDecoder, nullptr) == 0) {
-                av_log(env, AV_LOG_INFO, "Fallback to software decoder succeeded\n");
+                av_log(nullptr, AV_LOG_INFO, "Fallback to software decoder succeeded\n");
             } else {
-                av_log(env, AV_LOG_ERROR, "Fallback decoder failed\n");
+                av_log(nullptr, AV_LOG_ERROR, "Fallback decoder failed\n");
                 avcodec_free_context(&codecCtx);
                 return JNI_FALSE;
             }
@@ -236,7 +240,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
         }
     }
 
-    av_log(env, AV_LOG_INFO, "av_packet_alloc\n");
+    av_log(nullptr, AV_LOG_INFO, "av_packet_alloc\n");
     packet = av_packet_alloc();
     if (!packet) {
         avcodec_free_context(&codecCtx);
@@ -246,7 +250,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
 
     firstFrameDecoded = false;
     failCount = 0;
-    av_log(env, AV_LOG_INFO, "Decoder initialization successful\n");
+    av_log(nullptr, AV_LOG_INFO, "Decoder initialization successful\n");
     return JNI_TRUE;
 }
 
