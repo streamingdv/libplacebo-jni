@@ -47,7 +47,7 @@ static void LogCallbackPrint(JNIEnv *env, int level, const char *fmt, ...) {
     va_end(args);
 }
 
-static enum AVPixelFormat getHWPixelFormat(AVCodecContext *ctx, const enum AVPixelFormat *pix_fmts) {
+/*static enum AVPixelFormat getHWPixelFormat(AVCodecContext *ctx, const enum AVPixelFormat *pix_fmts) {
     av_log(ctx, AV_LOG_INFO, "Scanning supported pixel formats for AV_PIX_FMT_MEDIACODEC:\n");
     for (const enum AVPixelFormat *p = pix_fmts; *p != AV_PIX_FMT_NONE; ++p) {
         const char *name = av_get_pix_fmt_name(*p);
@@ -58,6 +58,61 @@ static enum AVPixelFormat getHWPixelFormat(AVCodecContext *ctx, const enum AVPix
         }
     }
     av_log(ctx, AV_LOG_ERROR, "Failed to find AV_PIX_FMT_MEDIACODEC in supported formats\n");
+    return AV_PIX_FMT_NONE;
+}*/
+
+static enum AVPixelFormat getHWPixelFormat(AVCodecContext *ctx, const enum AVPixelFormat *pix_fmts) {
+    JNIEnv *env = nullptr;
+    bool hasEnv = false;
+
+    if (globalVm && globalVm->GetEnv(reinterpret_cast<void **>(&env), JNI_VERSION_1_6) == JNI_OK) {
+        hasEnv = true;
+    }
+
+    const char *startMsg = "Scanning supported pixel formats for AV_PIX_FMT_MEDIACODEC:\n";
+    if (hasEnv && globalLogCallback && midOnLog) {
+        jstring jmsg = env->NewStringUTF(startMsg);
+        env->CallVoidMethod(globalLogCallback, midOnLog, AV_LOG_INFO, jmsg);
+        env->DeleteLocalRef(jmsg);
+    } else {
+        std::cerr << startMsg;
+    }
+
+    for (const enum AVPixelFormat *p = pix_fmts; *p != AV_PIX_FMT_NONE; ++p) {
+        const char *name = av_get_pix_fmt_name(*p);
+        char buffer[128];
+        snprintf(buffer, sizeof(buffer), "  - %s (%d)\n", name ? name : "unknown", *p);
+
+        if (hasEnv && globalLogCallback && midOnLog) {
+            jstring jmsg = env->NewStringUTF(buffer);
+            env->CallVoidMethod(globalLogCallback, midOnLog, AV_LOG_INFO, jmsg);
+            env->DeleteLocalRef(jmsg);
+        } else {
+            std::cerr << buffer;
+        }
+
+        if (*p == AV_PIX_FMT_MEDIACODEC) {
+            const char *foundMsg = "Selected HW pixel format: AV_PIX_FMT_MEDIACODEC\n";
+            if (hasEnv && globalLogCallback && midOnLog) {
+                jstring jmsg = env->NewStringUTF(foundMsg);
+                env->CallVoidMethod(globalLogCallback, midOnLog, AV_LOG_INFO, jmsg);
+                env->DeleteLocalRef(jmsg);
+            } else {
+                std::cerr << foundMsg;
+            }
+            return *p;
+        }
+    }
+
+    const char *failMsg = "Failed to find AV_PIX_FMT_MEDIACODEC in supported formats\n";
+    if (hasEnv && globalLogCallback && midOnLog) {
+        jstring jmsg = env->NewStringUTF(failMsg);
+        env->CallVoidMethod(globalLogCallback, midOnLog, AV_LOG_ERROR, jmsg);
+        env->DeleteLocalRef(jmsg);
+    } else {
+        std::cerr << failMsg;
+    }
+
     return AV_PIX_FMT_NONE;
 }
 
