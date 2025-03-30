@@ -174,10 +174,10 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
     codecCtx->width = width;
     codecCtx->height = height;
 
-    codecCtx->flags |= AV_CODEC_FLAG_LOW_DELAY;
-    codecCtx->flags |= AV_CODEC_FLAG_OUTPUT_CORRUPT;
-    codecCtx->flags2 |= AV_CODEC_FLAG2_SHOW_ALL;
-    codecCtx->err_recognition |= AV_EF_EXPLODE;
+    //codecCtx->flags |= AV_CODEC_FLAG_LOW_DELAY;
+    //codecCtx->flags |= AV_CODEC_FLAG_OUTPUT_CORRUPT;
+    //codecCtx->flags2 |= AV_CODEC_FLAG2_SHOW_ALL;
+    //codecCtx->err_recognition |= AV_EF_EXPLODE;
 
     if (useHW) {
         av_log(env, AV_LOG_INFO, "[FFmpeg JNI] av_hwdevice_ctx_alloc\n");
@@ -190,7 +190,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
             av_log(env, AV_LOG_INFO, "[FFmpeg JNI] AVMediaCodecDeviceContext\n");
             AVHWDeviceContext *ctx = reinterpret_cast<AVHWDeviceContext *>(device_ref->data);
             AVMediaCodecDeviceContext *hwctx = reinterpret_cast<AVMediaCodecDeviceContext *>(ctx->hwctx);
-            hwctx->surface = surface;
+            hwctx->surface = globalSurfaceRef;
 
             av_log(env, AV_LOG_INFO, "[FFmpeg JNI] av_hwdevice_ctx_init\n");
             if (av_hwdevice_ctx_init(device_ref) < 0) {
@@ -208,12 +208,12 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
     }
 
     av_log(env, AV_LOG_INFO, "codecCtx thread_count\n");
-    if (!useHW) {
-        codecCtx->thread_type |= FF_THREAD_SLICE;
-        codecCtx->thread_count = cpuCount;
-    } else {
-        codecCtx->thread_count = 1;
-    }
+    //if (!useHW) {
+    //    codecCtx->thread_type |= FF_THREAD_SLICE;
+    //    codecCtx->thread_count = cpuCount;
+    //} else {
+    //    codecCtx->thread_count = 1;
+    //}
 
     av_log(env, AV_LOG_INFO, "avcodec_open2\n");
     if (avcodec_open2(codecCtx, decoder, nullptr) < 0) {
