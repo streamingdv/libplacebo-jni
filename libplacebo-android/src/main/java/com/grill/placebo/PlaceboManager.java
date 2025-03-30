@@ -85,6 +85,27 @@ public class PlaceboManager {
     public native long plLogCreate(int apiVersion, int logLevel, LogCallback callback);
 
     /**
+     * Binds an Android {@link android.view.Surface} to a given FFmpeg {@link org.bytedeco.ffmpeg.avcodec.AVCodecContext}
+     * using the MediaCodec hardware acceleration backend.
+     *
+     * <p>This method allocates an internal {@link org.bytedeco.ffmpeg.avutil.AVMediaCodecContext} and binds the provided
+     * {@link android.view.Surface} to it. Then, {@code av_mediacodec_default_init()} is called to initialize the surface
+     * binding inside FFmpeg. This is required to enable zero-copy MediaCodec decoding via hardware acceleration.</p>
+     *
+     * <p>This should be called before {@code avcodec_open2()} and only once per decoder instance. The native surface
+     * must remain valid and unchanged during decoding.</p>
+     *
+     * @param avCodecContextPtr the native pointer (as a long) to the {@link org.bytedeco.ffmpeg.avcodec.AVCodecContext}
+     *                          used for the decoder instance.
+     * @param surface           the {@link android.view.Surface} to bind to the MediaCodec hardware context.
+     * @return {@code true} if the surface was successfully bound to the codec context, {@code false} otherwise.
+     * @see org.bytedeco.ffmpeg.global.avcodec#av_mediacodec_alloc_context
+     * @see org.bytedeco.ffmpeg.global.avcodec#av_mediacodec_default_init
+     * @see org.bytedeco.ffmpeg.global.avcodec#avcodec_open2
+     */
+    public static native boolean bindSurfaceToHwDevice(long avCodecContextPtr, Surface surface);
+
+    /**
      * Renders the given AVFrame using libplacebo with the globally initialized renderer and swapchain.
      *
      * @param avframeHandle native pointer to the AVFrame
