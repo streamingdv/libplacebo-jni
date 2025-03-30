@@ -84,16 +84,16 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
     // Save the input buffer address for packet data reuse
     inputBuffer = reinterpret_cast<uint8_t*>(bufferAddr);
 
-    /*if (logCb) {
+    if (logCb) {
         jclass logCls = env->GetObjectClass(logCb);
         midOnLog = env->GetMethodID(logCls, "onLog", "(ILjava/lang/String;)V");
         if (midOnLog != nullptr) {
             globalLogCallback = env->NewGlobalRef(logCb);
-            av_log_set_callback(LogCallbackFunction);
-            av_log_set_level(AV_LOG_DEBUG);
-            av_log(nullptr, AV_LOG_INFO, "[FFmpeg JNI] Log callback initialized\n");
+            //av_log_set_callback(LogCallbackFunction);
+            //av_log_set_level(AV_LOG_DEBUG);
+            //av_log(nullptr, AV_LOG_INFO, "[FFmpeg JNI] Log callback initialized\n");
         }
-    }*/
+    }
 
     if (surface) globalSurfaceRef = env->NewGlobalRef(surface);
 

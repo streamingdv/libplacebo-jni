@@ -50,14 +50,6 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_renderEGLImage
 
 /*
  * Class:     com_grill_placebo_PlaceboManager
- * Method:    bindSurfaceToHwDevice
- * Signature: (JLandroid/view/Surface;)V
- */
-JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_bindSurfaceToHwDevice
-  (JNIEnv *, jclass, jlong, jobject);
-
-/*
- * Class:     com_grill_placebo_PlaceboManager
  * Method:    plRenderAvFrame
  * Signature: (J)Z
  */

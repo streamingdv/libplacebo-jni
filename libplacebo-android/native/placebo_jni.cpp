@@ -235,60 +235,6 @@ Java_com_grill_placebo_PlaceboManager_renderEGLImage(
     return JNI_TRUE;
 }
 
-extern "C" JNIEXPORT jboolean JNICALL
-Java_com_grill_placebo_PlaceboManager_bindSurfaceToHwDevice(JNIEnv* env, jclass clazz,
-                                                             jlong avCodecContexHandle, jobject javaSurface) {
-    JavaVM* javaVm = nullptr;
-    env->GetJavaVM(&javaVm);
-    av_jni_set_java_vm(javaVm, nullptr);
-
-    LogCallbackFunction(env, PL_LOG_INFO, "0");
-
-    if (avCodecContexHandle == 0) {
-        LogCallbackFunction(env, PL_LOG_ERR, "avCodecContexHandle is null");
-        return JNI_FALSE;
-    }
-
-    AVCodecContext* mCodecContext = reinterpret_cast<AVCodecContext*>(avCodecContexHandle);
-    if (!mCodecContext) {
-        LogCallbackFunction(env, PL_LOG_ERR, "mCodecContext is null");
-        return JNI_FALSE;
-    }
-
-    LogCallbackFunction(env, PL_LOG_INFO, "1");
-
-    if (javaSurface == nullptr) {
-        LogCallbackFunction(env, PL_LOG_ERR, "javaSurface is null");
-        return JNI_FALSE;
-    }
-
-    LogCallbackFunction(env, PL_LOG_INFO, "2");
-
-    mMediaCodecContext = av_mediacodec_alloc_context();
-    if (!mMediaCodecContext) {
-        LogCallbackFunction(env, PL_LOG_ERR, "Failed to allocate AVMediaCodecContext");
-        return JNI_FALSE;
-    }
-    LogCallbackFunction(env, PL_LOG_INFO, "3");
-
-    int ret = av_mediacodec_default_init(mCodecContext, mMediaCodecContext, javaSurface);
-    if (ret < 0) {
-        if (mMediaCodecContext != nullptr) {
-            av_mediacodec_default_free(mCodecContext);
-            mMediaCodecContext = nullptr;
-        }
-        char errbuf[AV_ERROR_MAX_STRING_SIZE];
-        av_strerror(ret, errbuf, sizeof(errbuf));
-        char buf[512];
-        snprintf(buf, sizeof(buf), "av_mediacodec_default_init() failed: %s (%d)", errbuf, ret);
-        LogCallbackFunction(env, PL_LOG_ERR, buf);
-        return JNI_FALSE;
-    }
-
-    LogCallbackFunction(env, PL_LOG_INFO, "4");
-    return JNI_TRUE;
-}
-
 pl_tex placebo_tex_global[4] = {nullptr, nullptr, nullptr, nullptr};
 
 extern "C"
