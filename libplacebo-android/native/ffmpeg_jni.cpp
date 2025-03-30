@@ -48,10 +48,17 @@ static void LogCallbackPrint(JNIEnv *env, int level, const char *fmt, ...) {
 }
 
 static enum AVPixelFormat getHWPixelFormat(AVCodecContext *ctx, const enum AVPixelFormat *pix_fmts) {
+    av_log(ctx, AV_LOG_INFO, "Scanning supported pixel formats for AV_PIX_FMT_MEDIACODEC:\n");
     for (const enum AVPixelFormat *p = pix_fmts; *p != AV_PIX_FMT_NONE; ++p) {
-        if (*p == AV_PIX_FMT_MEDIACODEC) return AV_PIX_FMT_MEDIACODEC;
+        const char *name = av_get_pix_fmt_name(*p);
+        av_log(ctx, AV_LOG_INFO, "  - %s (%d)\n", name ? name : "unknown", *p);
+        if (*p == AV_PIX_FMT_MEDIACODEC) {
+            av_log(ctx, AV_LOG_INFO, "Selected HW pixel format: AV_PIX_FMT_MEDIACODEC\n");
+            return *p;
+        }
     }
-    return pix_fmts[0];
+    av_log(ctx, AV_LOG_ERROR, "Failed to find AV_PIX_FMT_MEDIACODEC in supported formats\n");
+    return AV_PIX_FMT_NONE;
 }
 
 JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
@@ -111,6 +118,9 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
     av_log(env, AV_LOG_INFO, "[FFmpeg JNI] set codec flags\n");
     codecCtx->width = width;
     codecCtx->height = height;
+    if (useHW) {
+        codecCtx->pix_fmt = AV_PIX_FMT_MEDIACODEC;
+    }
 
     codecCtx->flags |= AV_CODEC_FLAG_LOW_DELAY;
     codecCtx->flags |= AV_CODEC_FLAG_OUTPUT_CORRUPT;
