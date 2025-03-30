@@ -17,6 +17,9 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_FFmpegManager_decodeFrame
 JNIEXPORT void JNICALL Java_com_grill_placebo_FFmpegManager_disposeDecoder
   (JNIEnv *, jobject);
 
+JNIEXPORT void JNICALL Java_com_grill_placebo_FFmpegManager_releaseFrame
+  (JNIEnv *, jclass, jlong);
+
 #ifdef __cplusplus
 }
 #endif

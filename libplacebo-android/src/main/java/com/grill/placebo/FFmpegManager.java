@@ -46,6 +46,8 @@ public class FFmpegManager {
 
     private native void disposeDecoder();
 
+    public static native void releaseFrame(long framePtr);
+
     // Optionally, we can wrap native calls to enforce lifecycle checks in Java as well:
     public boolean initializeDecoder(final Surface surface, final long bufferAddr,
                                      final DecoderListener listener, final int codecType,
