@@ -55,8 +55,12 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
         return JNI_FALSE;
     }
 
-    // Store the Java VM pointer for potential thread attachment (for logging)
-    env->GetJavaVM(&globalVm);
+    // Store the Java VM pointer and set it to ffmpeg
+    if (env->GetJavaVM(&globalVm) != JNI_OK) {
+        LogCallbackFunction(env, PL_LOG_ERR, "Failed to get JavaVM");
+        return -1;
+    }
+    av_jni_set_java_vm(globalVm, nullptr);
 
     // Save the input buffer address for packet data reuse
     inputBuffer = reinterpret_cast<uint8_t*>(bufferAddr);
@@ -89,12 +93,14 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
         return JNI_FALSE;
     }
 
+    av_log(env, AV_LOG_INFO, "[FFmpeg JNI] avcodec_alloc_context3\n");
     codecCtx = avcodec_alloc_context3(decoder);
     if (!codecCtx) {
         av_log(env, AV_LOG_ERROR, "Failed to allocate codec context\n");
         return JNI_FALSE;
     }
 
+    av_log(env, AV_LOG_INFO, "[FFmpeg JNI] set codec flags\n");
     codecCtx->width = width;
     codecCtx->height = height;
 
@@ -104,16 +110,19 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
     codecCtx->err_recognition |= AV_EF_EXPLODE;
 
     if (useHW) {
+        av_log(env, AV_LOG_INFO, "[FFmpeg JNI] av_hwdevice_ctx_alloc\n");
         AVBufferRef* device_ref = av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_MEDIACODEC);
         if (!device_ref) {
             av_log(env, AV_LOG_ERROR, "Failed to allocate hwdevice context\n");
             if (!enableFallback) return JNI_FALSE;
             useHW = false;
         } else {
+            av_log(env, AV_LOG_INFO, "[FFmpeg JNI] av_hwdevice_ctx_alloc\n");
             AVHWDeviceContext *ctx = reinterpret_cast<AVHWDeviceContext *>(device_ref->data);
             AVMediaCodecDeviceContext *hwctx = reinterpret_cast<AVMediaCodecDeviceContext *>(ctx->hwctx);
             hwctx->surface = globalSurfaceRef;
 
+            av_log(env, AV_LOG_INFO, "[FFmpeg JNI] av_hwdevice_ctx_init\n");
             if (av_hwdevice_ctx_init(device_ref) < 0) {
                 av_log(env, AV_LOG_ERROR, "Failed to init hwdevice context\n");
                 av_buffer_unref(&device_ref);
@@ -123,6 +132,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
                 hwDeviceCtx = device_ref;
                 codecCtx->hw_device_ctx = av_buffer_ref(hwDeviceCtx);
                 codecCtx->get_format = getHWPixelFormat;
+                av_log(env, AV_LOG_INFO, "[FFmpeg JNI] successfully initialized hw acceleration\n");
             }
         }
     }
@@ -171,11 +181,13 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_FFmpegManager_decodeFrame
   (JNIEnv *env, jobject, jboolean isKeyFrame, jint limit) {
     if (!codecCtx || !packet) return 0;
 
+    av_log(env, AV_LOG_INFO, "Start decode frame\n");
     av_packet_unref(packet);
     packet->data = inputBuffer;
     packet->size = limit;
     packet->flags = isKeyFrame ? AV_PKT_FLAG_KEY : 0;
 
+    av_log(env, AV_LOG_INFO, "avcodec_send_packet\n");
     int err = avcodec_send_packet(codecCtx, packet);
     if (err != 0) {
         if (err == AVERROR(EAGAIN)) {
@@ -195,6 +207,7 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_FFmpegManager_decodeFrame
     AVFrame* outputFrame = av_frame_alloc();
     if (!outputFrame) return 0;
 
+    av_log(env, AV_LOG_INFO, "avcodec_receive_frame\n");
     int res = avcodec_receive_frame(codecCtx, outputFrame);
     if (res != 0) {
         av_frame_free(&outputFrame);
@@ -210,6 +223,7 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_FFmpegManager_decodeFrame
         return 0;
     }
 
+    av_log(env, AV_LOG_INFO, "frame decoded\n");
     firstFrameDecoded = true;
     failCount = 0;
     static bool notifiedFirst = false;
