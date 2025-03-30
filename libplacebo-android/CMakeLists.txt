@@ -43,6 +43,9 @@ set(SOURCES
 # Create shared library for JNI
 add_library(libplacebo-jni-native SHARED ${SOURCES})
 
+# Rename output to libplacebo.so
+set_target_properties(libplacebo-jni-native PROPERTIES OUTPUT_NAME "placebo")
+
 # Enable EGL/GLES extension prototypes
 target_compile_definitions(libplacebo-jni-native PRIVATE EGL_EGLEXT_PROTOTYPES GL_GLEXT_PROTOTYPES)
 
