@@ -5,7 +5,7 @@
 extern "C" {
 #include <libavcodec/avcodec.h>
 #include <libavutil/avutil.h>
-#include <libavutil/jni.h>
+#include <libavcodec/jni.h>
 #include <libavutil/hwcontext.h>
 #include <libavutil/hwcontext_mediacodec.h>
 #include <libavutil/imgutils.h>
