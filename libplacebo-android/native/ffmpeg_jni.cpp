@@ -145,6 +145,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
         }
     }
 
+    av_log(env, AV_LOG_INFO, "codecCtx thread_count\n");
     if (!useHW) {
         codecCtx->thread_type |= FF_THREAD_SLICE;
         codecCtx->thread_count = cpuCount;
@@ -152,6 +153,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
         codecCtx->thread_count = 1;
     }
 
+    av_log(env, AV_LOG_INFO, "avcodec_open2\n");
     if (avcodec_open2(codecCtx, decoder, nullptr) < 0) {
         av_log(env, AV_LOG_ERROR, "Failed to open decoder\n");
         if (useHW && enableFallback) {
@@ -172,6 +174,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
         }
     }
 
+    av_log(env, AV_LOG_INFO, "av_packet_alloc\n");
     packet = av_packet_alloc();
     if (!packet) {
         avcodec_free_context(&codecCtx);
