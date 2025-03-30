@@ -73,7 +73,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
         globalLogCallback = env->NewGlobalRef(logCb);
         av_log_set_callback(LogCallbackFunction);
         av_log_set_level(AV_LOG_DEBUG);
-        av_log(nullptr, AV_LOG_INFO, "[FFmpeg JNI] Log callback initialized\n");
+        av_log(env, AV_LOG_INFO, "[FFmpeg JNI] Log callback initialized\n");
     }
     if (surface) globalSurfaceRef = env->NewGlobalRef(surface);
 
@@ -85,13 +85,13 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
         decoder = useHW ? avcodec_find_decoder_by_name("hevc_mediacodec") : avcodec_find_decoder(AV_CODEC_ID_HEVC);
     }
     if (!decoder) {
-        av_log(nullptr, AV_LOG_ERROR, "Decoder not found\n");
+        av_log(env, AV_LOG_ERROR, "Decoder not found\n");
         return JNI_FALSE;
     }
 
     codecCtx = avcodec_alloc_context3(decoder);
     if (!codecCtx) {
-        av_log(nullptr, AV_LOG_ERROR, "Failed to allocate codec context\n");
+        av_log(env, AV_LOG_ERROR, "Failed to allocate codec context\n");
         return JNI_FALSE;
     }
 
@@ -106,7 +106,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
     if (useHW) {
         AVBufferRef* device_ref = av_hwdevice_ctx_alloc(AV_HWDEVICE_TYPE_MEDIACODEC);
         if (!device_ref) {
-            av_log(nullptr, AV_LOG_ERROR, "Failed to allocate hwdevice context\n");
+            av_log(env, AV_LOG_ERROR, "Failed to allocate hwdevice context\n");
             if (!enableFallback) return JNI_FALSE;
             useHW = false;
         } else {
@@ -115,7 +115,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
             hwctx->surface = globalSurfaceRef;
 
             if (av_hwdevice_ctx_init(device_ref) < 0) {
-                av_log(nullptr, AV_LOG_ERROR, "Failed to init hwdevice context\n");
+                av_log(env, AV_LOG_ERROR, "Failed to init hwdevice context\n");
                 av_buffer_unref(&device_ref);
                 if (!enableFallback) return JNI_FALSE;
                 useHW = false;
@@ -135,16 +135,16 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
     }
 
     if (avcodec_open2(codecCtx, decoder, nullptr) < 0) {
-        av_log(nullptr, AV_LOG_ERROR, "Failed to open decoder\n");
+        av_log(env, AV_LOG_ERROR, "Failed to open decoder\n");
         if (useHW && enableFallback) {
             const AVCodec* swDecoder = (codecType == 0) ? avcodec_find_decoder(AV_CODEC_ID_H264) : avcodec_find_decoder(AV_CODEC_ID_HEVC);
             if (hwDeviceCtx) av_buffer_unref(&hwDeviceCtx);
             codecCtx->hw_device_ctx = nullptr;
             codecCtx->get_format = nullptr;
             if (swDecoder && avcodec_open2(codecCtx, swDecoder, nullptr) == 0) {
-                av_log(nullptr, AV_LOG_INFO, "Fallback to software decoder succeeded\n");
+                av_log(env, AV_LOG_INFO, "Fallback to software decoder succeeded\n");
             } else {
-                av_log(nullptr, AV_LOG_ERROR, "Fallback decoder failed\n");
+                av_log(env, AV_LOG_ERROR, "Fallback decoder failed\n");
                 avcodec_free_context(&codecCtx);
                 return JNI_FALSE;
             }
@@ -163,7 +163,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
 
     firstFrameDecoded = false;
     failCount = 0;
-    av_log(nullptr, AV_LOG_INFO, "Decoder initialization successful\n");
+    av_log(env, AV_LOG_INFO, "Decoder initialization successful\n");
     return JNI_TRUE;
 }
 
