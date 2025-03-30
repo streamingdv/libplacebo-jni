@@ -173,9 +173,6 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
     av_log(env, AV_LOG_INFO, "[FFmpeg JNI] set codec flags\n");
     codecCtx->width = width;
     codecCtx->height = height;
-    if (useHW) {
-        codecCtx->pix_fmt = AV_PIX_FMT_MEDIACODEC;
-    }
 
     codecCtx->flags |= AV_CODEC_FLAG_LOW_DELAY;
     codecCtx->flags |= AV_CODEC_FLAG_OUTPUT_CORRUPT;
@@ -190,10 +187,10 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_FFmpegManager_init
             if (!enableFallback) return JNI_FALSE;
             useHW = false;
         } else {
-            av_log(env, AV_LOG_INFO, "[FFmpeg JNI] av_hwdevice_ctx_alloc\n");
+            av_log(env, AV_LOG_INFO, "[FFmpeg JNI] AVMediaCodecDeviceContext\n");
             AVHWDeviceContext *ctx = reinterpret_cast<AVHWDeviceContext *>(device_ref->data);
             AVMediaCodecDeviceContext *hwctx = reinterpret_cast<AVMediaCodecDeviceContext *>(ctx->hwctx);
-            hwctx->surface = globalSurfaceRef;
+            hwctx->surface = surface;
 
             av_log(env, AV_LOG_INFO, "[FFmpeg JNI] av_hwdevice_ctx_init\n");
             if (av_hwdevice_ctx_init(device_ref) < 0) {
