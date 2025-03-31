@@ -215,19 +215,27 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_FFmpegManager_decodeFrame
         snprintf(logMsg, sizeof(logMsg), "avcodec_send_packet failed: %s (%d)", errbuf, err);
         LogCallbackPrint(env, AV_LOG_ERROR, logMsg);
         if (err == AVERROR(EAGAIN)) {
-            AVFrame* temp = av_frame_alloc();
-            if (!temp) return 0;
-            while (avcodec_receive_frame(codecCtx, temp) == 0) {
-                av_frame_free(&temp);
-                err = avcodec_send_packet(codecCtx, packet);
-                if (err == 0) break;
+            // Allocate one AVFrame once.
+            AVFrame* frame = av_frame_alloc();
+            if (!frame)
+                return 0;
+
+            // Drain all pending frames.
+            while (avcodec_receive_frame(codecCtx, frame) == 0) {
+                av_frame_unref(frame);  // Prepare for the next iteration.
             }
-            if (err != 0) return 0;
+
+            // Try sending the packet again.
+            err = avcodec_send_packet(codecCtx, packet);
+            av_frame_free(&frame);
+            if (err != 0)
+                return 0;
         } else {
             return 0;
         }
     }
 
+    LogCallbackPrint(env, AV_LOG_INFO, "av_frame_alloc\n");
     AVFrame* outputFrame = av_frame_alloc();
     if (!outputFrame) return 0;
 
