@@ -37,11 +37,16 @@ jobs:
             arch: 64bit
             archValue: 64
             archAltValue: x64
-          - sys: MINGW32 # disable for testing now
+            extra_packages: >
+              mingw-w64-ucrt-x86_64-spirv-tools
+              mingw-w64-ucrt-x86_64-spirv-cross
+              mingw-w64-ucrt-x86_64-glslang
+          - sys: MINGW32
             env: i686
             arch: 32bit
             archValue: 32
             archAltValue: x32
+            extra_packages: ""
 
     steps:
       - name: Checkout libplacebo-jni repository
@@ -95,16 +100,14 @@ jobs:
             mingw-w64-${{ matrix.env }}-vapoursynth
             mingw-w64-${{ matrix.env }}-meson
             mingw-w64-${{ matrix.env }}-ninja
-            mingw-w64-${{ matrix.env }}-spirv-tools
-            mingw-w64-${{ matrix.env }}-spirv-cross
             mingw-w64-${{ matrix.env }}-vulkan
             mingw-w64-${{ matrix.env }}-vulkan-headers
             mingw-w64-${{ matrix.env }}-vulkan-loader
             mingw-w64-${{ matrix.env }}-lcms2
-            mingw-w64-${{ matrix.env }}-glslang
             mingw-w64-${{ matrix.env }}-cmake
             mingw-w64-${{ matrix.env }}-python
-            mingw-w64-${{ matrix.env }}-python
+            ${{ matrix.extra_packages }}
+
 
       - name: Build Little-CMS
         if: env.BUILD_LCMS2 == 'true'
@@ -184,6 +187,12 @@ jobs:
         with:
           name: libplacebo-artefacts-${{ matrix.arch }}
           path: ${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '21'
 
       - name: Build libplacebo-jni-java compile java
         run: |

@@ -310,6 +310,24 @@ public class PlaceboManager {
     public native boolean plSwapchainResizeWithBuffer(long swapchain, long intBufferWidth, long intBufferHeight);
 
     /**
+     * Waits until the renderer is ready to start rendering the next frame.
+     * <p>
+     * This should be called before rendering to ensure that the swapchain is ready,
+     * especially when using frame pacing or adaptive frame scheduling.
+     * </p>
+     * On non-Windows platforms, this also waits for any queued frame presentations
+     * to complete before proceeding.
+     *
+     * @param vk        Pointer to the initialized {@code pl_vulkan} instance.
+     * @param swapchain Pointer to the {@code pl_swapchain}.
+     * @param width     The drawable width of the window in pixels.
+     * @param height    The drawable height of the window in pixels.
+     * @return {@code true} if rendering can proceed, {@code false} if the GPU is in a failed state
+     * or the swapchain could not be resized.
+     */
+    public native boolean plWaitToRender(long vk, long swapchain, int width, int height);
+
+    /**
      * Sets the vulkan context from libplacebo to the hardware vulkan context of ffmpeg
      *
      * @param vulkan_hw_dev_ctx_handle the handle to the AVBufferRef

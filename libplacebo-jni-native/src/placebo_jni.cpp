@@ -91,6 +91,8 @@ struct nk_image globalBtnImage;
 void render_ui(struct ui *ui, int width, int height);
 bool ui_draw(struct ui *ui, const struct pl_swapchain_frame *frame);
 
+pl_swapchain_frame m_SwapchainFrame = {0};
+bool m_using_wait_for_rendering = false;
 bool m_HasPendingSwapchainFrame = false;
 int vk_decode_queue_index = -1;
 
@@ -416,6 +418,8 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plVkInstDestroy
 
   // reset stored color space
   m_LastColorspace = {};
+  // reset indication if wait for rendering was used
+  m_using_wait_for_rendering = false;
 }
 
 extern "C"
@@ -909,6 +913,39 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plSwapchainResi
 }
 
 extern "C"
+JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plWaitToRender(
+    JNIEnv *env, jobject obj, jlong placebo_vulkan, jlong swapchain, jint width, jint height) {
+
+    pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
+    pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
+    m_using_wait_for_rendering = true; // store the information that we are using wait to render
+
+    if (pl_gpu_is_failed(vulkan->gpu)) {
+        LogCallbackFunction(nullptr, PL_LOG_ERR, "GPU is in failed state. Recreating renderer.");
+        return JNI_FALSE;
+    }
+
+#ifndef _WIN32
+    // On non-Windows platforms, wait for previously queued presents to finish
+    pl_swapchain_swap_buffers(placebo_swapchain);
+#endif
+
+    int int_width = static_cast<int>(width);
+    int int_height = static_cast<int>(height);
+
+    if (!pl_swapchain_resize(placebo_swapchain, &int_width, &int_height)) {
+        // Swapchain resize can fail, e.g. if window is occluded
+        return JNI_FALSE;
+    }
+
+    if (pl_swapchain_start_frame(placebo_swapchain, &m_SwapchainFrame)) {
+        m_HasPendingSwapchainFrame = true;
+    }
+
+    return JNI_TRUE;
+}
+
+extern "C"
 JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plSetHwDeviceCtx
   (JNIEnv *env, jobject obj, jlong vulkan_hw_dev_ctx_handle, jlong placebo_vulkan, jlong placebo_vk_inst) {
   if (vk_decode_queue_index < 0) {
@@ -990,13 +1027,15 @@ pl_tex placebo_tex_global[4] = {nullptr, nullptr, nullptr, nullptr};
 extern "C"
 JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer) {
+  if(m_using_wait_for_rendering && !m_HasPendingSwapchainFrame) {
+      return JNI_FALSE;
+  }
   AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
   pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
   pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
   bool ret = false;
 
-  struct pl_swapchain_frame sw_frame = {0};
   struct pl_frame placebo_frame = {0};
   struct pl_frame target_frame = {0};
 
@@ -1017,11 +1056,14 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   }
   pl_rect2df crop;
 
-  if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
-      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
-      goto cleanup;
+  if(!m_using_wait_for_rendering) { // check if already called in wait for renderer
+    if (!pl_swapchain_start_frame(placebo_swapchain, &m_SwapchainFrame)) {
+        LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
+        goto cleanup;
+    }
   }
-  pl_frame_from_swapchain(&target_frame, &sw_frame);
+
+  pl_frame_from_swapchain(&target_frame, &m_SwapchainFrame);
 
   crop = placebo_frame.crop;
   switch (renderingFormat) {
@@ -1046,7 +1088,15 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   }
 
   m_HasPendingSwapchainFrame = true;
+
+#ifdef _WIN32
   pl_swapchain_swap_buffers(placebo_swapchain);
+#else
+  if(!m_using_wait_for_rendering) {
+      pl_swapchain_swap_buffers(placebo_swapchain);
+  }
+#endif
+
   ret = true;
 
 cleanup:
@@ -1058,13 +1108,15 @@ cleanup:
 extern "C"
 JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrameWithUi
   (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer, jlong ui, jint width, jint height) {
+  if(m_using_wait_for_rendering && !m_HasPendingSwapchainFrame) {
+      return JNI_FALSE;
+  }
   AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
   pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
   pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
   bool ret = false;
 
-  struct pl_swapchain_frame sw_frame = {0};
   struct pl_frame placebo_frame = {0};
   struct pl_frame target_frame = {0};
 
@@ -1084,11 +1136,15 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
       pl_swapchain_colorspace_hint(placebo_swapchain, &placebo_frame.color);
   }
   pl_rect2df crop;
-  if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
-      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
-      goto cleanup;
+
+  if(!m_using_wait_for_rendering) { // check if already called in wait for renderer
+    if (!pl_swapchain_start_frame(placebo_swapchain, &m_SwapchainFrame)) {
+        LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
+        goto cleanup;
+    }
   }
-  pl_frame_from_swapchain(&target_frame, &sw_frame);
+
+  pl_frame_from_swapchain(&target_frame, &m_SwapchainFrame);
 
   if(ui != 0) {
       struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
@@ -1114,7 +1170,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   }
   if (ui != 0) {
      struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
-     if (!ui_draw(ui_instance, &sw_frame)) {
+     if (!ui_draw(ui_instance, &m_SwapchainFrame)) {
         LogCallbackFunction(nullptr, PL_LOG_ERR, "Could not draw UI!");
      }
   }
@@ -1124,7 +1180,15 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   }
 
   m_HasPendingSwapchainFrame = true;
+
+#ifdef _WIN32
   pl_swapchain_swap_buffers(placebo_swapchain);
+#else
+  if(!m_using_wait_for_rendering) {
+      pl_swapchain_swap_buffers(placebo_swapchain);
+  }
+#endif
+
   ret = true;
 
 cleanup:
@@ -1136,12 +1200,14 @@ cleanup:
 extern "C"
 JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUiOnly
   (JNIEnv *env, jobject obj, jlong placebo_vulkan, jlong swapchain, jlong renderer, jlong ui, jint width, jint height) {
-  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
+    if(m_using_wait_for_rendering && !m_HasPendingSwapchainFrame) {
+        return JNI_FALSE;
+    }
+    pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
     pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
     pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
     bool ret = false;
 
-    struct pl_swapchain_frame sw_frame = {0};
     struct pl_frame target_frame = {0};
 
     struct pl_color_space hint = {
@@ -1154,11 +1220,14 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUiOnly
         pl_swapchain_colorspace_hint(placebo_swapchain, &hint);
     }
 
-    if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
-        LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
-        goto finish;
+    if(!m_using_wait_for_rendering) { // check if already called in wait for renderer
+      if (!pl_swapchain_start_frame(placebo_swapchain, &m_SwapchainFrame)) {
+          LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
+          goto finish;
+      }
     }
-    pl_frame_from_swapchain(&target_frame, &sw_frame);
+
+    pl_frame_from_swapchain(&target_frame, &m_SwapchainFrame);
 
     if(ui != 0) {
         struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
@@ -1171,7 +1240,7 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUiOnly
     }
     if (ui != 0) {
        struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
-       if (!ui_draw(ui_instance, &sw_frame)) {
+       if (!ui_draw(ui_instance, &m_SwapchainFrame)) {
           LogCallbackFunction(nullptr, PL_LOG_ERR, "Could not draw UI!");
        }
     }
@@ -1181,7 +1250,15 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUiOnly
     }
 
     m_HasPendingSwapchainFrame = true;
-    pl_swapchain_swap_buffers(placebo_swapchain);
+
+#ifdef _WIN32
+  pl_swapchain_swap_buffers(placebo_swapchain);
+#else
+  if(!m_using_wait_for_rendering) {
+      pl_swapchain_swap_buffers(placebo_swapchain);
+  }
+#endif
+
     ret = true;
 
   cleanup:
@@ -1198,8 +1275,7 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plCleanupRendererCo
       return;
   }
 
-  struct pl_swapchain_frame sw_frame = {0};
-  if (!pl_swapchain_start_frame(placebo_swapchain, &sw_frame)) {
+  if (!pl_swapchain_start_frame(placebo_swapchain, &m_SwapchainFrame)) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame in cleanup renderer context!");
       return;
   }
