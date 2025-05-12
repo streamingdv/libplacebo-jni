@@ -14,6 +14,10 @@ public class UiState {
 
     public boolean panelPressed;
 
+    public boolean showContentNotStreamable;
+
+    public String contentNotStreamableText = "";
+
     public final PanelState panelState = new PanelState();
 
     public final PopupState popupState = new PopupState();
@@ -24,6 +28,8 @@ public class UiState {
         this.showPopup = uiState.showPopup;
         this.touchpadPressed = uiState.touchpadPressed;
         this.panelPressed = uiState.panelPressed;
+        this.showContentNotStreamable = uiState.showContentNotStreamable;
+        this.contentNotStreamableText = uiState.contentNotStreamableText;
         // panel state
         this.panelState.showMicButton = uiState.panelState.showMicButton;
         this.panelState.showFullscreenButton = uiState.panelState.showFullscreenButton;
@@ -60,12 +66,12 @@ public class UiState {
         }
         final UiState uiState = (UiState) o;
         // no touchpadPressed and panelPressed as these are just internal config states
-        return this.showTouchpad == uiState.showTouchpad && this.showPanel == uiState.showPanel && this.showPopup == uiState.showPopup && Objects.equals(this.panelState, uiState.panelState) && Objects.equals(this.popupState, uiState.popupState);
+        return this.showTouchpad == uiState.showTouchpad && this.showPanel == uiState.showPanel && this.showPopup == uiState.showPopup && this.showContentNotStreamable == uiState.showContentNotStreamable && Objects.equals(this.contentNotStreamableText, uiState.contentNotStreamableText) && Objects.equals(this.panelState, uiState.panelState) && Objects.equals(this.popupState, uiState.popupState);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(this.showTouchpad, this.showPanel, this.showPopup, this.panelState, this.popupState);
+        return Objects.hash(this.showTouchpad, this.showPanel, this.showPopup, this.showContentNotStreamable, this.panelState, this.popupState);
     }
 
     @Override
@@ -74,6 +80,7 @@ public class UiState {
                 "showTouchpad=" + this.showTouchpad +
                 ", showPanel=" + this.showPanel +
                 ", showPopup=" + this.showPopup +
+                ", showContentNotStreamable=" + this.showContentNotStreamable +
                 ", panelState=" + this.panelState +
                 ", popupState=" + this.popupState +
                 '}';

@@ -27,11 +27,13 @@ struct PopupState {
 };
 
 struct UiState {
+    const char* notStreamableText;
     bool showTouchpad;
     bool showPanel;
     bool showPopup;
     bool touchpadPressed;
     bool panelPressed;
+    bool showContentNotStreamable;
     PanelState panelState;
     PopupState popupState;
 };

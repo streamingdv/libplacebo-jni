@@ -1340,6 +1340,7 @@ void ui_destroy(struct ui *ui)
   pl_tex_destroy(ui->gpu, &ui->font_tex);
   pl_dispatch_destroy(&ui->dp);
 
+  delete[] globalUiState.notStreamableText;
   delete[] globalUiState.popupState.headerText;
   delete[] globalUiState.popupState.popupText;
   delete[] globalUiState.popupState.popupButtonLeft;
@@ -1347,6 +1348,7 @@ void ui_destroy(struct ui *ui)
   delete[] globalUiState.popupState.checkboxText;
 
   // After deleting, set pointers to nullptr to avoid dangling pointers
+  globalUiState.notStreamableText = nullptr;
   globalUiState.popupState.headerText = nullptr;
   globalUiState.popupState.popupText = nullptr;
   globalUiState.popupState.popupButtonLeft = nullptr;
@@ -1407,7 +1409,7 @@ struct ui *ui_create(pl_gpu gpu)
   robotoConfig.oversample_h = 1; robotoConfig.oversample_v = 1;
   robotoConfig.pixel_snap = true;
   ui->default_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 24, &robotoConfig);
-  ui->default_bold_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_bold_font, roboto_bold_font_size, 28, &robotoConfig);
+  ui->default_bold_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_bold_font, roboto_bold_font_size, 32, &robotoConfig);
   ui->default_small_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 14, &robotoConfig);
   struct nk_font_config iconConfig = nk_font_config(0);
   iconConfig.range = ranges_icons;
@@ -1524,7 +1526,7 @@ bool ui_draw(struct ui *ui, const struct pl_swapchain_frame *frame)
 }
 
 void render_ui(struct ui *ui, int width, int height) {
-  if (!ui || (!globalUiState.showTouchpad && !globalUiState.showPanel && !globalUiState.showPopup))
+  if (!ui || (!globalUiState.showTouchpad && !globalUiState.showPanel && !globalUiState.showPopup && !globalUiState.showContentNotStreamable))
       return;
 
   struct nk_context *ctx = &ui->nk;
@@ -1743,6 +1745,47 @@ void render_ui(struct ui *ui, int width, int height) {
           ctx->style.button = cachedButtonStyle;
       }
 
+      // **** Content not streamable
+      if(globalUiState.showContentNotStreamable && globalUiState.notStreamableText && globalUiState.notStreamableText[0] != '\0') {
+          float maxWidth = bounds.w * 0.8f;
+          float lineHeight = 36.0f;
+          float labelX = (bounds.w - maxWidth) / 2.0f;
+
+          nk_style_set_font(ctx, &ui->default_bold_font->handle);
+
+          const char *text = globalUiState.notStreamableText;
+          const char *lineStart = text;
+          int lineCount = 0;
+
+          // Count lines to vertically center
+          for (const char *c = text; *c; c++)
+              if (*c == '\n') lineCount++;
+          lineCount += 1; // final line
+
+          float totalHeight = lineHeight * lineCount;
+          float startY = (bounds.h - totalHeight) / 2.0f;
+
+          while (*lineStart) {
+              const char *lineEnd = strchr(lineStart, '\n');
+              if (!lineEnd)
+                  lineEnd = lineStart + strlen(lineStart); // last line
+
+              char lineBuffer[512];
+              size_t lineLen = (size_t)(lineEnd - lineStart);
+              if (lineLen >= sizeof(lineBuffer)) lineLen = sizeof(lineBuffer) - 1;
+              memcpy(lineBuffer, lineStart, lineLen);
+              lineBuffer[lineLen] = '\0';
+
+              nk_layout_space_push(ctx, nk_rect(labelX, startY, maxWidth, lineHeight));
+              nk_text(ctx, lineBuffer, (int)lineLen, NK_TEXT_CENTERED);
+
+              startY += lineHeight;
+              lineStart = *lineEnd ? lineEnd + 1 : lineEnd;
+          }
+
+          nk_style_set_font(ctx, &ui->default_font->handle);
+      }
+
       // **** Fullscreen popup
       if(globalUiState.showPopup) {
           struct nk_rect dialog_rect = nk_rect((bounds.w / 2) - (dialogWidth / 2), (bounds.h / 2) - (dialogHeight / 2), dialogWidth, dialogHeight); // Background rect
@@ -1851,13 +1894,18 @@ Java_com_grill_placebo_PlaceboManager_nkUpdateUIState(JNIEnv *env, jobject obj,
   jstring popupHeaderText, jstring popupPopupText, jboolean popupShowCheckbox,
   jstring popupButtonLeft, jstring popupButtonRight, jstring popupCheckboxText,
   jboolean popupCheckboxChecked, jboolean popupCheckboxFocused, jboolean popupLeftButtonPressed,
-  jboolean popupLeftButtonFocused, jboolean popupRightButtonPressed, jboolean popupRightButtonFocused ) {
+  jboolean popupLeftButtonFocused, jboolean popupRightButtonPressed, jboolean popupRightButtonFocused,
+  jstring contentNotStreamableText, jboolean showContentNotStreamable ) {
 
   globalUiState.showTouchpad = showTouchpad;
   globalUiState.showPanel = showPanel;
   globalUiState.showPopup = showPopup;
   globalUiState.touchpadPressed = touchpadPressed;
   globalUiState.panelPressed = panelPressed;
+  globalUiState.showContentNotStreamable = showContentNotStreamable;
+
+  delete[] globalUiState.notStreamableText;
+  globalUiState.notStreamableText = copyString(env, contentNotStreamableText);
 
   globalUiState.panelState.showMicButton = panelShowMicButton;
   globalUiState.panelState.showFullscreenButton = panelShowFullscreenButton;

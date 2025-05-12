@@ -433,7 +433,8 @@ public class PlaceboManager {
             String popupHeaderText, String popupPopupText, boolean popupShowCheckbox,
             String popupButtonLeft, String popupButtonRight, String popupCheckboxText,
             boolean popupCheckboxChecked, boolean popupCheckboxFocused, boolean popupLeftButtonPressed,
-            boolean popupLeftButtonFocused, boolean popupRightButtonPressed, boolean popupRightButtonFocused
+            boolean popupLeftButtonFocused, boolean popupRightButtonPressed, boolean popupRightButtonFocused,
+            String contentNotStreamableText, boolean showContentNotStreamable
     );
 
     /**
