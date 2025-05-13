@@ -57,8 +57,6 @@
 #include <libplacebo/shaders/custom.h>
 #include <vk_mem_alloc.h>
 #include <noto_sans_regular_font.h>
-#include <roboto_font.h>
-#include <roboto_bold_font.h>
 #include <gui_font.h>
 #include <ui_consts.h>
 #include <ui_state.h>
@@ -1420,13 +1418,9 @@ struct ui *ui_create(pl_gpu gpu)
   fontConfig.range = glyph_ranges_all;
   fontConfig.oversample_h = 1; fontConfig.oversample_v = 1;
   fontConfig.pixel_snap = true;
-  /*ui->default_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 24, &fontConfig);
-  ui->default_bold_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_bold_font, roboto_bold_font_size, 32, &fontConfig);
-  ui->default_small_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 14, &fontConfig);*/
-
-  ui->default_font = nk_font_atlas_add_from_memory(&ui->atlas, NotoSans_ttf, NotoSans_ttf_len, 24, &fontConfig);
-  ui->default_bold_font = nk_font_atlas_add_from_memory(&ui->atlas, NotoSans_ttf, NotoSans_ttf_len, 32, &fontConfig);
-  ui->default_small_font = nk_font_atlas_add_from_memory(&ui->atlas, NotoSans_ttf, NotoSans_ttf_len, 14, &fontConfig);
+  ui->default_font = nk_font_atlas_add_from_memory(&ui->atlas, NotoSans_Regular_ttf, NotoSans_Regular_ttf_len, 26, &fontConfig);
+  ui->default_bold_font = nk_font_atlas_add_from_memory(&ui->atlas, NotoSans_Regular_ttf, NotoSans_Regular_ttf_len, 34, &fontConfig);
+  ui->default_small_font = nk_font_atlas_add_from_memory(&ui->atlas, NotoSans_Regular_ttf, NotoSans_Regular_ttf_len, 16, &fontConfig);
   struct nk_font_config iconConfig = nk_font_config(0);
   iconConfig.range = ranges_icons;
   iconConfig.oversample_h = 1; iconConfig.oversample_v = 1;
