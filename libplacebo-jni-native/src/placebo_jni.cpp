@@ -1404,13 +1404,24 @@ struct ui *ui_create(pl_gpu gpu)
   // Initialize font atlas using built-in font
   nk_font_atlas_init_default(&ui->atlas);
   nk_font_atlas_begin(&ui->atlas);
-  struct nk_font_config robotoConfig = nk_font_config(0);
-  robotoConfig.range = nk_font_default_glyph_ranges();
-  robotoConfig.oversample_h = 1; robotoConfig.oversample_v = 1;
-  robotoConfig.pixel_snap = true;
-  ui->default_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 24, &robotoConfig);
-  ui->default_bold_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_bold_font, roboto_bold_font_size, 32, &robotoConfig);
-  ui->default_small_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 14, &robotoConfig);
+  struct nk_font_config fontConfig = nk_font_config(0);
+  static const nk_rune glyph_ranges_all[] = {
+      0x0020, 0x00FF,     // Basic Latin + Latin-1 Supplement (Western Europe)
+      0x0400, 0x04FF,     // Cyrillic (Russian)
+      0x0900, 0x097F,     // Devanagari (Hindi)
+      0x3040, 0x309F,     // Hiragana (Japanese)
+      0x30A0, 0x30FF,     // Katakana (Japanese)
+      0x4E00, 0x9FFF,     // CJK Unified Ideographs (Chinese/Japanese)
+      0xAC00, 0xD7AF,     // Hangul Syllables (Korean)
+      0x1100, 0x11FF,     // Hangul Jamo (Korean)
+      0
+  };
+  fontConfig.range = glyph_ranges_all;
+  fontConfig.oversample_h = 1; fontConfig.oversample_v = 1;
+  fontConfig.pixel_snap = true;
+  ui->default_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 24, &fontConfig);
+  ui->default_bold_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_bold_font, roboto_bold_font_size, 32, &fontConfig);
+  ui->default_small_font = nk_font_atlas_add_from_memory(&ui->atlas, roboto_font, roboto_font_size, 14, &fontConfig);
   struct nk_font_config iconConfig = nk_font_config(0);
   iconConfig.range = ranges_icons;
   iconConfig.oversample_h = 1; iconConfig.oversample_v = 1;
