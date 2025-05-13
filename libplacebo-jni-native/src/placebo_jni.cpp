@@ -1405,14 +1405,15 @@ struct ui *ui_create(pl_gpu gpu)
   nk_font_atlas_begin(&ui->atlas);
   struct nk_font_config fontConfig = nk_font_config(0);
   static const nk_rune glyph_ranges_all[] = {
-      0x0020, 0x00FF,     // Basic Latin + Latin-1 Supplement (Western Europe)
-      0x0400, 0x04FF,     // Cyrillic (Russian)
-      0x0900, 0x097F,     // Devanagari (Hindi)
-      0x3040, 0x309F,     // Hiragana (Japanese)
-      0x30A0, 0x30FF,     // Katakana (Japanese)
-      0x4E00, 0x9FFF,     // CJK Unified Ideographs (Chinese/Japanese)
-      0xAC00, 0xD7AF,     // Hangul Syllables (Korean)
-      0x1100, 0x11FF,     // Hangul Jamo (Korean)
+      0x0020, 0x00FF,     // Latin
+      0x0400, 0x04FF,     // Cyrillic
+      0x0900, 0x097F,     // Devanagari
+      0x3000, 0x303F,     // CJK Symbols and Punctuation
+      0x3040, 0x309F,     // Hiragana
+      0x30A0, 0x30FF,     // Katakana
+      0x4E00, 0x9FFF,     // CJK Unified
+      0xAC00, 0xD7AF,     // Hangul
+      0x1100, 0x11FF,     // Hangul Jamo
       0
   };
   fontConfig.range = glyph_ranges_all;
