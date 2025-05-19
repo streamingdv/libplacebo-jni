@@ -1,0 +1,245 @@
+name: CI Linux old
+on:
+  workflow_dispatch:
+    inputs:
+      build_libplacebo:
+        description: 'Build libplacebo (true/false)'
+        required: true
+        default: 'false' # to save time, actual build is already in libs folder
+      build_shaderc:
+        description: 'Build shaderc (true/false)'
+        required: true
+        default: 'false' # not needed
+      build_vulkan-loader:
+        description: 'Build vulkan-loader (true/false)'
+        required: true
+        default: 'false' # not needed
+      build_lcms2:
+        description: 'Build lcms2 (true/false)'
+        required: true
+        default: 'false' # not needed
+
+jobs:
+  build-binaries-unix:
+    name: Build unix lib
+    runs-on: ubuntu-latest
+    env:
+      BUILD_LIBPLACEBO: ${{ github.event.inputs.build_libplacebo }}
+      BUILD_SHADERC: ${{ github.event.inputs.build_shaderc }}
+      BUILD_VULKAN_LOADER: ${{ github.event.inputs.build_vulkan }}
+      BUILD_LCMS2: ${{ github.event.inputs.build_lcms2 }}
+
+    steps:
+      - name: Checkout libplacebo-jni repository
+        uses: actions/checkout@v2
+        with:
+          submodules: 'recursive'
+
+      - name: Checkout Nuklear library
+        uses: actions/checkout@v2
+        with:
+          repository: 'Immediate-Mode-UI/Nuklear'
+          path: 'Nuklear'
+          ref: '4.10.7'
+
+      - name: Checkout shaderc repository
+        if: env.BUILD_SHADERC == 'true'
+        uses: actions/checkout@v2
+        with:
+          repository: 'google/shaderc'
+          path: 'shaderc'
+          ref: 'v2024.0'
+
+      - name: Checkout vulkan-loader repository
+        if: env.BUILD_VULKAN_LOADER == 'true'
+        uses: actions/checkout@v2
+        with:
+          repository: 'KhronosGroup/Vulkan-Loader'
+          path: 'vulkan-loader'
+
+      - name: Checkout Little-CMS repository
+        if: env.BUILD_LCMS2 == 'true'
+        uses: actions/checkout@v2
+        with:
+          repository: 'mm2/Little-CMS'
+          path: 'Little-CMS'
+
+      #- name: Install glslang dependencies
+      #  run: |
+      #    sudo apt-get update
+      #    sudo apt-get install -y cmake g++ python3 python-is-python3
+
+      #- name: Checkout glslang repository
+      #  uses: actions/checkout@v2
+      #  with:
+      #    repository: 'KhronosGroup/glslang'
+      #    path: 'glslang'
+      #    ref: '14.0.0'
+
+      #- name: Compile and install glslang
+      #  run: |
+      #    cd glslang
+      #    ./update_glslang_sources.py
+      #    cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DENABLE_HLSL=ON -DENABLE_SPVREMAPPER=ON -DENABLE_OPT=ON -DBUILD_EXTERNAL=ON -DENABLE_RTTI=ON -DENABLE_EXCEPTIONS=ON
+      #    cmake --build build --config Release -- -j$(nproc)
+
+      #- name: Compress glslang directory
+      #  run: tar -czvf glslang-full.tar.gz -C glslang .
+
+      #- name: Upload glslang directory archive
+      #  uses: actions/upload-artifact@v2
+      #  with:
+      #    name: glslang-full-archive
+      #    path: glslang-full.tar.gz
+
+      - name: Extract glslang package
+        run: |
+          unzip glslang-linux-x64_x86-release-14.0.0.zip -d ./glslang-package
+
+      - name: Copy glslang headers to /usr/include/
+        run: |
+          sudo cp -r ./glslang-package/glslang-release-14.0.0/include/glslang /usr/include/
+
+      - name: Copy glslang libs to /usr/lib/x86_64-linux-gnu/
+        run: |
+          sudo cp -r ./glslang-package/glslang-release-14.0.0/lib/x86_64-linux-gnu/* /usr/lib/x86_64-linux-gnu/
+
+      - name: Copy pkgconfig files to /usr/lib/x86_64-linux-gnu/pkgconfig
+        run: |
+          sudo cp ./glslang-package/glslang-release-14.0.0/pkgconfig/* /usr/lib/x86_64-linux-gnu/pkgconfig/
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libavcodec-dev libavformat-dev libegl1-mesa-dev libsdl2-dev libxxhash-dev libvulkan-dev liblcms2-dev build-essential libx11-xcb-dev libxkbcommon-dev libwayland-dev libxrandr-dev cmake
+
+      - name: Install xbxc dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libxcb1-dev libxcb-randr0-dev libxcb-keysyms1-dev libxcb-icccm4-dev libxcb-image0-dev libxcb-xkb-dev
+
+      - name: Install Meson and Ninja
+        run: |
+          sudo apt-get install -y python3-pip
+          pip3 install --upgrade meson==1.3.0
+          pip3 install --upgrade ninja==1.11.1
+
+      - name: Build Little-CMS
+        if: env.BUILD_LCMS2 == 'true'
+        working-directory: ./Little-CMS
+        run: |
+          meson setup build --buildtype release --default-library=static
+          meson compile -C build
+          meson install -C build
+
+      - name: Upload Little-CMS
+        if: env.BUILD_LCMS2 == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: lcms2-linux-x64bit
+          path: ${{github.workspace}}/Little-CMS
+
+      - name: Build shaderc
+        if: env.BUILD_SHADERC == 'true'
+        working-directory: ./shaderc
+        run: |
+          ./utils/git-sync-deps
+          mkdir -p build
+          cd build
+          cmake -DSHADERC_SKIP_TESTS=ON -DSHADERC_SKIP_EXAMPLES=ON -DCMAKE_BUILD_TYPE=Release ..
+          cmake --build . --config Release
+
+      - name: Upload shaderc artefacts
+        if: env.BUILD_SHADERC == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: shaderc-artefacts-${{ matrix.arch }}
+          path: ${{github.workspace}}/shaderc
+
+      - name: Build vulkan-loader
+        if: env.BUILD_VULKAN_LOADER == 'true'
+        working-directory: ./vulkan-loader
+        run: |
+          cmake -S . -B build -D UPDATE_DEPS=On
+          cmake --build build --config Release
+
+      - name: Upload vulkan-loader artefacts
+        if: env.BUILD_VULKAN_LOADER == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: vulkan-loader-artefacts-x64
+          path: ${{github.workspace}}/vulkan-loader
+
+      - name: Apply fix_reuse_swapchain patch to libplacebo
+        #if: env.BUILD_LIBPLACEBO == 'true'
+        working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
+        run: |
+          git apply ../fix_reuse_swapchain.patch
+
+      - name: Apply vulkan use 16 bit for p010 to libplacebo
+        #if: env.BUILD_LIBPLACEBO == 'true'
+        working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
+        run: |
+          git apply ../vulkan_use_16bit_for_p010.patch
+
+      - name: Build libplacebo
+        #if: env.BUILD_LIBPLACEBO == 'true'
+        working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
+        run: |
+          meson setup build --buildtype release --default-library=static -Ddemos=false -Dprefix=$PWD/install
+          meson compile -vC build
+          meson install -C build
+
+      - name: Upload libplacebo artefacts
+        #if: env.BUILD_LIBPLACEBO == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: libplacebo-artefacts-x64
+          path: ${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install
+
+      - name: Make gradlew executable
+        run: chmod +x ./gradlew
+
+      - name: Install jq
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq
+
+      - name: Build libplacebo-jni-java compile java
+        run: |
+          ./gradlew clean
+          ./gradlew libplacebo-jni-java:compileJava
+
+      - name: Configure and Build libplacebo-jni with CMake
+        run: |
+          
+          LIBPLACEBO_LIB_PATH=${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/lib/x86_64-linux-gnu/libplacebo.a
+          LIBPLACEBO_HEADERS_DIR=${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install/include
+          
+          cmake -G "Ninja" -B build -S ./libplacebo-jni-native \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DVULKAN_LIB_DIR=${{github.workspace}}/libs/vulkan-loader/linux/x64 \
+            -DLIBPLACEBO_LIB_PATH=${LIBPLACEBO_LIB_PATH} \
+            -DLIBPLACEBO_HEADERS_DIR=${LIBPLACEBO_HEADERS_DIR} \
+            -DCMAKE_RUNTIME_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries \
+            -DCMAKE_LIBRARY_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries \
+            -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY=${{ github.workspace }}/build/nativeBinaries \
+            -DGENERATED_JNI_HEADERS_DIR=${{ github.workspace }}/build/generatedHeaders \
+            -DSHADERC_LIB_DIR=${{github.workspace}}/libs/shaderc/linux/x64/lib \
+            -DSHADERC_HEADERS_DIR=${{github.workspace}}/libs/shaderc/linux/x64/include \
+            -DFFMPEG_DIR=${{github.workspace}}/libs/ffmpeg/linux/x64 \
+            -DLCMS2_DIR=${{github.workspace}}/libs/lcms2/linux/x64 \
+            -DNUKLEAR_DIR=${{github.workspace}}/Nuklear \
+            -DVKMEMALLOC_HEADERS=${{github.workspace}}/libs/vulkan-memory-allocator/include \
+            -DIS_RUNNING_ON_WINDOWS=OFF
+          cmake --build build
+        shell: bash
+
+      - name: Rename DLL file
+        run: mv ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native.so ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native-64.so
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-libplacebo-jni-artifact-64bit
+          path: ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native-64.so

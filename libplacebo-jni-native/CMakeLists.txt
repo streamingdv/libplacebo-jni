@@ -156,10 +156,10 @@ else()
     # Find packages using PkgConfig with static linking preference
     find_package(PkgConfig REQUIRED)
 
-    pkg_check_modules(XCB REQUIRED xcb)
-    include_directories(${XCB_INCLUDE_DIRS})
-    link_directories(${XCB_LIBRARY_DIRS})
-    add_definitions(${XCB_CFLAGS_OTHER})
+    #pkg_check_modules(XCB REQUIRED xcb)
+    #include_directories(${XCB_INCLUDE_DIRS})
+    #link_directories(${XCB_LIBRARY_DIRS})
+    #add_definitions(${XCB_CFLAGS_OTHER})
 
     if(APPLE)
         set(MOLTENVK_LIB "${MOLTENVK_LIB_PATH}" CACHE STRING "MoltenVK static library path")
@@ -204,7 +204,6 @@ else()
 
         target_link_libraries(libplacebo-jni-native PRIVATE
             ${LIBPLACEBO_LIB_PATH}
-            ${JNI_LIBRARIES}
             ${VULKAN_LIBRARIES}
             ${XCB_LIBRARIES}
             "${LCMS2_DIR}/lib/liblcms2.a"

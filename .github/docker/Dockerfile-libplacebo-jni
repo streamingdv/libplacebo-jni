@@ -1,0 +1,108 @@
+FROM debian:10
+
+# Install dependencies
+RUN apt-get update && \
+    apt-get install -y \
+        build-essential \
+        g++ \
+        libstdc++-8-dev \
+        ninja-build \
+        git \
+        unzip \
+        jq \
+        wget \
+        curl \
+        gnupg \
+        software-properties-common \
+        libwayland-dev \
+        libavcodec-dev \
+        libavformat-dev \
+        libegl1-mesa-dev \
+        libsdl2-dev \
+        libxxhash-dev \
+        libvulkan-dev \
+        liblcms2-dev \
+        cmake \
+        python3-pip \
+        libssl-dev \
+        libbz2-dev \
+        libreadline-dev \
+        libsqlite3-dev \
+        libncursesw5-dev \
+        libffi-dev \
+        zlib1g-dev \
+        uuid-dev \
+        liblzma-dev \
+        tk-dev
+
+# Install Zulu JDK 17
+RUN wget -qO - https://repos.azul.com/azul-repo.key | apt-key add - && \
+    echo "deb https://repos.azul.com/zulu/deb stable main" > /etc/apt/sources.list.d/zulu.list && \
+    apt-get update && \
+    apt-get install -y zulu17-jdk && \
+    update-alternatives --install /usr/bin/java java /usr/lib/jvm/zulu17/bin/java 1 && \
+    update-alternatives --set java /usr/lib/jvm/zulu17/bin/java && \
+    update-alternatives --install /usr/bin/javac javac /usr/lib/jvm/zulu17/bin/javac 1 && \
+    update-alternatives --set javac /usr/lib/jvm/zulu17/bin/javac
+
+# Set JAVA_HOME and update PATH
+ENV JAVA_HOME=/usr/lib/jvm/zulu17
+ENV PATH="$JAVA_HOME/bin:$PATH"
+
+# Print Java version
+RUN java -version
+
+# Manually build and install Python 3.9
+ENV PYTHON_VERSION=3.9.18
+RUN cd /usr/src && \
+    wget https://www.python.org/ftp/python/${PYTHON_VERSION}/Python-${PYTHON_VERSION}.tgz && \
+    tar xzf Python-${PYTHON_VERSION}.tgz && \
+    cd Python-${PYTHON_VERSION} && \
+    ./configure --enable-optimizations && \
+    make -j$(nproc) && \
+    make altinstall && \
+    ln -sf /usr/local/bin/python3.9 /usr/bin/python3 && \
+    ln -sf /usr/local/bin/pip3.9 /usr/bin/pip3
+
+# Install meson
+RUN pip3 install --upgrade pip && pip3 install meson==1.3.0
+
+# LLVM + Clang 17
+RUN wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
+    echo "deb http://apt.llvm.org/buster/ llvm-toolchain-buster-17 main" > /etc/apt/sources.list.d/llvm.list && \
+    apt-get update && \
+    apt-get install -y clang-17 lld-17 && \
+    update-alternatives --install /usr/bin/clang clang /usr/bin/clang-17 100 && \
+    update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-17 100
+
+# Force clang to use system libstdc++
+ENV CXX=clang++ \
+    CC=clang \
+    CXXFLAGS="--gcc-toolchain=/usr"
+
+# Build and install xxhash from source
+RUN cd /tmp && \
+    git clone --branch v0.8.3 --depth 1 https://github.com/Cyan4973/xxhash.git && \
+    cd xxhash && \
+    make && make install && \
+    echo "prefix=/usr/local" > xxhash.pc && \
+    echo "exec_prefix=\${prefix}" >> xxhash.pc && \
+    echo "libdir=\${exec_prefix}/lib" >> xxhash.pc && \
+    echo "includedir=\${prefix}/include" >> xxhash.pc && \
+    echo "" >> xxhash.pc && \
+    echo "Name: xxhash" >> xxhash.pc && \
+    echo "Description: Extremely fast non-cryptographic hash algorithm" >> xxhash.pc && \
+    echo "Version: 0.8.3" >> xxhash.pc && \
+    echo "Libs: -L\${libdir} -lxxhash" >> xxhash.pc && \
+    echo "Cflags: -I\${includedir}" >> xxhash.pc && \
+    mv xxhash.pc /usr/lib/pkgconfig/
+
+# Manually install modern CMake
+ARG CMAKE_VERSION=3.25.2
+RUN wget https://github.com/Kitware/CMake/releases/download/v${CMAKE_VERSION}/cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz && \
+    tar -xzf cmake-${CMAKE_VERSION}-linux-x86_64.tar.gz && \
+    cp cmake-${CMAKE_VERSION}-linux-x86_64/bin/cmake /usr/local/bin/ && \
+    cp -r cmake-${CMAKE_VERSION}-linux-x86_64/share/* /usr/local/share/ && \
+    rm -rf cmake-${CMAKE_VERSION}-linux-x86_64*
+
+WORKDIR /workspace

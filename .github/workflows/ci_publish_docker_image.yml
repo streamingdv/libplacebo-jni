@@ -1,0 +1,32 @@
+name: Publish libplacebo-jni Docker Image
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/docker/Dockerfile-libplacebo-jni'
+
+jobs:
+  push-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Docker image to GHCR
+        run: |
+          docker build -t ghcr.io/streamingdv/libplacebo-jni-debian10:latest \
+                       -f .github/docker/Dockerfile-libplacebo-jni .
+          docker push ghcr.io/streamingdv/libplacebo-jni-debian10:latest

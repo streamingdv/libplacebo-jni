@@ -15,8 +15,10 @@
 
 #ifdef _WIN32
     #include <windows.h>
+#elif defined(__APPLE__)
+  // Nothing for now
 #else
-    #include <xcb/xcb.h>
+  #include <xcb/xcb.h>
 #endif
 
 #include <libplacebo/options.h>
