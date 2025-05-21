@@ -1440,6 +1440,7 @@ struct ui *ui_create(pl_gpu gpu)
                     &ui->convert_cfg.tex_null);
   nk_font_atlas_cleanup(&ui->atlas);
 
+  LogCallbackFunction(nullptr, PL_LOG_ERR, "NK: Debug font 1!");
   if (!ui->font_tex)
       LogCallbackFunction(nullptr, PL_LOG_ERR, "NK: failed to init font!");
       goto error;
@@ -1449,6 +1450,7 @@ struct ui *ui_create(pl_gpu gpu)
       LogCallbackFunction(nullptr, PL_LOG_ERR, "NK: failed initializing UI!");
       goto error;
   }
+    LogCallbackFunction(nullptr, PL_LOG_ERR, "NK: Debug font 2!");
 
   nk_buffer_init_default(&ui->cmds);
   nk_buffer_init_default(&ui->verts);
