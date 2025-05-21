@@ -1441,6 +1441,7 @@ struct ui *ui_create(pl_gpu gpu)
   nk_font_atlas_cleanup(&ui->atlas);
 
   if (!ui->font_tex)
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "NK: failed to init font!");
       goto error;
 
   // Initialize nuklear state
