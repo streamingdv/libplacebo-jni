@@ -416,9 +416,10 @@ public class PlaceboManager {
      * Creates and inits the nuklear ui stuff
      *
      * @param vk the vulkan device handle
+     * @param locale the locale of how the font glyphs which should be used for the UI
      * @return the ui handle
      */
-    public native long nkCreateUI(long vk);
+    public native long nkCreateUI(long vk, String locale);
 
 
     /**

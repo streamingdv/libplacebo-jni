@@ -77,6 +77,31 @@ JNIEnv *globalEnv;
 jobject globalCallback;
 jmethodID onLogMethod;
 
+const nk_rune* pick_glyph_range(const char* locale) {
+    if (!locale) return glyph_range_latin;
+
+    // Specific variants
+    if (strncmp(locale, "zh-CN", 5) == 0 || strncmp(locale, "zh_Hans", 7) == 0)
+        return glyph_range_chinese; // Simplified
+    else if (strncmp(locale, "zh-TW", 5) == 0 || strncmp(locale, "zh_Hant", 7) == 0)
+        return glyph_range_chinese; // Traditional
+
+    // General language codes
+    if (strncmp(locale, "ru", 2) == 0)
+        return glyph_range_cyrillic;
+    else if (strncmp(locale, "hi", 2) == 0)
+        return glyph_range_hindi;
+    else if (strncmp(locale, "ja", 2) == 0)
+        return glyph_range_japanese;
+    else if (strncmp(locale, "ko", 2) == 0)
+        return glyph_range_korean;
+    else if (strncmp(locale, "zh", 2) == 0)
+        return glyph_range_chinese;
+
+    // Default to Latin (en, de, fr, it, pt, etc.)
+    return glyph_range_latin;
+}
+
 void LogCallbackFunction(void *log_priv, enum pl_log_level level, const char *msg) {
   if (globalEnv != nullptr && globalCallback != nullptr) {
       jstring message = globalEnv->NewStringUTF(msg);
@@ -1359,7 +1384,7 @@ void ui_destroy(struct ui *ui)
   delete ui;
 }
 
-struct ui *ui_create(pl_gpu gpu)
+struct ui *ui_create(pl_gpu gpu, const char* locale)
 {
   struct ui *ui = new struct ui;
   if (!ui)
@@ -1406,19 +1431,7 @@ struct ui *ui_create(pl_gpu gpu)
   nk_font_atlas_init_default(&ui->atlas);
   nk_font_atlas_begin(&ui->atlas);
   struct nk_font_config fontConfig = nk_font_config(0);
-  static const nk_rune glyph_ranges_all[] = {
-      0x0020, 0x00FF,     // Latin
-      /*0x0400, 0x04FF,     // Cyrillic
-      0x0900, 0x097F,     // Devanagari
-      0x3000, 0x303F,     // CJK Symbols and Punctuation
-      0x3040, 0x309F,     // Hiragana
-      0x30A0, 0x30FF,     // Katakana
-      0x4E00, 0x9FFF,     // CJK Unified
-      0xAC00, 0xD7AF,     // Hangul
-      0x1100, 0x11FF,     // Hangul Jamo*/
-      0
-  };
-  fontConfig.range = glyph_ranges_all;
+  fontConfig.range = pick_glyph_range(locale);
   fontConfig.oversample_h = 1; fontConfig.oversample_v = 1;
   fontConfig.pixel_snap = true;
   ui->default_font = nk_font_atlas_add_from_memory(&ui->atlas, NotoSans_Regular_ttf, NotoSans_Regular_ttf_len, 26, &fontConfig);
@@ -1440,19 +1453,16 @@ struct ui *ui_create(pl_gpu gpu)
                     &ui->convert_cfg.tex_null);
   nk_font_atlas_cleanup(&ui->atlas);
 
-  LogCallbackFunction(nullptr, PL_LOG_ERR, "NK: Debug font 0!");
   if (!ui->font_tex) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "NK: failed to init font!");
       goto error;
   }
-  LogCallbackFunction(nullptr, PL_LOG_ERR, "NK: Debug font 1!");
 
   // Initialize nuklear state
   if (!nk_init_default(&ui->nk, &ui->default_font->handle)) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "NK: failed initializing UI!");
       goto error;
   }
-  LogCallbackFunction(nullptr, PL_LOG_ERR, "NK: Debug font 3!");
 
   nk_buffer_init_default(&ui->cmds);
   nk_buffer_init_default(&ui->verts);
@@ -1893,9 +1903,10 @@ void render_ui(struct ui *ui, int width, int height) {
 
 extern "C"
 JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_nkCreateUI
-  (JNIEnv *env, jobject obj, jlong placebo_vulkan) {
+  (JNIEnv *env, jobject obj, jlong placebo_vulkan, jstring jlocale) {
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
-  struct ui *ui_instance = ui_create(vulkan->gpu);
+  const char* locale = env->GetStringUTFChars(jlocale, nullptr);
+  struct ui *ui_instance = ui_create(vulkan->gpu, locale);
   if (ui_instance == NULL) {
       return 0L;
   }

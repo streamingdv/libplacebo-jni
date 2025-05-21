@@ -1,3 +1,12 @@
+// glyphs
+static const nk_rune glyph_range_latin[]     = { 0x0020, 0x00FF, 0 };
+static const nk_rune glyph_range_cyrillic[]  = { 0x0020, 0x00FF, 0x0400, 0x04FF, 0 };
+static const nk_rune glyph_range_hindi[]     = { 0x0020, 0x00FF, 0x0900, 0x097F, 0 };
+static const nk_rune glyph_range_japanese[]  = { 0x0020, 0x00FF, 0x3000, 0x303F, 0x3040, 0x309F, 0x30A0, 0x30FF, 0 };
+static const nk_rune glyph_range_korean[]    = { 0x0020, 0x00FF, 0x3000, 0x303F, 0xAC00, 0xD7AF, 0x1100, 0x11FF, 0 };
+static const nk_rune glyph_range_chinese[]   = { 0x0020, 0x00FF, 0x3000, 0x303F, 0x4E00, 0x9FFF, 0 };
+
+
 // sizes
 const float buttonSize = 48;
 const float menuButtonHeight = buttonSize - 10;
