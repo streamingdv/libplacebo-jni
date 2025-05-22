@@ -81,7 +81,9 @@ const nk_rune* pick_glyph_range(const char* locale) {
     if (!locale) return glyph_range_latin;
 
     // Specific variants
-    if (strncmp(locale, "zh-CN", 5) == 0 || strncmp(locale, "zh_Hans", 7) == 0)
+    if (strncmp(locale, "zh-FALL", 7) == 0)
+        return glyph_range_chinese_fallback; // Simplified
+    else if (strncmp(locale, "zh-CN", 5) == 0 || strncmp(locale, "zh_Hans", 7) == 0)
         return glyph_range_chinese; // Simplified
     else if (strncmp(locale, "zh-TW", 5) == 0 || strncmp(locale, "zh_Hant", 7) == 0)
         return glyph_range_chinese; // Traditional
