@@ -107,6 +107,7 @@ include_directories(${VKMEMALLOC_HEADERS})
 include_directories(src)
 set(SOURCES
     src/libav_impl.c
+    src/stb_image_write_impl.cpp
     src/placebo_jni.cpp
 )
 

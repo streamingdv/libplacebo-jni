@@ -30,9 +30,9 @@ jobs:
 
     steps:
       - name: Checkout libplacebo-jni repository
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
-          submodules: 'recursive'
+          submodules: recursive
 
       - name: Checkout Nuklear library
         uses: actions/checkout@v2
@@ -154,6 +154,12 @@ jobs:
         working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
         run: |
           git apply ../vulkan_use_16bit_for_p010.patch
+
+      - name: Apply python patch to libplacebo
+        #if: env.BUILD_LIBPLACEBO == 'true'
+        working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
+        run: |
+          git apply ../python_fix.patch
 
       - name: Build libplacebo
         #if: ${{ github.event.inputs.build_libplacebo == 'true' }}

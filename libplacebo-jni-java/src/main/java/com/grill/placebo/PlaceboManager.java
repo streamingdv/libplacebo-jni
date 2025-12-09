@@ -445,6 +445,14 @@ public class PlaceboManager {
      */
     public native void nkDestroyUI(long ui);
 
+    /**
+     * Requests a screenshot upon the next rendering
+     * @param directory the directory
+     * @param fileName the file name
+     * @return true if successful false otherwise
+     */
+    public static native boolean plRequestSaveCurrentFrame(String directory, String fileName);
+
     /************************/
     /*** load lib methods ***/
     /************************/

@@ -11,6 +11,8 @@
 #include <set>
 #include <cstring>
 #include <string.h>
+#include <errno.h>
+#include <cmath>
 #include <jni.h>
 
 #ifdef _WIN32
@@ -71,6 +73,13 @@
 
 pl_color_space m_LastColorspace = {};
 
+/*** Screenshot state (Vulkan/libplacebo) ***/
+
+static bool g_pending_screenshot = false;
+static std::string g_screenshot_dir;
+static std::string g_screenshot_name;
+
+
 /*** define helper functions ***/
 
 JNIEnv *globalEnv;
@@ -106,6 +115,38 @@ const nk_rune* pick_glyph_range(const char* locale) {
     return glyph_range_latin;
 }
 
+#include <sys/stat.h>
+#ifdef _WIN32
+  #include <direct.h>
+#endif
+
+static bool ensure_directory_exists(const std::string &path) {
+#ifdef _WIN32
+    // Simple version: _mkdir only makes one level; you already have recursive util elsewhere if needed.
+    if (_mkdir(path.c_str()) == 0 || errno == EEXIST) {
+        return true;
+    }
+    return false;
+#else
+    // Same here: one level. If you want recursive, reuse your fileutil.h later.
+    if (mkdir(path.c_str(), 0755) == 0 || errno == EEXIST) {
+        return true;
+    }
+    return false;
+#endif
+}
+
+static std::string join_path(const std::string &dir, const std::string &file) {
+#if defined(_WIN32)
+    const char sep = '\\';
+#else
+    const char sep = '/';
+#endif
+    if (dir.empty()) return file;
+    if (dir.back() == '/' || dir.back() == '\\') return dir + file;
+    return dir + sep + file;
+}
+
 void LogCallbackFunction(void *log_priv, enum pl_log_level level, const char *msg) {
   if (globalEnv != nullptr && globalCallback != nullptr) {
       jstring message = globalEnv->NewStringUTF(msg);
@@ -114,6 +155,137 @@ void LogCallbackFunction(void *log_priv, enum pl_log_level level, const char *ms
   } else {
       std::cout << "Log Level " << level << ": " << msg << std::endl;
   }
+}
+
+#include "stb_image_write.h"
+
+static bool save_pl_frame_to_file(pl_vulkan vulkan,
+                                  pl_renderer renderer,
+                                  const pl_frame *src,
+                                  const std::string &directory,
+                                  const std::string &fileName)
+{
+    if (!src) return false;
+
+    int src_w = (int)(src->crop.x1 - src->crop.x0);
+    int src_h = (int)(src->crop.y1 - src->crop.y0);
+
+    if (src_w <= 0 || src_h <= 0) {
+        return false;
+    }
+
+    const int targetMaxHeight = 350;
+    float scale = (src_h > targetMaxHeight)
+                    ? (float) targetMaxHeight / (float) src_h
+                    : 1.0f;
+
+    int out_h = (int) std::round(src_h * scale);
+    int out_w = (int) std::round(src_w * scale);
+    if (out_h <= 0) out_h = 1;
+    if (out_w <= 0) out_w = 1;
+
+    if (!ensure_directory_exists(directory)) {
+        LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to create screenshot directory");
+        return false;
+    }
+
+    std::string fullPath = join_path(directory, fileName);
+
+    pl_fmt out_fmt = pl_find_named_fmt(vulkan->gpu, "rgba8");
+    if (!out_fmt) {
+        LogCallbackFunction(nullptr, PL_LOG_ERR, "No suitable RGBA8 format for screenshot");
+        return false;
+    }
+
+    pl_tex_params tparams = {};
+    tparams.w             = out_w;
+    tparams.h             = out_h;
+    tparams.format        = out_fmt;
+    tparams.sampleable    = true;
+    tparams.renderable    = true;
+    tparams.host_readable = true;
+
+    pl_tex offscreen_tex = pl_tex_create(vulkan->gpu, &tparams);
+    if (!offscreen_tex) {
+        LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to create offscreen texture");
+        return false;
+    }
+
+    pl_frame target = {};
+    target.num_planes                    = 1;
+    target.planes[0].texture             = offscreen_tex;
+    target.planes[0].components          = 4;
+    target.planes[0].component_mapping[0] = PL_CHANNEL_R;
+    target.planes[0].component_mapping[1] = PL_CHANNEL_G;
+    target.planes[0].component_mapping[2] = PL_CHANNEL_B;
+    target.planes[0].component_mapping[3] = PL_CHANNEL_A;
+    target.planes[0].address_mode        = PL_TEX_ADDRESS_CLAMP;
+    target.planes[0].flipped             = false;
+    target.planes[0].shift_x             = 0.0f;
+    target.planes[0].shift_y             = 0.0f;
+
+    target.color = pl_color_space_srgb;
+
+    // Start from the built-in RGB representation preset.
+    target.repr = pl_color_repr_rgb;
+    target.repr.levels = PL_COLOR_LEVELS_FULL;
+    target.repr.alpha  = PL_ALPHA_INDEPENDENT;
+
+    target.crop.x0 = 0.0f;
+    target.crop.y0 = 0.0f;
+    target.crop.x1 = (float) out_w;
+    target.crop.y1 = (float) out_h;
+
+    pl_render_params params = pl_render_high_quality_params;
+
+    if (!pl_render_image(renderer, src, &target, &params)) {
+        LogCallbackFunction(nullptr, PL_LOG_ERR, "pl_render_image failed for screenshot");
+        pl_tex_destroy(vulkan->gpu, &offscreen_tex);
+        return false;
+    }
+
+    std::vector<uint8_t> pixels((size_t) out_w * (size_t) out_h * 4);
+
+    pl_tex_transfer_params xfer = {};
+    xfer.tex = offscreen_tex;
+    xfer.ptr = pixels.data();
+
+    if (!pl_tex_download(vulkan->gpu, &xfer)) {
+        LogCallbackFunction(nullptr, PL_LOG_ERR, "pl_tex_download failed");
+        pl_tex_destroy(vulkan->gpu, &offscreen_tex);
+        return false;
+    }
+
+    pl_tex_destroy(vulkan->gpu, &offscreen_tex);
+
+    bool ok = false;
+    std::string ext;
+    auto dotPos = fullPath.find_last_of('.');
+    if (dotPos != std::string::npos)
+        ext = fullPath.substr(dotPos + 1);
+
+    std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+
+    if (ext == "png") {
+        ok = (stbi_write_png(fullPath.c_str(),
+                             out_w, out_h, 4,
+                             pixels.data(),
+                             out_w * 4) != 0);
+    } else {
+        ok = (stbi_write_jpg(fullPath.c_str(),
+                             out_w, out_h, 4,
+                             pixels.data(),
+                             90) != 0);
+    }
+
+    if (!ok) {
+        LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to write screenshot image file");
+    } else {
+        LogCallbackFunction(nullptr, PL_LOG_INFO,
+                            ("Saved screenshot to: " + fullPath).c_str());
+    }
+
+    return ok;
 }
 
 struct nk_image globalBtnImage;
@@ -1112,6 +1284,19 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to render Placebo frame!");
       goto cleanup;
   }
+  // Screenshot request
+  if (g_pending_screenshot) {
+      g_pending_screenshot = false;
+      std::string dir  = g_screenshot_dir;
+      std::string name = g_screenshot_name;
+      g_screenshot_dir.clear();
+      g_screenshot_name.clear();
+
+      bool ok = save_pl_frame_to_file(vulkan, placebo_renderer, &placebo_frame, dir, name);
+      if (!ok) {
+          LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to save screenshot from plRenderAvFrame");
+      }
+  }
   if (!pl_swapchain_submit_frame(placebo_swapchain)) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to submit Placebo frame!");
       goto cleanup;
@@ -1197,6 +1382,19 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   if (!pl_render_image(placebo_renderer, &placebo_frame, &target_frame, &render_params)) {
       LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to render Placebo frame!");
       goto cleanup;
+  }
+  // Screenshot request
+  if (g_pending_screenshot) {
+      g_pending_screenshot = false;
+      std::string dir  = g_screenshot_dir;
+      std::string name = g_screenshot_name;
+      g_screenshot_dir.clear();
+      g_screenshot_name.clear();
+
+      bool ok = save_pl_frame_to_file(vulkan, placebo_renderer, &placebo_frame, dir, name);
+      if (!ok) {
+          LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to save screenshot from plRenderAvFrame");
+      }
   }
   if (ui != 0) {
      struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
@@ -1322,6 +1520,50 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plTextDestroy
       if (placebo_tex_global[i])
           pl_tex_destroy(vulkan->gpu, &placebo_tex_global[i]);
   }
+}
+
+extern "C"
+JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRequestSaveCurrentFrame
+  (JNIEnv *env, jclass clazz, jstring jDirectory, jstring jFileName) {
+
+    if (!jDirectory || !jFileName) {
+        return JNI_FALSE;
+    }
+
+    const char *dirChars  = env->GetStringUTFChars(jDirectory, nullptr);
+    const char *nameChars = env->GetStringUTFChars(jFileName, nullptr);
+
+    std::string dir  = dirChars  ? dirChars  : "";
+    std::string name = nameChars ? nameChars : "";
+
+    if (dirChars)  env->ReleaseStringUTFChars(jDirectory, dirChars);
+    if (nameChars) env->ReleaseStringUTFChars(jFileName, nameChars);
+
+    if (dir.empty() || name.empty()) {
+        g_pending_screenshot = false;
+        g_screenshot_dir.clear();
+        g_screenshot_name.clear();
+        return JNI_FALSE;
+    }
+
+    // Normalise extension a bit like on Metal side (force .jpg if no ext)
+    {
+        auto pos = name.find_last_of('.');
+        std::string ext;
+        if (pos != std::string::npos) {
+            ext = name.substr(pos + 1);
+            std::transform(ext.begin(), ext.end(), ext.begin(), ::tolower);
+        }
+        if (ext != "jpg" && ext != "jpeg" && ext != "png") {
+            name += ".jpg"; // default to jpg
+        }
+    }
+
+    g_pending_screenshot = true;
+    g_screenshot_dir  = std::move(dir);
+    g_screenshot_name = std::move(name);
+
+    return JNI_TRUE;
 }
 
 /**** create UI methods ****/

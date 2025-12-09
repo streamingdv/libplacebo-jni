@@ -1,0 +1,49 @@
+diff --git a/3rdparty/Vulkan-Headers b/3rdparty/Vulkan-Headers
+index d732b2de..cbcad3c0 160000
+--- a/3rdparty/Vulkan-Headers
++++ b/3rdparty/Vulkan-Headers
+@@ -1 +1 @@
+-Subproject commit d732b2de303ce505169011d438178191136bfb00
++Subproject commit cbcad3c0587dddc768d76641ea00f5c45ab5a278
+diff --git a/3rdparty/fast_float b/3rdparty/fast_float
+index 2b2395f9..e800cabe 160000
+--- a/3rdparty/fast_float
++++ b/3rdparty/fast_float
+@@ -1 +1 @@
+-Subproject commit 2b2395f9ac836ffca6404424bcc252bff7aa80e4
++Subproject commit e800cabe48831775b401816cf1f72fdc432f40ae
+diff --git a/3rdparty/jinja b/3rdparty/jinja
+index b08cd4bc..ada0a9a6 160000
+--- a/3rdparty/jinja
++++ b/3rdparty/jinja
+@@ -1 +1 @@
+-Subproject commit b08cd4bc64bb980df86ed2876978ae5735572280
++Subproject commit ada0a9a6fc265128b46949b5144d2eaa55e6df2c
+diff --git a/3rdparty/markupsafe b/3rdparty/markupsafe
+index c0254f0c..620c06c9 160000
+--- a/3rdparty/markupsafe
++++ b/3rdparty/markupsafe
+@@ -1 +1 @@
+-Subproject commit c0254f0cfe51720ecc9e72e8896022af29af5b44
++Subproject commit 620c06c919c1bd7bb1ce3dbee402e1c0c56e7ac3
+diff --git a/demos/3rdparty/nuklear b/demos/3rdparty/nuklear
+index c512ac88..a315d25b 160000
+--- a/demos/3rdparty/nuklear
++++ b/demos/3rdparty/nuklear
+@@ -1 +1 @@
+-Subproject commit c512ac886425f6b6b6c816d67f4cb1385cd4cc53
++Subproject commit a315d25b4c33efa0e112cab9562460e785935a10
+diff --git a/src/vulkan/utils_gen.py b/src/vulkan/utils_gen.py
+index a8652fdf..dd6a06ff 100644
+--- a/src/vulkan/utils_gen.py
++++ b/src/vulkan/utils_gen.py
+@@ -202,7 +202,8 @@ if __name__ == '__main__':
+     if not xmlfile or xmlfile == '':
+         xmlfile = find_registry_xml(datadir)
+ 
+-    registry = VkXML(ET.parse(xmlfile))
++    tree = ET.parse(xmlfile)
++    registry = VkXML(tree.getroot())
+     with open(outfile, 'w') as f:
+         f.write(TEMPLATE.render(
+             vkresults = get_vkenum(registry, 'VkResult'),
