@@ -109,7 +109,7 @@ set(SOURCES
     src/libav_impl.c
     src/stb_image_write_impl.cpp
     src/placebo_jni.cpp
-    src/ffmpeg_d3d11va_frames_jni.cpp
+    src/d3d11va_native_jni.cpp
 )
 
 # Add shared library target
