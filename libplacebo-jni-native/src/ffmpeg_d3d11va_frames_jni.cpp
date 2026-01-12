@@ -14,7 +14,7 @@ extern "C" {
 static inline jint Throw0() { return 0; }
 
 extern "C" JNIEXPORT jlong JNICALL
-Java_com_grill_psplay_util_FFmpegD3D11VAFrames_nativeCreateD3D11VAFramesCtx(
+Java_com_grill_placebo_FFmpegD3D11VAFrames_nativeCreateD3D11VAFramesCtx(
         JNIEnv* env, jclass,
         jlong hwDeviceCtxPtr,
         jint swFormat,
@@ -70,7 +70,7 @@ Java_com_grill_psplay_util_FFmpegD3D11VAFrames_nativeCreateD3D11VAFramesCtx(
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_grill_psplay_util_FFmpegD3D11VAFrames_nativeUnrefBuffer(
+Java_com_grill_placebo_FFmpegD3D11VAFrames_nativeUnrefBuffer(
         JNIEnv* env, jclass, jlong avBufferRefPtr)
 {
     (void)env;
@@ -82,14 +82,14 @@ Java_com_grill_psplay_util_FFmpegD3D11VAFrames_nativeUnrefBuffer(
 #else  // !Windows
 
 extern "C" JNIEXPORT jlong JNICALL
-Java_com_grill_psplay_util_FFmpegD3D11VAFrames_nativeCreateD3D11VAFramesCtx(
+Java_com_grill_placebo_FFmpegD3D11VAFrames_nativeCreateD3D11VAFramesCtx(
         JNIEnv*, jclass, jlong, jint, jint, jint, jint, jboolean)
 {
     return 0; // no-op on non-Windows
 }
 
 extern "C" JNIEXPORT void JNICALL
-Java_com_grill_psplay_util_FFmpegD3D11VAFrames_nativeUnrefBuffer(
+Java_com_grill_placebo_FFmpegD3D11VAFrames_nativeUnrefBuffer(
         JNIEnv*, jclass, jlong)
 {
     // no-op
