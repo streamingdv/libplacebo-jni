@@ -172,6 +172,12 @@ jobs:
           git apply ../vulkan_use_16bit_for_p010.patch
         shell: msys2 {0}
 
+      - name: Apply python patch to libplacebo
+        #if: env.BUILD_LIBPLACEBO == 'true'
+        working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
+        run: |
+          git apply ../python_fix.patch
+
       - name: Build libplacebo
         #if: env.BUILD_LIBPLACEBO == 'true'
         working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
