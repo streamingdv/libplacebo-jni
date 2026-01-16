@@ -40,8 +40,14 @@ JNI_METHOD(nativeFillD3D11VADeviceContext)(
 
     auto* d3d11 = reinterpret_cast<AVD3D11VADeviceContext*>(base->hwctx);
 
-    d3d11->device         = reinterpret_cast<ID3D11Device*>((uintptr_t)d3dDevicePtr);
-    d3d11->device_context = reinterpret_cast<ID3D11DeviceContext*>((uintptr_t)immCtxPtr);
+    auto* dev = reinterpret_cast<ID3D11Device*>((uintptr_t)d3dDevicePtr);
+    auto* imm = reinterpret_cast<ID3D11DeviceContext*>((uintptr_t)immCtxPtr);
+
+    dev->AddRef();
+    imm->AddRef();
+
+    d3d11->device         = dev;
+    d3d11->device_context = imm;
 
     d3d11->video_device   = nullptr;
     d3d11->video_context  = nullptr;
