@@ -24,10 +24,11 @@ JNI_METHOD(nativeFillD3D11VADeviceContext)(
         jlong d3dDevicePtr,
         jlong immCtxPtr,
         jlong lockFnPtr,
-        jlong unlockFnPtr) {
+        jlong unlockFnPtr,
+        jboolean useVideoDeviceAndContext) {
 
 #if !defined(_WIN32)
-    (void)env; (void)hwdevBufRefPtr; (void)lockCtxPtr; (void)d3dDevicePtr; (void)immCtxPtr; (void)lockFnPtr; (void)unlockFnPtr;
+    (void)env; (void)hwdevBufRefPtr; (void)lockCtxPtr; (void)d3dDevicePtr; (void)immCtxPtr; (void)lockFnPtr; (void)unlockFnPtr; (void)useVideoDeviceAndContext;
     return -100; // not supported
 #else
     if (hwdevBufRefPtr == 0 || d3dDevicePtr == 0 || immCtxPtr == 0) return -1;
@@ -46,8 +47,19 @@ JNI_METHOD(nativeFillD3D11VADeviceContext)(
     d3d11->device         = dev;
     d3d11->device_context = imm;
 
-    d3d11->video_device   = nullptr;
-    d3d11->video_context  = nullptr;
+    if(useVideoDeviceAndContext) {
+       ID3D11VideoDevice* vdev = nullptr;
+       HRESULT hr = dev->QueryInterface(__uuidof(ID3D11VideoDevice), (void**)&vdev);
+       d3d11->video_device = SUCCEEDED(hr) ? vdev : nullptr;
+
+       ID3D11VideoContext* vctx = nullptr;
+       hr = imm->QueryInterface(__uuidof(ID3D11VideoContext), (void**)&vctx);
+       d3d11->video_context = SUCCEEDED(hr) ? vctx : nullptr;
+    } else {
+       d3d11->video_device   = nullptr;
+       d3d11->video_context  = nullptr;
+    }
+
 
     // Lock/unlock: types are defined by FFmpeg headers.
     d3d11->lock   = reinterpret_cast<decltype(d3d11->lock)>((uintptr_t)lockFnPtr);
