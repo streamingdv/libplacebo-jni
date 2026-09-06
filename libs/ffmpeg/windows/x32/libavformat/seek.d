@@ -1,11 +1,11 @@
 libavformat/seek.o: libavformat/seek.c libavutil/avassert.h config.h \
- libavutil/log.h libavutil/attributes.h libavutil/version.h \
+ libavutil/attributes.h libavutil/log.h libavutil/version.h \
  libavutil/macros.h libavutil/avconfig.h libavutil/mathematics.h \
- libavutil/rational.h libavutil/intfloat.h libavutil/timestamp.h \
- libavutil/avutil.h libavutil/common.h libavutil/error.h \
- libavutil/intmath.h libavutil/x86/intmath.h libavutil/mem.h \
- libavutil/internal.h libavutil/pixfmt.h libavutil/libm.h \
- libavutil/mathematics.h libavcodec/avcodec.h libavutil/samplefmt.h \
+ libavutil/rational.h libavutil/intfloat.h libavutil/mem.h \
+ libavutil/timestamp.h libavutil/avutil.h libavutil/common.h \
+ libavutil/error.h libavutil/intmath.h libavutil/x86/intmath.h \
+ libavutil/internal.h libavutil/libm.h libavutil/mathematics.h \
+ libavutil/pixfmt.h libavcodec/avcodec.h libavutil/samplefmt.h \
  libavutil/attributes.h libavutil/avutil.h libavutil/buffer.h \
  libavutil/channel_layout.h libavutil/dict.h libavutil/frame.h \
  libavutil/buffer.h libavutil/channel_layout.h libavutil/dict.h \
@@ -16,5 +16,6 @@ libavformat/seek.o: libavformat/seek.c libavutil/avassert.h config.h \
  libavcodec/packet.h libavutil/version.h libavformat/avformat.h \
  libavcodec/codec_par.h libavcodec/defs.h libavcodec/packet.h \
  libavformat/avio.h libavformat/version_major.h \
- libavformat/avio_internal.h libavformat/demux.h libavformat/internal.h \
- libavcodec/packet_internal.h
+ libavformat/avformat_internal.h libavformat/internal.h \
+ libavcodec/packet_internal.h libavformat/avio_internal.h \
+ libavformat/demux.h

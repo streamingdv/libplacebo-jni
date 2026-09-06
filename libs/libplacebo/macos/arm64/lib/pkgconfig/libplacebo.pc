@@ -1,4 +1,4 @@
-prefix=/Users/runner/work/libplacebo-build/libplacebo-build/libplacebo/install
+prefix=${pcfiledir}/../..
 includedir=${prefix}/include
 libdir=${prefix}/lib
 
@@ -12,11 +12,11 @@ pl_has_opengl=1
 pl_has_shaderc=1
 pl_has_vk_proc_addr=1
 pl_has_vulkan=1
-pl_has_xxhash=0
+pl_has_xxhash=1
 
 Name: libplacebo
 Description: Reusable library for GPU-accelerated video/image rendering
-Version: 6.338.1
+Version: 7.371.0
 Requires: shaderc >= 2019.1, vulkan, lcms2 >= 2.9
 Libs: -L${libdir} -lplacebo -lm -ldl
 Cflags: -I${includedir} -DPL_HAVE_PTHREAD  -DPL_STATIC

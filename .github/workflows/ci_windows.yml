@@ -41,6 +41,7 @@ jobs:
               mingw-w64-ucrt-x86_64-spirv-tools
               mingw-w64-ucrt-x86_64-spirv-cross
               mingw-w64-ucrt-x86_64-glslang
+              mingw-w64-ucrt-x86_64-lcms2
           - sys: MINGW32
             env: i686
             arch: 32bit
@@ -49,13 +50,15 @@ jobs:
             extra_packages: ""
 
     steps:
-      - name: Checkout libplacebo-jni repository
-        uses: actions/checkout@v2
+      - name: Checkout repository
+        uses: actions/checkout@v4
         with:
-          submodules: 'recursive'
+          submodules: recursive
+          fetch-depth: 0
+
 
       - name: Checkout Nuklear library
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: 'Immediate-Mode-UI/Nuklear'
           path: 'Nuklear'
@@ -63,7 +66,7 @@ jobs:
 
       - name: Checkout shaderc repository
         if: env.BUILD_SHADERC == 'true'
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: 'google/shaderc'
           path: 'shaderc'
@@ -71,14 +74,14 @@ jobs:
 
       - name: Checkout vulkan-loader repository
         if: env.BUILD_VULKAN_LOADER == 'true'
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: 'KhronosGroup/Vulkan-Loader'
           path: 'vulkan-loader'
 
       - name: Checkout Little-CMS repository
         if: env.BUILD_LCMS2 == 'true'
-        uses: actions/checkout@v2
+        uses: actions/checkout@v4
         with:
           repository: 'mm2/Little-CMS'
           path: 'Little-CMS'
@@ -94,19 +97,34 @@ jobs:
             unzip
             xxhash
             libxxhash
-            mingw-w64-${{ matrix.env }}-jq
             mingw-w64-${{ matrix.env }}-gcc
             mingw-w64-${{ matrix.env }}-pkg-config
-            mingw-w64-${{ matrix.env }}-vapoursynth
             mingw-w64-${{ matrix.env }}-meson
             mingw-w64-${{ matrix.env }}-ninja
             mingw-w64-${{ matrix.env }}-vulkan
             mingw-w64-${{ matrix.env }}-vulkan-headers
             mingw-w64-${{ matrix.env }}-vulkan-loader
-            mingw-w64-${{ matrix.env }}-lcms2
             mingw-w64-${{ matrix.env }}-cmake
             mingw-w64-${{ matrix.env }}-python
+            mingw-w64-${{ matrix.env }}-zlib
             ${{ matrix.extra_packages }}
+
+      # MSYS2 dropped i686 from the mingw32 pacman database, but the package
+      # files are still hosted in the repo directory, so install them by URL.
+      - name: Install delisted MINGW32 packages
+        if: matrix.sys == 'MINGW32'
+        shell: msys2 {0}
+        run: |
+          pacman -U --noconfirm --needed \
+            https://repo.msys2.org/mingw/i686/mingw-w64-i686-lcms2-2.19.1-1-any.pkg.tar.zst
+          pkg-config --modversion lcms2
+
+      - name: Init libplacebo submodules (glad, etc.)
+        working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
+        run: |
+          git submodule update --init --recursive
+          rm -rf build
+        shell: msys2 {0}
 
 
       - name: Build Little-CMS
@@ -158,25 +176,9 @@ jobs:
           name: vulkan-loader-artefacts-${{ matrix.arch }}
           path: ${{github.workspace}}/vulkan-loader
 
-      - name: Apply fix_reuse_swapchain patch to libplacebo
-        #if: env.BUILD_LIBPLACEBO == 'true'
+      - name: Apply no internally synchronized queues patch to libplacebo
         working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
-        run: |
-          git apply ../fix_reuse_swapchain.patch
-        shell: msys2 {0}
-
-      - name: Apply vulkan use 16 bit for p010 to libplacebo
-        #if: env.BUILD_LIBPLACEBO == 'true'
-        working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
-        run: |
-          git apply ../vulkan_use_16bit_for_p010.patch
-        shell: msys2 {0}
-
-      - name: Apply python patch to libplacebo
-        #if: env.BUILD_LIBPLACEBO == 'true'
-        working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
-        run: |
-          git apply ../python_fix.patch
+        run: git apply ../no_internally_synchronized_queues.patch
 
       - name: Build libplacebo
         #if: env.BUILD_LIBPLACEBO == 'true'
@@ -194,11 +196,11 @@ jobs:
           name: libplacebo-artefacts-${{ matrix.arch }}
           path: ${{github.workspace}}/libplacebo-jni-native/3rdparty/libplacebo/install
 
-      - name: Set up JDK 21
+      - name: Set up JDK 25
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '21'
+          java-version: '25'
 
       - name: Build libplacebo-jni-java compile java
         run: |
@@ -234,6 +236,48 @@ jobs:
 
       - name: Rename DLL file
         run: mv ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native.dll ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native-${{ matrix.archValue }}.dll
+
+      # Windows resolves the whole import table at load time, so a successful
+      # LoadLibrary proves every import is satisfiable - the same work the JVM's
+      # System.load does underneath. Compiling the loader with this environment's
+      # own gcc keeps the bitness matched, which is the point: no 64-bit process,
+      # JVM included, can load the 32-bit DLL. Running under msys2 puts
+      # $MINGW_PREFIX/bin on PATH, which is where vulkan-1.dll lives.
+      - name: Verify the DLL loads
+        shell: msys2 {0}
+        run: |
+          set -eux
+          DLL=$(cygpath "${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native-${{ matrix.archValue }}.dll")
+
+          echo "== imported DLLs =="
+          objdump -p "$DLL" | grep -i 'DLL Name:' | sort -u || echo "  none"
+
+          cat > loadtest.c <<'EOF'
+          #include <stdio.h>
+          #include <windows.h>
+
+          int main(int argc, char **argv)
+          {
+              HMODULE mod;
+
+              if (argc < 2) {
+                  fprintf(stderr, "usage: loadtest <dll>\n");
+                  return 2;
+              }
+
+              mod = LoadLibraryA(argv[1]);
+              if (!mod) {
+                  fprintf(stderr, "LoadLibrary failed with error %lu\n",
+                          (unsigned long) GetLastError());
+                  return 1;
+              }
+
+              printf("Loaded %s\n", argv[1]);
+              return 0;
+          }
+          EOF
+          gcc -o loadtest.exe loadtest.c
+          ./loadtest.exe "$(cygpath -w "$DLL")"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4

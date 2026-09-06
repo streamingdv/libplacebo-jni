@@ -23,6 +23,7 @@
  * MPEG-7 video signature calculation and lookup filter
  */
 
+#include "libavutil/mem.h"
 #include "signature.h"
 
 #define HOUGH_MAX_OFFSET 90
@@ -126,9 +127,10 @@ static int get_jaccarddist(SignatureContext *sc, CoarseSignature *first, CoarseS
 {
     int jaccarddist, i, composdist = 0, cwthcount = 0;
     for (i = 0; i < 5; i++) {
-        if ((jaccarddist = intersection_word(first->data[i], second->data[i])) > 0) {
+        if ((jaccarddist = (1 << 16) * intersection_word(first->data[i], second->data[i])) > 0) {
             jaccarddist /= union_word(first->data[i], second->data[i]);
         }
+        jaccarddist = (1 << 16) - jaccarddist;
         if (jaccarddist >= sc->thworddist) {
             if (++cwthcount > 2) {
                 /* more than half (5/2) of distances are too wide */
@@ -187,7 +189,7 @@ static MatchingInfo* get_matching_parameters(AVFilterContext *ctx, SignatureCont
     size_t i, j, k, l, hmax = 0, score;
     int framerate, offset, l1dist;
     double m;
-    MatchingInfo *cands = NULL, *c = NULL;
+    MatchingInfo cands = { 0 }, *c = &cands;
 
     struct {
         uint8_t size;
@@ -205,11 +207,17 @@ static MatchingInfo* get_matching_parameters(AVFilterContext *ctx, SignatureCont
     } hspace_elem;
 
     /* houghspace */
-    hspace_elem** hspace = av_malloc_array(MAX_FRAMERATE, sizeof(hspace_elem *));
+    hspace_elem **hspace = av_malloc(MAX_FRAMERATE * sizeof(*hspace));
+    hspace_elem *hspaces;
 
+    if (!hspace)
+        return NULL;
     /* initialize houghspace */
+    hspaces = av_malloc((2 * HOUGH_MAX_OFFSET + 1) * sizeof(*hspaces) * MAX_FRAMERATE);
+    if (!hspaces)
+        goto error;
     for (i = 0; i < MAX_FRAMERATE; i++) {
-        hspace[i] = av_malloc_array(2 * HOUGH_MAX_OFFSET + 1, sizeof(hspace_elem));
+        hspace[i] = hspaces + i * (2 * HOUGH_MAX_OFFSET + 1);
         for (j = 0; j < 2 * HOUGH_MAX_OFFSET + 1; j++) {
             hspace[i][j].score = 0;
             hspace[i][j].dist = 99999;
@@ -289,20 +297,10 @@ static MatchingInfo* get_matching_parameters(AVFilterContext *ctx, SignatureCont
         for (i = 0; i < MAX_FRAMERATE; i++) {
             for (j = 0; j < HOUGH_MAX_OFFSET; j++) {
                 if (hmax < hspace[i][j].score) {
-                    if (c == NULL) {
-                        c = av_malloc(sizeof(MatchingInfo));
-                        if (!c)
-                            av_log(ctx, AV_LOG_FATAL, "Could not allocate memory");
-                        cands = c;
-                    } else {
-                        c->next = av_malloc(sizeof(MatchingInfo));
-                        if (!c->next)
-                            av_log(ctx, AV_LOG_FATAL, "Could not allocate memory");
-                        c = c->next;
-
-                    }
+                    c->next = av_malloc(sizeof(MatchingInfo));
+                    c = c->next;
                     if (!c) {
-                        sll_free(&cands);
+                        sll_free(&cands.next);
                         goto error;
                     }
                     c->framerateratio = (i+1.0) / 30;
@@ -321,11 +319,9 @@ static MatchingInfo* get_matching_parameters(AVFilterContext *ctx, SignatureCont
         }
     }
     error:
-    for (i = 0; i < MAX_FRAMERATE; i++) {
-        av_freep(&hspace[i]);
-    }
     av_freep(&hspace);
-    return cands;
+    av_free(hspaces);
+    return cands.next;
 }
 
 static int iterate_frame(double frr, FineSignature **a, FineSignature **b, int fcount, int *bcount, int dir)

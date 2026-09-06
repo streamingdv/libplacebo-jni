@@ -1,13 +1,13 @@
-libavcodec/pthread_slice.o: libavcodec/pthread_slice.c config.h \
+libavcodec/pthread_slice.o: libavcodec/pthread_slice.c \
   libavcodec/avcodec.h libavutil/samplefmt.h libavutil/attributes.h \
   libavutil/avutil.h libavutil/common.h libavutil/error.h \
-  libavutil/macros.h libavutil/avconfig.h libavutil/intmath.h \
-  libavutil/mem.h libavutil/internal.h libavutil/pixfmt.h \
-  libavutil/version.h libavutil/libm.h libavutil/intfloat.h \
-  libavutil/mathematics.h libavutil/rational.h libavutil/log.h \
-  libavutil/buffer.h libavutil/channel_layout.h libavutil/dict.h \
-  libavutil/frame.h libavcodec/codec.h libavutil/hwcontext.h \
-  libavcodec/codec_id.h libavcodec/version_major.h libavcodec/defs.h \
-  libavcodec/packet.h libavcodec/codec_internal.h libavcodec/internal.h \
-  libavcodec/pthread_internal.h libavcodec/thread.h libavutil/avassert.h \
-  libavutil/cpu.h libavutil/thread.h libavutil/slicethread.h
+  libavutil/macros.h libavutil/avconfig.h libavutil/version.h config.h \
+  libavutil/intmath.h libavutil/internal.h libavutil/libm.h \
+  libavutil/mathematics.h libavutil/rational.h libavutil/intfloat.h \
+  libavutil/log.h libavutil/pixfmt.h libavutil/buffer.h \
+  libavutil/channel_layout.h libavutil/dict.h libavutil/frame.h \
+  libavcodec/codec.h libavutil/hwcontext.h libavcodec/codec_id.h \
+  libavcodec/version_major.h libavcodec/defs.h libavcodec/packet.h \
+  libavcodec/codec_internal.h libavcodec/internal.h \
+  libavcodec/pthread_internal.h libavcodec/thread.h libavutil/cpu.h \
+  libavutil/mem.h libavutil/slicethread.h

@@ -93,14 +93,19 @@ typedef struct DPB {
  */
 static int dpb_add(DPB *dpb, const H264Picture *pic)
 {
-    int i;
+    int i, pic_frame_idx, merged = 0;
 
     if (dpb->size >= dpb->max_size)
         return -1;
 
+    pic_frame_idx = pic->long_ref ? pic->pic_id : pic->frame_num;
+
     for (i = 0; i < dpb->size; i++) {
         VAPictureH264 * const va_pic = &dpb->va_pics[i];
-        if (va_pic->picture_id == ff_vaapi_get_surface_id(pic->f)) {
+        int va_pic_long_ref = !!(va_pic->flags & VA_PICTURE_H264_LONG_TERM_REFERENCE);
+        if (va_pic->picture_id == ff_vaapi_get_surface_id(pic->f) &&
+            va_pic_long_ref == pic->long_ref &&
+            va_pic->frame_idx == pic_frame_idx) {
             VAPictureH264 temp_va_pic;
             fill_vaapi_pic(&temp_va_pic, pic, 0);
 
@@ -112,10 +117,13 @@ static int dpb_add(DPB *dpb, const H264Picture *pic)
                 } else {
                     va_pic->BottomFieldOrderCnt = temp_va_pic.BottomFieldOrderCnt;
                 }
+                merged = 1;
             }
-            return 0;
         }
     }
+
+    if (merged)
+        return 0;
 
     fill_vaapi_pic(&dpb->va_pics[dpb->size++], pic, 0);
     return 0;
@@ -128,8 +136,6 @@ static int fill_vaapi_ReferenceFrames(VAPictureParameterBufferH264 *pic_param,
     DPB dpb;
     int i;
 
-    const H264Picture *pic_good = NULL;
-
     dpb.size     = 0;
     dpb.max_size = FF_ARRAY_ELEMS(pic_param->ReferenceFrames);
     dpb.va_pics  = pic_param->ReferenceFrames;
@@ -138,23 +144,7 @@ static int fill_vaapi_ReferenceFrames(VAPictureParameterBufferH264 *pic_param,
 
     for (i = 0; i < h->short_ref_count; i++) {
         const H264Picture *pic = h->short_ref[i];
-        if (!pic || !pic->reference)
-            continue;
-        if (pic->recovered) {
-            pic_good = pic;
-        } else {
-            if (pic_good) {
-                pic = pic_good;
-            } else {
-                for (int i = 0; i < h->short_ref_count; i++) {
-                    if (h->short_ref[i] && h->short_ref[i]->reference && h->short_ref[i]->recovered) {
-                        pic = h->short_ref[i];
-                        break;
-                    }
-                }
-            }
-        }
-        if (dpb_add(&dpb, pic) < 0)
+        if (pic && pic->reference && dpb_add(&dpb, pic) < 0)
             return -1;
     }
 
@@ -242,6 +232,7 @@ static void fill_vaapi_plain_pred_weight_table(const H264Context *h,
 
 /** Initialize and start decoding a frame with VA API. */
 static int vaapi_h264_start_frame(AVCodecContext          *avctx,
+                                  av_unused const AVBufferRef *buffer_ref,
                                   av_unused const uint8_t *buffer,
                                   av_unused uint32_t       size)
 {
@@ -393,7 +384,7 @@ static int vaapi_h264_decode_slice(AVCodecContext *avctx,
                                        slice_param.chroma_offset_l1);
 
     err = ff_vaapi_decode_make_slice_buffer(avctx, pic,
-                                            &slice_param, sizeof(slice_param),
+                                            &slice_param, 1, sizeof(slice_param),
                                             buffer, size);
     if (err) {
         ff_vaapi_decode_cancel(avctx, pic);

@@ -5,10 +5,10 @@ includedir=/usr/local/include
 
 Name: libavutil
 Description: FFmpeg utility library
-Version: 58.29.100
+Version: 60.26.102
 Requires: 
 Requires.private: 
 Conflicts:
-Libs: -L${libdir}  -lavutil -pthread -lm -framework VideoToolbox -L/usr/local/Cellar/libx11/1.8.10/lib -lX11 -framework CoreFoundation -framework CoreMedia -framework CoreVideo -framework CoreServices
+Libs: -L${libdir}  -lavutil -lm -lz -framework VideoToolbox -pthread -L/usr/local/Cellar/libx11/1.8.13/lib -lX11 -framework CoreFoundation -framework CoreMedia -framework CoreVideo -framework CoreServices
 Libs.private: 
 Cflags: -I${includedir}

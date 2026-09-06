@@ -18,7 +18,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
 
-#include "libavutil/imgutils.h"
+#include "libavutil/mem.h"
 #include "avcodec.h"
 #include "bytestream.h"
 #include "codec_internal.h"
@@ -182,9 +182,6 @@ const FFCodec ff_hdr_encoder = {
     .init           = hdr_encode_init,
     FF_CODEC_ENCODE_CB(hdr_encode_frame),
     .close          = hdr_encode_close,
-    .p.pix_fmts     = (const enum AVPixelFormat[]){
-        AV_PIX_FMT_GBRPF32,
-        AV_PIX_FMT_NONE
-    },
+    CODEC_PIXFMTS(AV_PIX_FMT_GBRPF32),
     .caps_internal  = FF_CODEC_CAP_INIT_CLEANUP,
 };

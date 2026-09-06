@@ -43,19 +43,16 @@ public class PlaceboManager {
         }
     }
 
-    public static final int API_VERSION = 342;
-
     /**
      * Creates a logger with the log callback
      *
-     * @param apiVersion the API version
      * @param logLevel   the log level
      * @param callback   the callback
      * @return the log handle, pl_log
      */
-    public native long plLogCreate(int apiVersion, int logLevel, LogCallback callback);
+    public native long plLogCreate(int logLevel, LogCallback callback);
 
-    public native long plLogCreate2(int apiVersion, int logLevel);
+    public native long plLogCreate2(int logLevel);
 
     /**
      * Destroys a logger with the log callback
@@ -322,8 +319,10 @@ public class PlaceboManager {
      * @param swapchain Pointer to the {@code pl_swapchain}.
      * @param width     The drawable width of the window in pixels.
      * @param height    The drawable height of the window in pixels.
-     * @return {@code true} if rendering can proceed, {@code false} if the GPU is in a failed state
-     * or the swapchain could not be resized.
+     * @return {@code true} if rendering can proceed, {@code false} if the GPU is in a failed state,
+     * the swapchain could not be resized, or no swapchain image could be acquired. When this
+     * returns {@code false} the following render call will skip rendering and only release its
+     * frame, so it is safe, but pointless, to still call it.
      */
     public native boolean plWaitToRender(long vk, long swapchain, int width, int height);
 
@@ -359,9 +358,47 @@ public class PlaceboManager {
     public native void plSetRenderingFormat(int format);
 
     /**
-     * Renders an avframe
+     * Set the rendering format together with the display aspect the video is scaled into.
      *
-     * @param avframe   the handle to the avframe
+     * @param format       0 for Normal, 1 for Stretched, 2 for Zoomed. (other values will be ignored)
+     * @param targetAspect the width over height ratio of the box the video is scaled into, or 0 to
+     *                     use the aspect of the video itself. Only applies to the Normal format
+     */
+    public void plSetRenderingFormat(final int format, final float targetAspect) {
+        this.plSetTargetAspect(targetAspect);
+        this.plSetRenderingFormat(format);
+    }
+
+    /**
+     * Set the display aspect the video is scaled into while rendering with the Normal format. The
+     * video is stretched into that box, which itself keeps its aspect inside the render target.
+     * <p>
+     * Can be called at any time, including between two frames of a running render loop.
+     *
+     * @param targetAspect the width over height ratio, or 0 to use the aspect of the video itself
+     */
+    public native void plSetTargetAspect(float targetAspect);
+
+    /**
+     * Selects what fills the space around the video while the Normal format leaves parts of the
+     * render target empty. Nothing ambient related is allocated while this is off, the resources
+     * are created on the first frame that actually draws a background.
+     * <p>
+     * Can be called at any time, including between two frames of a running render loop.
+     *
+     * @param ambientMode 0 to leave that space black, 1 for ambient colors, 2 for blurred video,
+     *                    3 for edge extend
+     */
+    public native void plSetAmbientBackground(int ambientMode);
+
+    /**
+     * Renders an avframe.
+     * <p>
+     * <b>Ownership:</b> the frame is only borrowed for the duration of the call. The caller
+     * keeps ownership and must free it once the call has returned, using the same FFmpeg
+     * build it was allocated with. Freeing it natively would cross C runtimes on Windows.
+     *
+     * @param avframe   the handle to the avframe, borrowed for the duration of the call
      * @param vk        the vulkan device handle
      * @param swapchain the swapchain handle
      * @param renderer  the renderer handle
@@ -369,22 +406,16 @@ public class PlaceboManager {
      */
     public native boolean plRenderAvFrame(long avframe, long vk, long swapchain, long renderer);
 
-    public native boolean plRenderAvFrame1(long avframe, long vk, long swapchain, long renderer);
-
-    public native boolean plRenderAvFrame2(long avframe, long vk, long swapchain, long renderer);
-
-    public native boolean plRenderAvFrame3(long avframe, long vk, long swapchain, long renderer);
-
-    public native boolean plRenderAvFrame4(long avframe, long vk, long swapchain, long renderer);
-
-    public native boolean plRenderAvFrame5(long avframe, long vk, long swapchain, long renderer);
-
     public native long getVkGetInstanceProcAddr();
 
     /**
-     * Renders an avframe with UI overlay
+     * Renders an avframe with UI overlay.
+     * <p>
+     * <b>Ownership:</b> the frame is only borrowed for the duration of the call. The caller
+     * keeps ownership and must free it once the call has returned, using the same FFmpeg
+     * build it was allocated with. Freeing it natively would cross C runtimes on Windows.
      *
-     * @param avframe   the handle to the avframe
+     * @param avframe   the handle to the avframe, borrowed for the duration of the call
      * @param vk        the vulkan device handle
      * @param swapchain the swapchain handle
      * @param renderer  the renderer handle
@@ -431,11 +462,16 @@ public class PlaceboManager {
             boolean panelShowFullscreenButton, boolean panelMicButtonPressed, boolean panelMicButtonActive,
             boolean panelShareButtonPressed, boolean panelPsButtonPressed, boolean panelOptionsButtonPressed,
             boolean panelFullscreenButtonPressed, boolean panelFullscreenButtonActive, boolean panelCloseButtonPressed,
+            boolean panelShowAspectButton, boolean panelAspectButtonPressed, int panelAspectModeIndex,
             String popupHeaderText, String popupPopupText, boolean popupShowCheckbox,
             String popupButtonLeft, String popupButtonRight, String popupCheckboxText,
             boolean popupCheckboxChecked, boolean popupCheckboxFocused, boolean popupLeftButtonPressed,
             boolean popupLeftButtonFocused, boolean popupRightButtonPressed, boolean popupRightButtonFocused,
-            String contentNotStreamableText, boolean showContentNotStreamable
+            String contentNotStreamableText, boolean showContentNotStreamable,
+            boolean showPerfOverlay, boolean perfOverlayCollapsed, boolean perfOverlayClosePressed,
+            boolean perfOverlayArrowPressed, String perfOverlayText,
+            // grown at the end, so a native without them still resolves and simply draws no volume pair
+            boolean panelShowVolumeButtons, boolean panelVolumeDownPressed, boolean panelVolumeUpPressed
     );
 
     /**
@@ -452,6 +488,99 @@ public class PlaceboManager {
      * @return true if successful false otherwise
      */
     public static native boolean plRequestSaveCurrentFrame(String directory, String fileName);
+
+    /**
+     * Enables or disables AMD FidelityFX Super Resolution 1 (FSR1) processing.
+     * <p>
+     * When enabled, the native renderer will try to attach the FSR1 hook during rendering.
+     * Disabling frees/destroys the native hook state and renders without FSR1.
+     * </p>
+     *
+     * @param enabled {@code true} to enable FSR1, {@code false} to disable it
+     */
+    public native void plSetFsr1Enabled(boolean enabled);
+
+    /**
+     * Enables or disables the RCAS sharpening pass for FSR1.
+     * <p>
+     * This only has an effect when FSR1 is enabled. If disabled, FSR1 will upscale (EASU)
+     * without applying the sharpening pass.
+     * </p>
+     *
+     * @param enabled {@code true} to enable RCAS sharpening, {@code false} to disable it
+     */
+    public native void plSetFsr1RcasEnabled(boolean enabled);
+
+    /**
+     * Sets the RCAS sharpness value used by FSR1.
+     * <p>
+     * Expected range is {@code 0.0f .. 1.0f}. The native side clamps the value.
+     * Only has an effect when both FSR1 and RCAS are enabled.
+     * </p>
+     *
+     * @param sharpness sharpness factor in the range {@code 0.0f .. 1.0f} (native clamps)
+     */
+    public native void plSetFsr1Sharpness(float sharpness);
+
+    /**
+     * Convenience helper to configure FSR1 in one call.
+     * <p>
+     * Equivalent to calling {@link #plSetFsr1Enabled(boolean)},
+     * {@link #plSetFsr1RcasEnabled(boolean)} and {@link #plSetFsr1Sharpness(float)}
+     * in that order.
+     * </p>
+     *
+     * @param enabled     {@code true} to enable FSR1
+     * @param rcasEnabled {@code true} to enable RCAS sharpening
+     * @param sharpness   sharpness factor in the range {@code 0.0f .. 1.0f} (native clamps)
+     */
+    public void plConfigureFsr1(boolean enabled, boolean rcasEnabled, float sharpness) {
+        plSetFsr1Enabled(enabled);
+        plSetFsr1RcasEnabled(rcasEnabled);
+        plSetFsr1Sharpness(sharpness);
+    }
+
+    /**
+     * Installs a side-loaded mpv/libplacebo-format user shader (typically a
+     * single {@code //!HOOK} chain such as FSRCNNX, NIS, Anime4K, ...) to be
+     * applied in front of FSR1 in the render pipeline.
+     * <p>
+     * Pass the entire UTF-8 contents of the {@code .glsl} file. Pass
+     * {@code null} or an empty string to clear any previously installed
+     * shader.
+     * </p>
+     * <p>
+     * Parsing is deferred to the next rendered frame. If
+     * {@code pl_mpv_user_shader_parse} rejects the source, the native side
+     * logs the parse error once at {@code PL_LOG_ERR} and disables the
+     * custom shader path until the next call to this method - rendering
+     * continues without the hook (no frame drops, no crashes). Pre-validate
+     * synchronously via {@link #plValidateUserShaderText(String)} if you
+     * want to surface the error in the UI before installing.
+     * </p>
+     *
+     * @param shaderText raw UTF-8 GLSL source of the user shader, or
+     *                   {@code null} / {@code ""} to clear
+     */
+    public native void plSetCustomShaderText(String shaderText);
+
+    /**
+     * Pre-flight validates an mpv/libplacebo user shader against the
+     * currently active GPU. Returns {@code true} when libplacebo's
+     * {@code pl_mpv_user_shader_parse} accepts the source.
+     * <p>
+     * Requires that a Vulkan session is currently up (the GPU handle the
+     * parser needs is the one created by {@code plVulkanCreate}). If no
+     * session is active, this method returns {@code false} regardless of
+     * whether the source is well-formed.
+     * </p>
+     *
+     * @param shaderText raw UTF-8 GLSL source of the user shader
+     * @return {@code true} if libplacebo accepted the source, {@code false}
+     *         otherwise (parse error, no active GPU, or {@code null}/empty
+     *         input)
+     */
+    public native boolean plValidateUserShaderText(String shaderText);
 
     /************************/
     /*** load lib methods ***/

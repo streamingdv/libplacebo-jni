@@ -26,10 +26,18 @@ jobs:
     strategy:
       matrix:
         arch: [ x86_64, arm64 ]
+        include:
+          # lib_suffix is the name PlaceboManager.getNativeLibraryName() looks up.
+          # It only prefixes "arm" when os.arch starts with "aarch", so Intel macOS
+          # resolves to the bare "-64" name rather than "-x86_64".
+          - arch: x86_64
+            lib_suffix: '64'
+          - arch: arm64
+            lib_suffix: arm64
     runs-on: ${{ matrix.arch == 'x86_64' && 'macos-14-large' || 'macos-14' }}
 
     steps:
-      - name: Checkout libplacebo-jni repository
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           submodules: recursive
@@ -63,24 +71,6 @@ jobs:
           repository: 'mm2/Little-CMS'
           path: 'Little-CMS'
 
-      - name: Download and Install Vulkan SDK Manually using DMG
-        run: |
-          # Download the LunarG Vulkan SDK DMG
-          VULKAN_VERSION="1.3.280.1"
-          curl -LO https://sdk.lunarg.com/sdk/download/${VULKAN_VERSION}/mac/vulkansdk-macos-${VULKAN_VERSION}.dmg
-
-          # Mount the DMG file
-          MOUNT_PATH=$(hdiutil mount vulkansdk-macos-${VULKAN_VERSION}.dmg | tail -n1 | awk '{print $3}')
-
-          # Install Vulkan SDK from DMG
-          sudo "${MOUNT_PATH}/InstallVulkan.app/Contents/MacOS/InstallVulkan" \
-            --root ~/VulkanSDK/${VULKAN_VERSION} \
-            --accept-licenses --default-answer --confirm-command \
-            install com.lunarg.vulkan.core com.lunarg.vulkan.usr com.lunarg.vulkan.sdl2 com.lunarg.vulkan.glm com.lunarg.vulkan.volk com.lunarg.vulkan.vma
-
-          # Unmount the DMG after installation
-          hdiutil unmount "${MOUNT_PATH}"
-
       - name: Download and extract MoltenVK
         run: |
           curl -LO https://github.com/KhronosGroup/MoltenVK/releases/download/v1.2.8/MoltenVK-macos.tar
@@ -88,18 +78,49 @@ jobs:
           echo "MOLTENVK_LIB_PATH=${{ github.workspace }}/MoltenVK/MoltenVK/static/MoltenVK.xcframework/macos-arm64_x86_64/libMoltenVK.a" >> $GITHUB_ENV
           echo "MOLTENVK_INCLUDE_DIR=${{ github.workspace }}/MoltenVK/MoltenVK/include" >> $GITHUB_ENV
 
-      - name: Set environment variables for Vulkan SDK
+      # No LunarG SDK: libplacebo prefers its bundled 3rdparty/Vulkan-Headers and
+      # MoltenVK supplies the implementation. The deployment target has to match
+      # CMAKE_OSX_DEPLOYMENT_TARGET below so libplacebo.a and the dylib agree.
+      #
+      # MoltenVK's include directory must stay out of CFLAGS/CXXFLAGS. It carries a
+      # copy of the Vulkan headers at 1.3.280, and meson puts the -I flags it takes
+      # from the environment ahead of the ones a dependency contributes. libplacebo
+      # probes for VK_VERSION_1_4 to decide whether it builds its Vulkan backend, so
+      # with MoltenVK first on the search path that probe reads the 1.3 headers,
+      # fails, and the library silently ends up with src/vulkan/stubs.c. The dylib
+      # then links and loads fine but every pl_vk_inst_create returns NULL. The JNI
+      # build below gets the MoltenVK headers through -DMOLTENVK_INCLUDE instead.
+      #
+      # PKG_CONFIG_PATH points libplacebo at the prebuilt shaderc in libs/. It needs
+      # a SPIR-V compiler to translate its shaders, and finds one over pkg-config.
+      # Nothing on the runner provides shaderc or glslang, so without this the
+      # library builds with neither and fails at pl_vulkan_create instead.
+      - name: Set build environment
         run: |
-          echo "VULKAN_SDK=$HOME/VulkanSDK/1.3.280.1" >> $GITHUB_ENV
-          echo "CFLAGS=-arch ${{ matrix.arch }} -I$MOLTENVK_INCLUDE_DIR" >> $GITHUB_ENV
-          echo "LDFLAGS=-arch ${{ matrix.arch }} $MOLTENVK_LIB_PATH" >> $GITHUB_ENV
+          echo "MACOSX_DEPLOYMENT_TARGET=11.0" >> $GITHUB_ENV
+          echo "CFLAGS=-arch ${{ matrix.arch }} -mmacosx-version-min=11.0" >> $GITHUB_ENV
+          echo "CXXFLAGS=-arch ${{ matrix.arch }} -mmacosx-version-min=11.0" >> $GITHUB_ENV
+          echo "LDFLAGS=-arch ${{ matrix.arch }} -mmacosx-version-min=11.0 $MOLTENVK_LIB_PATH" >> $GITHUB_ENV
+          echo "PKG_CONFIG_PATH=${{ github.workspace }}/libs/shaderc/macos/${{ matrix.arch }}/lib/pkgconfig${PKG_CONFIG_PATH:+:$PKG_CONFIG_PATH}" >> $GITHUB_ENV
 
       - name: Remove conflicting Python symlinks
         run: |
           rm -f /usr/local/bin/idle3 /usr/local/bin/pydoc3 /usr/local/bin/python3 /usr/local/bin/python3-config \
           /usr/local/share/man/man1/python3.1 /usr/local/lib/pkgconfig/python3-embed.pc /usr/local/lib/pkgconfig/python3.pc
 
+      # The formula index the runner image comes with is taken as it is, and only a
+      # formula which is missing is installed. Refreshing the index makes everything
+      # the image carries outdated, and the install then upgrades the image around the
+      # build: that is how a post-install of openssl, which nothing here uses, failed
+      # this step, after six minutes of building it from source for want of a bottle.
+      #
+      # Homebrew still ends with a failure for an upgrade it decided to do on its own,
+      # so it is allowed to fail and the tools the build needs are checked instead.
       - name: Set up Homebrew and install dependencies
+        env:
+          HOMEBREW_NO_AUTO_UPDATE: 1
+          HOMEBREW_NO_INSTALL_CLEANUP: 1
+          HOMEBREW_NO_INSTALLED_DEPENDENTS_CHECK: 1
         run: |
           if [[ "${{ matrix.arch }}" == "x86_64" ]]; then
             # Use the Intel version of Homebrew
@@ -108,8 +129,22 @@ jobs:
             # Use the Apple Silicon version of Homebrew
             eval "$(/opt/homebrew/bin/brew shellenv)"
           fi
-          brew update
-          brew install pkgconf cmake ninja jq lcms2 sdl2 meson
+          for formula in pkgconf cmake ninja jq lcms2 sdl2 meson; do
+            if brew list --versions "$formula" > /dev/null 2>&1; then
+              echo "$formula is already on the runner, keeping that version"
+              continue
+            fi
+            brew install "$formula" || echo "brew reported a failure while installing $formula"
+          done
+          for tool in pkgconf cmake ninja jq meson; do
+            command -v "$tool"
+          done
+          # libplacebo finds its ICC support over pkg-config, so lcms2 has to be there
+          # even though the artefact links the static one from libs/.
+          pkgconf --exists lcms2
+          # Same for the SPIR-V compiler, which comes from libs/shaderc over the
+          # PKG_CONFIG_PATH set above.
+          pkgconf --atleast-version=2019.1 shaderc
 
       - name: Build Little-CMS
         if: ${{ github.event.inputs.build_lcms2 == 'true' }}
@@ -143,31 +178,23 @@ jobs:
           name: shaderc-artefacts-macos-${{ matrix.arch }}
           path: ${{ github.workspace }}/shaderc
 
-      - name: Apply fix_reuse_swapchain patch to libplacebo
-        #if: env.BUILD_LIBPLACEBO == 'true'
+      - name: Apply no internally synchronized queues patch to libplacebo
         working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
-        run: |
-          git apply ../fix_reuse_swapchain.patch
+        run: git apply ../no_internally_synchronized_queues.patch
 
-      - name: Apply vulkan use 16 bit for p010 to libplacebo
-        #if: env.BUILD_LIBPLACEBO == 'true'
-        working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
-        run: |
-          git apply ../vulkan_use_16bit_for_p010.patch
-
-      - name: Apply python patch to libplacebo
-        #if: env.BUILD_LIBPLACEBO == 'true'
-        working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
-        run: |
-          git apply ../python_fix.patch
-
+      # Both features are pinned to enabled so a missing one is a configure error.
+      # Left on auto, meson quietly builds the Vulkan stubs and drops the SPIR-V
+      # compiler, and the failure only shows up much later, at runtime, as a
+      # renderer that cannot create its instance or its device.
       - name: Build libplacebo
         #if: ${{ github.event.inputs.build_libplacebo == 'true' }}
         working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
         run: |
-          meson setup build --buildtype release --default-library=static -Ddemos=false -Dprefix=$PWD/install
+          meson setup build --buildtype release --default-library=static -Ddemos=false -Dvulkan=enabled -Dshaderc=enabled -Dprefix=$PWD/install
           meson compile -vC build
           meson install -C build
+          grep -q '^#define PL_HAVE_VULKAN 1$' install/include/libplacebo/config.h
+          grep -q '^#define PL_HAVE_SHADERC 1$' install/include/libplacebo/config.h
 
       - name: Upload libplacebo artefacts
         if: ${{ github.event.inputs.build_libplacebo == 'true' }}
@@ -175,6 +202,12 @@ jobs:
         with:
           name: libplacebo-artefacts-macos-${{ matrix.arch }}
           path: ${{ github.workspace }}/libplacebo-jni-native/3rdparty/libplacebo/install
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '25'
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
@@ -213,10 +246,39 @@ jobs:
           cmake --build build --verbose
 
       - name: Rename dylib file
-        run: mv ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native.dylib ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native-${{ matrix.arch }}.dylib
+        run: mv ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native.dylib ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native-${{ matrix.lib_suffix }}.dylib
+
+      - name: Verify macOS 12.7 ABI compatibility
+        run: |
+          chmod +x ./.github/scripts/check-macos-abi.sh
+          ./.github/scripts/check-macos-abi.sh \
+            "${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native-${{ matrix.lib_suffix }}.dylib"
+
+      # The runner architecture matches the artifact, so this can load in place.
+      # DYLD_BIND_AT_LAUNCH forces eager binding, mirroring LD_BIND_NOW on Linux.
+      - name: Load the library in a JVM
+        run: |
+          set -eux
+          cat > LoadTest.java <<'EOF'
+          import java.io.File;
+
+          public class LoadTest {
+              public static void main(String[] args) {
+                  File lib = new File(args[0]);
+                  System.load(lib.getAbsolutePath());
+                  System.out.println("Loaded " + lib.getName() + " on "
+                          + System.getProperty("os.name") + " "
+                          + System.getProperty("os.arch") + " with Java "
+                          + System.getProperty("java.version"));
+              }
+          }
+          EOF
+          DYLD_BIND_AT_LAUNCH=1 java --enable-native-access=ALL-UNNAMED \
+            LoadTest.java \
+            "${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native-${{ matrix.lib_suffix }}.dylib"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: macos-libplacebo-jni-artifact-${{ matrix.arch }}
-          path: ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native-${{ matrix.arch }}.dylib
+          path: ${{github.workspace}}/build/nativeBinaries/libplacebo-jni-native-${{ matrix.lib_suffix }}.dylib

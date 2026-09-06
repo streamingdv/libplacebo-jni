@@ -46,13 +46,12 @@ static int wady_read_header(AVFormatContext *s)
     int channels, ret;
     AVStream *st;
 
-    avio_skip(pb, 4);
+    avio_skip(pb, 4 + 1);
 
     st = avformat_new_stream(s, NULL);
     if (!st)
         return AVERROR(ENOMEM);
 
-    avio_skip(pb, 1);
     par              = st->codecpar;
     par->codec_type  = AVMEDIA_TYPE_AUDIO;
     par->codec_id    = AV_CODEC_ID_WADY_DPCM;
@@ -76,13 +75,13 @@ static int wady_read_header(AVFormatContext *s)
     return 0;
 }
 
-const AVInputFormat ff_wady_demuxer = {
-    .name           = "wady",
-    .long_name      = NULL_IF_CONFIG_SMALL("Marble WADY"),
+const FFInputFormat ff_wady_demuxer = {
+    .p.name         = "wady",
+    .p.long_name    = NULL_IF_CONFIG_SMALL("Marble WADY"),
+    .p.flags        = AVFMT_GENERIC_INDEX,
+    .p.extensions   = "way",
     .read_probe     = wady_probe,
     .read_header    = wady_read_header,
     .read_packet    = ff_pcm_read_packet,
     .read_seek      = ff_pcm_read_seek,
-    .flags          = AVFMT_GENERIC_INDEX,
-    .extensions     = "way",
 };

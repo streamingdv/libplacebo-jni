@@ -2,6 +2,9 @@
 static const nk_rune glyph_range_latin[]     = { 0x0020, 0x00FF, 0 };
 static const nk_rune glyph_range_cyrillic[]  = { 0x0020, 0x00FF, 0x0400, 0x04FF, 0 };
 static const nk_rune glyph_range_hindi[]     = { 0x0020, 0x00FF, 0x0900, 0x097F, 0 };
+// hebrew is the one range that is not baked out of the merged noto sans, which carries none of it,
+// see noto_sans_hebrew_font.h. Its letters read right to left, which bidi_text.h sorts out.
+static const nk_rune glyph_range_hebrew[]    = { 0x0020, 0x00FF, 0x0590, 0x05FF, 0 };
 static const nk_rune glyph_range_japanese[]  = { 0x0020, 0x00FF, 0x3000, 0x303F, 0x3040, 0x309F, 0x30A0, 0x30FF, 0x4E00, 0x4FFF, 0 };
 static const nk_rune glyph_range_korean[]    = { 0x0020, 0x00FF, 0x3000, 0x303F, 0xAC00, 0xD7AF, 0 };
 static const nk_rune glyph_range_chinese[]   = { 0x0020, 0x00FF, 0x3000, 0x303F, 0x4E00, 0x9FFF, 0x2010, 0x205E, 0 };
@@ -277,19 +280,94 @@ static const nk_rune glyph_range_korean_fallback[] = {
     0xD734, 0xD734,
     0x0
 };
+
+/**
+ * Whether the locale is written in hebrew and therefore needs the separate typeface. "he" is the tag
+ * java hands over and "iw" the one it used to, either of them possibly carrying a region.
+ */
+static nk_bool locale_is_hebrew(const char* locale)
+{
+    if (locale == NULL) {
+        return nk_false;
+    }
+    if ((locale[0] != 'h' || locale[1] != 'e') && (locale[0] != 'i' || locale[1] != 'w')) {
+        return nk_false;
+    }
+    return locale[2] == '\0' || locale[2] == '-' || locale[2] == '_';
+}
+
 // sizes
-const float buttonSize = 48;
-const float menuButtonHeight = buttonSize - 10;
+const float buttonSize = 56;
+const float menuButtonHeight = buttonSize - 12;
 const float menuButtonFontSize = 14 + 4; // 14 + 4 padding
-const float bottomPadding = 12;
+const float bottomPadding = 16;
+// the band the panel buttons sit in, the touchpad ends one touchpadPadding above it
+const float panelStripHeight = buttonSize + bottomPadding;
 const float edgePadding = 40;
+// between the buttons of a cluster: the mic and the volume pair on the left, aspect ratio, fullscreen
+// and close on the right
+const float panelButtonGap = edgePadding * 0.5f;
+// where the PS cluster begins, a little left of the middle
+const float panelCenterOffset = buttonSize * (2.0f / 3.0f);
 const float touchpadPadding = 12;
-const float dialogHeadingPaddingTop = 44;
-const float dialogTextContentPaddingTop = 122;
-const float dialogPaddingRight = 36;
-const float dialogHeadingHeight = 24 + 2; // 24 + 2 padding
-const float dialogButtonHeight = 52 + 2; // 52 + 2 padding
-const float dialogButtonWidth = 200;
+
+/**
+ * Where a button of the left hand cluster begins. The mic takes the first slot and the volume pair the
+ * two after it, or the first two of them when the session hides the mic.
+ *
+ * The buttons are hit tested on the java side, so DesktopUiController and VulkanRendererBackend of PXPlay
+ * mirror this. A slot that moves here has to move there as well.
+ */
+static float panelLeftSlotX(int slot)
+{
+    return edgePadding + ((float) slot * (buttonSize + panelButtonGap));
+}
+
+/**
+ * Where a button of the right hand cluster begins, the aspect ratio, fullscreen and close buttons, with
+ * slot 0 the one at the edge of the window.
+ */
+static float panelRightSlotX(float panelWidth, int slot)
+{
+    return panelWidth - (edgePadding + ((float) (slot + 1) * buttonSize)
+                         + ((float) slot * panelButtonGap));
+}
+
+/*
+ * The middle cluster of the strip sits in the middle of the window while the two clusters at the ends stay
+ * where they are, so a window narrow enough runs them into each other: at 740 framebuffer pixels the SHARE
+ * pill reaches the second volume button, and at 730 the label of OPTIONS reaches the aspect ratio button.
+ * The optional buttons of the ends therefore step aside while there is no room for them, rather than being
+ * drawn under a label and taking the press that belonged to the button beneath.
+ *
+ * The two edges below are the ones of the labels, not of the pills, because a label is drawn over whatever
+ * lies beneath it. The buttons are hit tested on the java side, so DesktopUiController and
+ * VulkanRendererBackend of PXPlay mirror these rules; a rule that changes here has to change there as well.
+ */
+static float panelCenterClusterLeft(float panelWidth)
+{
+    return ((panelWidth / 2.0f) - panelCenterOffset) - ((buttonSize * 1.5f) + (buttonSize * 0.15f));
+}
+
+static float panelCenterClusterRight(float panelWidth)
+{
+    return ((panelWidth / 2.0f) - panelCenterOffset) + ((buttonSize * 2.0f) - (buttonSize * 0.25f))
+           + buttonSize;
+}
+
+/** Whether a slot of the left hand cluster is clear of the middle one. */
+static nk_bool panelLeftSlotFits(float panelWidth, int slot)
+{
+    return (panelLeftSlotX(slot) + buttonSize) <= panelCenterClusterLeft(panelWidth);
+}
+
+/** Whether a slot of the right hand cluster is clear of the middle one. */
+static nk_bool panelRightSlotFits(float panelWidth, int slot)
+{
+    return panelRightSlotX(panelWidth, slot) >= panelCenterClusterRight(panelWidth);
+}
+
+// the dialog brings its own sizes and colors, see dialog_ui.h
 // colors
 const struct nk_color touchpad_white_border_color_alpha = nk_rgba(255, 255, 255, 190);
 const struct nk_color touchpad_white_background_color_alpha = nk_rgba(255, 255, 255, 63);
@@ -301,6 +379,3 @@ const struct nk_color dark_grey_button_color = nk_rgb(17, 17, 17);
 const struct nk_color pressed_dark_grey_button_color = nk_rgb(8, 8, 8);
 const struct nk_color grey_button_color = nk_rgb(88, 88, 95);
 const struct nk_color pressed_grey_button_color = nk_rgb(60, 60, 67);
-const struct nk_color dialog_background = nk_rgb(35, 35, 35);
-const struct nk_color dialog_blue = nk_rgb(0, 132, 241);
-const struct nk_color dialog_yellow = nk_rgb(255, 255, 0);

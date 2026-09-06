@@ -22,6 +22,7 @@
 #include "config_components.h"
 
 #include "libavutil/half2float.h"
+#include "libavutil/intfloat.h"
 
 #include "avcodec.h"
 #include "codec_internal.h"
@@ -62,10 +63,11 @@ static int pnm_decode_frame(AVCodecContext *avctx, AVFrame *p,
     if (avctx->skip_frame >= AVDISCARD_ALL)
         return avpkt->size;
 
+    if (avctx->width * avctx->height / 8 > s->bytestream_end - s->bytestream)
+        return AVERROR_INVALIDDATA;
+
     if ((ret = ff_get_buffer(avctx, p, 0)) < 0)
         return ret;
-    p->pict_type = AV_PICTURE_TYPE_I;
-    p->flags |= AV_FRAME_FLAG_KEY;
     avctx->bits_per_raw_sample = av_log2(s->maxval) + 1;
 
     switch (avctx->pix_fmt) {

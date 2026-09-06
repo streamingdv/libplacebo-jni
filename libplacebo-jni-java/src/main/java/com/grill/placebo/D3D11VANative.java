@@ -10,8 +10,7 @@ public final class D3D11VANative {
             long d3dDevicePtr,
             long immCtxPtr,
             long lockFnPtr,
-            long unlockFnPtr,
-            boolean useVideoDeviceAndContext
+            long unlockFnPtr
     );
 
     public static native int nativeFillD3D11VAFramesContext(

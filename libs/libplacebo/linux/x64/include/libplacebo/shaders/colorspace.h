@@ -41,15 +41,38 @@ PL_API void pl_shader_set_alpha(pl_shader sh, struct pl_color_repr *repr,
 // automatically by `pl_shader_decode_color` for PL_COLOR_SYSTEM_DOLBYVISION.
 PL_API void pl_shader_dovi_reshape(pl_shader sh, const struct pl_dovi_metadata *data);
 
+// Arguments for the `pl_shader_decode_color_ex` call.
+struct pl_color_decode_args {
+    // Input color representation. Mutated to reflect the decode. Required.
+    struct pl_color_repr *repr;
+
+    // Color adjustment parameters. If NULL, defaults to
+    // `&pl_color_adjustment_neutral`.
+    const struct pl_color_adjustment *color_adjustment;
+
+    // Optional sub-shader producing the enhancement-layer. The expected format
+    // and output of the shader depends on the EL being used, based on repr.
+    // Currently only Dolby Vision EL is supported.
+    pl_shader enhancement_layer;
+};
+
+#define pl_color_decode_args(...) (&(struct pl_color_decode_args) { __VA_ARGS__ })
+
 // Decode the color into normalized RGB, given a specified color_repr. This
 // also takes care of additional pre- and post-conversions requires for the
-// "special" color systems (XYZ, BT.2020-C, etc.). If `params` is left as NULL,
-// it defaults to &pl_color_adjustment_neutral.
+// "special" color systems (XYZ, BT.2020-C, etc.). If `args->color_adjustment`
+// is left as NULL, it defaults to &pl_color_adjustment_neutral.
 //
 // Note: This function always returns PC-range RGB with independent alpha.
 // It mutates the pl_color_repr to reflect the change.
 //
-// Note: For DCDM XYZ decoding output is linear
+// Note: For DCDM XYZ decoding input is expected to be linear, use
+// `pl_shader_linearize` before calling this function.
+PL_API void pl_shader_decode_color_ex(pl_shader sh,
+                                      const struct pl_color_decode_args *args);
+
+// Backwards compatibility wrapper around `pl_shader_decode_color_ex`.
+PL_DEPRECATED_IN(v7.368)
 PL_API void pl_shader_decode_color(pl_shader sh, struct pl_color_repr *repr,
                                    const struct pl_color_adjustment *params);
 
@@ -60,16 +83,12 @@ PL_API void pl_shader_decode_color(pl_shader sh, struct pl_color_repr *repr,
 // Note: For DCDM XYZ encoding input is expected to be linear
 PL_API void pl_shader_encode_color(pl_shader sh, const struct pl_color_repr *repr);
 
-// Linearize (expand) `vec4 color`, given a specified color space. In essence,
-// this corresponds to the ITU-R EOTF.
-//
-// Note: Unlike the ITU-R EOTF, it never includes the OOTF - even for systems
-// where the EOTF includes the OOTF (such as HLG).
+// Linearize (expand) `vec4 color`, given a specified color space. Shader
+// equivalent of `pl_color_linearize`.
 PL_API void pl_shader_linearize(pl_shader sh, const struct pl_color_space *csp);
 
-// Delinearize (compress), given a color space as output. This loosely
-// corresponds to the inverse EOTF (not the OETF) in ITU-R terminology, again
-// assuming a reference monitor.
+// Delinearize (compress), given a color space as output. Shader equivalent
+// of `pl_color_delinearize`.
 PL_API void pl_shader_delinearize(pl_shader sh, const struct pl_color_space *csp);
 
 struct pl_sigmoid_params {
@@ -93,6 +112,9 @@ PL_API extern const struct pl_sigmoid_params pl_sigmoid_default_params;
 // ringing artifacts during upscaling by bringing the color information closer
 // to neutral and away from the extremes. If `params` is NULL, it defaults to
 // &pl_sigmoid_default_params.
+//
+// For more information about sigmoidization, see:
+//   https://imagemagick.org/Usage/resize/#resize_sigmoidal
 //
 // Warning: This function clamps the input to the interval [0,1]; and as such
 // it should *NOT* be used on already-decoded high-dynamic range content.

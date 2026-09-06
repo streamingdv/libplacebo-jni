@@ -1,14 +1,35 @@
-libavcodec/vulkan.o: libavcodec/vulkan.c libavutil/vulkan.c \
- libavutil/avassert.h config.h libavutil/log.h libavutil/attributes.h \
+libavcodec/vulkan.o: libavcodec/vulkan.c libavutil/vulkan.c config.h \
+ libavutil/avassert.h libavutil/attributes.h libavutil/log.h \
  libavutil/version.h libavutil/macros.h libavutil/avconfig.h \
- libavutil/vulkan.h libavutil/thread.h libavutil/error.h \
- compat/w32pthreads.h libavutil/attributes.h libavutil/common.h \
- libavutil/intmath.h libavutil/x86/intmath.h libavutil/mem.h \
- libavutil/internal.h libavutil/pixfmt.h libavutil/libm.h \
- libavutil/intfloat.h libavutil/mathematics.h libavutil/rational.h \
- libavutil/internal.h libavutil/mem.h libavutil/time.h \
- libavutil/pixdesc.h libavutil/bprint.h libavutil/avstring.h \
+ libavutil/mem.h libavutil/vulkan.h libavutil/pixdesc.h \
+ libavutil/pixfmt.h libavutil/bprint.h libavutil/avstring.h \
  libavutil/hwcontext.h libavutil/buffer.h libavutil/frame.h \
- libavutil/avutil.h libavutil/common.h libavutil/channel_layout.h \
- libavutil/dict.h libavutil/samplefmt.h libavutil/vulkan_functions.h \
- libavutil/hwcontext_vulkan.h libavutil/vulkan_loader.h
+ libavutil/avutil.h libavutil/common.h libavutil/error.h \
+ libavutil/intmath.h libavutil/x86/intmath.h libavutil/internal.h \
+ libavutil/libm.h libavutil/mathematics.h libavutil/rational.h \
+ libavutil/intfloat.h libavutil/channel_layout.h libavutil/dict.h \
+ libavutil/samplefmt.h libavutil/vulkan_functions.h \
+ libavutil/hwcontext_vulkan.h ../vulkan-headers/include/vulkan/vulkan.h \
+ ../vulkan-headers/include/vulkan/vk_platform.h \
+ ../vulkan-headers/include/vulkan/vulkan_core.h \
+ ../vulkan-headers/include/vk_video/vulkan_video_codec_h264std.h \
+ ../vulkan-headers/include/vk_video/vulkan_video_codecs_common.h \
+ ../vulkan-headers/include/vk_video/vulkan_video_codec_h264std_encode.h \
+ ../vulkan-headers/include/vk_video/vulkan_video_codec_h264std.h \
+ ../vulkan-headers/include/vk_video/vulkan_video_codec_h265std.h \
+ ../vulkan-headers/include/vk_video/vulkan_video_codec_h265std_encode.h \
+ ../vulkan-headers/include/vk_video/vulkan_video_codec_h265std.h \
+ ../vulkan-headers/include/vk_video/vulkan_video_codec_h264std_decode.h \
+ ../vulkan-headers/include/vk_video/vulkan_video_codec_h265std_decode.h \
+ ../vulkan-headers/include/vk_video/vulkan_video_codec_av1std.h \
+ ../vulkan-headers/include/vk_video/vulkan_video_codec_av1std_decode.h \
+ ../vulkan-headers/include/vk_video/vulkan_video_codec_av1std.h \
+ ../vulkan-headers/include/vk_video/vulkan_video_codec_av1std_encode.h \
+ ../vulkan-headers/include/vk_video/vulkan_video_codec_vp9std.h \
+ ../vulkan-headers/include/vk_video/vulkan_video_codec_vp9std_decode.h \
+ ../vulkan-headers/include/vk_video/vulkan_video_codec_vp9std.h \
+ ../vulkan-headers/include/vulkan/vulkan_win32.h \
+ ../vulkan-headers/include/vulkan/vulkan_beta.h libavutil/intreadwrite.h \
+ libavutil/bswap.h libavutil/x86/bswap.h libavutil/attributes.h \
+ libavutil/x86/intreadwrite.h libavutil/vulkan_loader.h \
+ libavutil/zlib_utils.h

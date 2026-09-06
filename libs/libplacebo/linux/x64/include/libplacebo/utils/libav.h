@@ -118,11 +118,33 @@ PL_LIBAV_API void pl_map_dovi_metadata(struct pl_dovi_metadata *out,
 // values from the `AVDOVIMetadata`.
 //
 // Note: The `pl_dovi_metadata` must be allocated externally.
-// Also, currently the metadata is only used if the `AVDOVIRpuDataHeader`
-// `disable_residual_flag` field is not zero and can be checked before allocating.
-PL_LIBAV_API void pl_frame_map_avdovi_metadata(struct pl_frame *out_frame,
+// This function will only attempt to map the metadata if it is fully supported
+// (see `pl_map_avdovi_metadata()` and `pl_avdovi_metadata_supported()`).
+// This can be checked before allocating.
+PL_DEPRECATED_IN(v7.343) PL_LIBAV_API void pl_frame_map_avdovi_metadata(
+                                               struct pl_frame *out_frame,
                                                struct pl_dovi_metadata *dovi,
                                                const AVDOVIMetadata *metadata);
+
+// Helper function to map Dolby Vision metadata from the FFmpeg format
+// to `pl_dovi_metadata`, and adds it to the `pl_color_repr`.
+// The `pl_color_space` fields and HDR struct are also updated with
+// values from the `AVDOVIMetadata`.
+//
+// Note: The `pl_dovi_metadata` must be allocated externally.
+// This function will always attempt to map the metadata, even if this mapping
+// would be incomplete due to unsupported features. The caller is advised
+// to use pl_dovi_metadata_supported() to check whether this is the case.
+// Currently, the mapping will only be complete if FEL (full enhancement layer)
+// is not used.
+PL_LIBAV_API void pl_map_avdovi_metadata(struct pl_color_space *color,
+                                         struct pl_color_repr *repr,
+                                         struct pl_dovi_metadata *dovi,
+                                         const AVDOVIMetadata *metadata);
+
+// Helper function to check if Dolby Vision metadata can be mapped.
+// Always return `true`, as FEL is currently fully supported.
+PL_LIBAV_API bool pl_avdovi_metadata_supported(const AVDOVIMetadata *metadata);
 #endif
 
 // Helper function to test if a pixfmt would be supported by the GPU.
@@ -161,6 +183,11 @@ struct pl_avframe_params {
     // Also map Dolby Vision metadata (if supported). Note that this also
     // overrides the colorimetry metadata (forces BT.2020+PQ).
     bool map_dovi;
+
+    // Ignore the checks and always map Dolby Vision metadata (even if this
+    // mapping will be incomplete). Does not imply ->map_dovi.
+    // Since v7.368, metadata is always mapped.
+    PL_DEPRECATED_IN(v7.370) bool map_dovi_force;
 };
 
 #define PL_AVFRAME_DEFAULTS \
@@ -253,6 +280,10 @@ PL_LIBAV_API enum pl_color_transfer pl_transfer_from_av(enum AVColorTransferChar
 PL_LIBAV_API enum AVColorTransferCharacteristic pl_transfer_to_av(enum pl_color_transfer trc);
 PL_LIBAV_API enum pl_chroma_location pl_chroma_from_av(enum AVChromaLocation loc);
 PL_LIBAV_API enum AVChromaLocation pl_chroma_to_av(enum pl_chroma_location loc);
+#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(60, 11, 100)
+PL_LIBAV_API enum pl_alpha_mode pl_alpha_from_av(enum AVAlphaMode mode);
+PL_LIBAV_API enum AVAlphaMode pl_alpha_to_av(enum pl_alpha_mode mode);
+#endif
 
 // Helper function to generate a `pl_color_space` struct from an AVFrame.
 PL_LIBAV_API void pl_color_space_from_avframe(struct pl_color_space *out_csp,

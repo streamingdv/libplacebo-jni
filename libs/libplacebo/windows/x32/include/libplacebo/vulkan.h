@@ -104,6 +104,7 @@ PL_API void pl_vk_inst_destroy(pl_vk_inst *inst);
 struct pl_vulkan_queue {
     uint32_t index; // Queue family index
     uint32_t count; // Queue family count
+    VkDeviceQueueCreateFlags flags; // Queue family flags
 };
 
 // Structure representing the actual vulkan device and associated GPU instance
@@ -230,6 +231,11 @@ struct pl_vulkan_params {
     // queues for a given QF enabled, regardless of this setting.
     int queue_count;
 
+    // Disables the use of compute shaders. Some devices/drivers perform better
+    // without them. This may also help prevent image corruption in cases where
+    // the driver is misbehaving. Some features may be disabled if this is set.
+    bool no_compute;
+
     // Bitmask of extra queue families to enable. If set, then *all* queue
     // families matching *any* of these flags will be enabled at device
     // creation time. Setting this to VK_QUEUE_FLAG_BITS_MAX_ENUM effectively
@@ -351,6 +357,18 @@ struct pl_vulkan_swapchain_params {
     // drivers which don't dither properly when outputting high bit depth
     // SDR backbuffers to 8-bit screens.
     bool disable_10bit_sdr;
+
+    // Minimum number of alpha bits requested in the swapchain format. In
+    // practice, this can be used to prefer formats with higher alpha bit depth
+    // (e.g. rgba8/rgba16 over rgb10a2), potentially trading 2 bits per color
+    // channel for increased alpha precision. This is a hint, if no matching
+    // format is found, lower bit depths will be accepted.
+    uint8_t alpha_bits;
+
+    // Minimum number of color bits requested in the swapchain format. This can
+    // be used to prefer formats with higher color bit depth. This is a hint,
+    // if no matching format is found, lower bit depths will be accepted.
+    uint8_t color_bits;
 };
 
 #define pl_vulkan_swapchain_params(...) (&(struct pl_vulkan_swapchain_params) { __VA_ARGS__ })
@@ -416,6 +434,9 @@ struct pl_vulkan_import_params {
 
     // Functions for locking a queue. If set, these will be used instead of
     // libplacebo's internal functions for `pl_vulkan.(un)lock_queue`.
+    // If not set, libplacebo will use its own internal locking, unless the
+    // device was created with VK_KHR_internally_synchronized_queues enabled
+    // (as indicated by `features`), in which case locking is skipped.
     void (*lock_queue)(void *ctx, uint32_t qf, uint32_t qidx);
     void (*unlock_queue)(void *ctx, uint32_t qf, uint32_t qidx);
     void *queue_ctx;
@@ -424,6 +445,7 @@ struct pl_vulkan_import_params {
 
     // Restrict specific features to e.g. work around driver bugs, or simply
     // for testing purposes. See `pl_vulkan_params` for a description of these.
+    bool no_compute;
     int max_glsl_version;
     uint32_t max_api_version;
 };

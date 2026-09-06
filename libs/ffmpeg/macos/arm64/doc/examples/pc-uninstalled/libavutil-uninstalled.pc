@@ -1,12 +1,12 @@
 prefix=
 exec_prefix=
 libdir=${pcfiledir}/../../../libavutil
-includedir=.
+includedir=${pcfiledir}/../../..
 
 Name: libavutil
 Description: FFmpeg utility library
-Version: 58.29.100
+Version: 60.26.102
 Requires: 
 Conflicts:
-Libs: -L${libdir} -Wl,-rpath,${libdir} -lavutil -pthread -lm -framework VideoToolbox -L/opt/homebrew/Cellar/libx11/1.8.10/lib -lX11 -framework CoreFoundation -framework CoreMedia -framework CoreVideo -framework CoreServices
+Libs: -L${libdir} -Wl,-rpath,${libdir} -lavutil -lm -lz -framework VideoToolbox -pthread -L/opt/homebrew/Cellar/libx11/1.8.13/lib -lX11 -framework CoreFoundation -framework CoreMedia -framework CoreVideo -framework CoreServices
 Cflags: -I${includedir}

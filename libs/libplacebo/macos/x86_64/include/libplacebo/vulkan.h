@@ -104,6 +104,7 @@ PL_API void pl_vk_inst_destroy(pl_vk_inst *inst);
 struct pl_vulkan_queue {
     uint32_t index; // Queue family index
     uint32_t count; // Queue family count
+    VkDeviceQueueCreateFlags flags; // Queue family flags
 };
 
 // Structure representing the actual vulkan device and associated GPU instance
@@ -155,8 +156,8 @@ struct pl_vulkan_t {
     // form. This list does not contain duplicates, nor any extra queues
     // enabled at device creation time. Deprecated in favor of querying
     // `vkGetPhysicalDeviceQueueFamilyProperties` directly.
-    const struct pl_vulkan_queue *queues PL_DEPRECATED;
-    int num_queues PL_DEPRECATED;
+    PL_DEPRECATED_IN(v6.271) const struct pl_vulkan_queue *queues;
+    PL_DEPRECATED_IN(v6.271) int num_queues;
 };
 
 struct pl_vulkan_params {
@@ -230,6 +231,11 @@ struct pl_vulkan_params {
     // queues for a given QF enabled, regardless of this setting.
     int queue_count;
 
+    // Disables the use of compute shaders. Some devices/drivers perform better
+    // without them. This may also help prevent image corruption in cases where
+    // the driver is misbehaving. Some features may be disabled if this is set.
+    bool no_compute;
+
     // Bitmask of extra queue families to enable. If set, then *all* queue
     // families matching *any* of these flags will be enabled at device
     // creation time. Setting this to VK_QUEUE_FLAG_BITS_MAX_ENUM effectively
@@ -271,9 +277,8 @@ struct pl_vulkan_params {
 PL_API extern const struct pl_vulkan_params pl_vulkan_default_params;
 
 // Creates a new vulkan device based on the given parameters and initializes
-// a new GPU. This function will internally initialize a VkDevice. There is
-// currently no way to share a vulkan device with the caller. If `params` is
-// left as NULL, it defaults to &pl_vulkan_default_params.
+// a new GPU. If `params` is left as NULL, it defaults to
+// &pl_vulkan_default_params.
 //
 // Thread-safety: Safe
 PL_API pl_vulkan pl_vulkan_create(pl_log log, const struct pl_vulkan_params *params);
@@ -352,6 +357,18 @@ struct pl_vulkan_swapchain_params {
     // drivers which don't dither properly when outputting high bit depth
     // SDR backbuffers to 8-bit screens.
     bool disable_10bit_sdr;
+
+    // Minimum number of alpha bits requested in the swapchain format. In
+    // practice, this can be used to prefer formats with higher alpha bit depth
+    // (e.g. rgba8/rgba16 over rgb10a2), potentially trading 2 bits per color
+    // channel for increased alpha precision. This is a hint, if no matching
+    // format is found, lower bit depths will be accepted.
+    uint8_t alpha_bits;
+
+    // Minimum number of color bits requested in the swapchain format. This can
+    // be used to prefer formats with higher color bit depth. This is a hint,
+    // if no matching format is found, lower bit depths will be accepted.
+    uint8_t color_bits;
 };
 
 #define pl_vulkan_swapchain_params(...) (&(struct pl_vulkan_swapchain_params) { __VA_ARGS__ })
@@ -417,6 +434,9 @@ struct pl_vulkan_import_params {
 
     // Functions for locking a queue. If set, these will be used instead of
     // libplacebo's internal functions for `pl_vulkan.(un)lock_queue`.
+    // If not set, libplacebo will use its own internal locking, unless the
+    // device was created with VK_KHR_internally_synchronized_queues enabled
+    // (as indicated by `features`), in which case locking is skipped.
     void (*lock_queue)(void *ctx, uint32_t qf, uint32_t qidx);
     void (*unlock_queue)(void *ctx, uint32_t qf, uint32_t qidx);
     void *queue_ctx;
@@ -425,6 +445,7 @@ struct pl_vulkan_import_params {
 
     // Restrict specific features to e.g. work around driver bugs, or simply
     // for testing purposes. See `pl_vulkan_params` for a description of these.
+    bool no_compute;
     int max_glsl_version;
     uint32_t max_api_version;
 };
@@ -496,7 +517,7 @@ struct pl_vulkan_wrap_params {
 
 // Wraps an external VkImage into a pl_tex abstraction. By default, the image
 // is considered "held" by the user and must be released before calling any
-// pl_tex_* API calls on it (see `pl_vulkan_release`).
+// pl_tex_* API calls on it (see `pl_vulkan_release_ex`).
 //
 // This wrapper can be destroyed by simply calling `pl_tex_destroy` on it,
 // which will not destroy the underlying VkImage. If a pl_tex wrapper is
@@ -514,7 +535,7 @@ PL_API pl_tex pl_vulkan_wrap(pl_gpu gpu, const struct pl_vulkan_wrap_params *par
 // ones created by `pl_tex_create`) and unwraps it to expose the underlying
 // VkImage to the user. Unlike `pl_vulkan_wrap`, this `pl_tex` is *not*
 // considered held after calling this function - the user must explicitly
-// `pl_vulkan_hold` before accessing the VkImage.
+// `pl_vulkan_hold_ex` before accessing the VkImage.
 //
 // `out_format` and `out_flags` will be updated to hold the VkImage's
 // format and usage flags. (Optional)
@@ -625,14 +646,6 @@ struct pl_vulkan_sem_params {
 // VK_NULL_HANDLE on failure.
 PL_API VkSemaphore pl_vulkan_sem_create(pl_gpu gpu, const struct pl_vulkan_sem_params *params);
 PL_API void pl_vulkan_sem_destroy(pl_gpu gpu, VkSemaphore *semaphore);
-
-// Backwards-compatibility wrappers for older versions of the API.
-PL_DEPRECATED PL_API bool pl_vulkan_hold(pl_gpu gpu, pl_tex tex, VkImageLayout layout,
-                                         pl_vulkan_sem sem_out);
-PL_DEPRECATED PL_API bool pl_vulkan_hold_raw(pl_gpu gpu, pl_tex tex, VkImageLayout *out_layout,
-                                             pl_vulkan_sem sem_out);
-PL_DEPRECATED PL_API void pl_vulkan_release(pl_gpu gpu, pl_tex tex, VkImageLayout layout,
-                                            pl_vulkan_sem sem_in);
 
 PL_API_END
 

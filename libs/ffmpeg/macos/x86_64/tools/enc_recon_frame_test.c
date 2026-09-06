@@ -33,6 +33,7 @@
 #include "libavutil/error.h"
 #include "libavutil/frame.h"
 #include "libavutil/imgutils.h"
+#include "libavutil/mem.h"
 #include "libavutil/opt.h"
 
 #include "libavformat/avformat.h"
@@ -113,7 +114,7 @@ static int recon_frame_process(PrivData *pd, const AVPacket *pkt)
         return ret;
     }
 
-    // the encoder's internal format (in which the reconsturcted frames are
+    // the encoder's internal format (in which the reconstructed frames are
     // exported) may be different from the user-facing pixel format
     if (f->format != pd->enc->pix_fmt) {
         if (!pd->scaler) {
@@ -177,6 +178,8 @@ static int process_frame(DecodeContext *dc, AVFrame *frame)
     }
 
     ret = avcodec_send_frame(pd->enc, frame);
+    if (ret == AVERROR_EOF && !frame)
+        return 0;
     if (ret < 0) {
         fprintf(stderr, "Error submitting a frame for encoding\n");
         return ret;
@@ -239,7 +242,7 @@ static int process_frame(DecodeContext *dc, AVFrame *frame)
             else if (ret == AVERROR_EOF)
                 return 0;
             else if (ret < 0) {
-                fprintf(stderr, "Error receving a frame from decoder\n");
+                fprintf(stderr, "Error receiving a frame from decoder\n");
                 return ret;
             }
 
@@ -300,7 +303,7 @@ int main(int argc, char **argv)
         return 1;
     }
     if (!(enc->capabilities & AV_CODEC_CAP_ENCODER_RECON_FRAME)) {
-        fprintf(stderr, "Encoder '%s' cannot ouput reconstructed frames\n",
+        fprintf(stderr, "Encoder '%s' cannot output reconstructed frames\n",
                 enc->name);
         return 1;
     }

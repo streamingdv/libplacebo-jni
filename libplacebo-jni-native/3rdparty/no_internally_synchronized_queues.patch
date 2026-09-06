@@ -1,0 +1,18 @@
+diff --git a/src/vulkan/context.c b/src/vulkan/context.c
+index bc9084a..2997714 100644
+--- a/src/vulkan/context.c
++++ b/src/vulkan/context.c
+@@ -20,6 +20,13 @@
+ #include "utils.h"
+ #include "gpu.h"
+ 
++// Gamescope's WSI layer builds its queue table by calling vkGetDeviceQueue for every queue an
++// application asked for, which is only defined for a queue created without flags and hands back
++// nothing for one that carries any. Enabling this extension makes libplacebo flag its queues, so
++// that layer ends up asserting on a null queue and aborts the process. Nothing is lost by going
++// without it beyond libplacebo keeping its own queue mutex instead of skipping the locking.
++#undef VK_KHR_internally_synchronized_queues
++
+ #ifdef PL_HAVE_VK_PROC_ADDR
+ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr(
+     VkInstance                                  instance,

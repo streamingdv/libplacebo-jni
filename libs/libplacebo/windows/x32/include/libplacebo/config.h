@@ -23,7 +23,7 @@
 
 // Increased any time the API changes. (Note: Does not reset when PL_MAJOR_VER
 // is increased)
-#define PL_API_VER 342
+#define PL_API_VER 371
 
 // Increased any time a fix is made to a given API version.
 #define PL_FIX_VER (pl_fix_ver())
@@ -34,10 +34,10 @@
 // Feature tests. These aren't described in further detail, but may be useful
 // for programmers wanting to programmatically check for feature support
 // in their compiled libplacebo versions.
-#define PL_HAVE_D3D11 1
+#undef PL_HAVE_D3D11
 #define PL_HAVE_DOVI 1
 #define PL_HAVE_GL_PROC_ADDR 1
-#define PL_HAVE_GLSLANG 1
+#undef PL_HAVE_GLSLANG
 #define PL_HAVE_LCMS 1
 #undef PL_HAVE_LIBDOVI
 #define PL_HAVE_OPENGL 1

@@ -1,0 +1,22 @@
+prefix=${pcfiledir}/../../..
+includedir=${prefix}/include
+libdir=${prefix}/lib/x86_64-linux-gnu
+
+pl_has_d3d11=0
+pl_has_dovi=1
+pl_has_gl_proc_addr=1
+pl_has_glslang=1
+pl_has_lcms=1
+pl_has_libdovi=0
+pl_has_opengl=1
+pl_has_shaderc=0
+pl_has_vk_proc_addr=1
+pl_has_vulkan=1
+pl_has_xxhash=1
+
+Name: libplacebo
+Description: Reusable library for GPU-accelerated video/image rendering
+Version: 7.371.0
+Requires: vulkan, lcms2 >= 2.9
+Libs: -L${libdir} -lplacebo -lm -pthread -lglslang-default-resource-limits /usr/lib/x86_64-linux-gnu/libSPIRV.a /usr/lib/x86_64-linux-gnu/libglslang.a /usr/lib/x86_64-linux-gnu/libMachineIndependent.a /usr/lib/x86_64-linux-gnu/libOSDependent.a /usr/lib/x86_64-linux-gnu/libOGLCompiler.a /usr/lib/x86_64-linux-gnu/libGenericCodeGen.a -ldl
+Cflags: -I${includedir} -DPL_HAVE_PTHREAD -DPTHREAD_HAS_SETCLOCK -pthread -DPL_STATIC

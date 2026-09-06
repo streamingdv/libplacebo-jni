@@ -13,6 +13,11 @@
 #include <string.h>
 #include <errno.h>
 #include <cmath>
+#include <type_traits>
+#include <utility>
+#include <mutex>
+#include <atomic>
+#include <cstdint>
 #include <jni.h>
 
 #ifdef _WIN32
@@ -61,17 +66,36 @@
 #include <libplacebo/shaders/custom.h>
 #include <vk_mem_alloc.h>
 #include <noto_sans_regular_font.h>
+#include <noto_sans_hebrew_font.h>
 #include <gui_font.h>
 #include <ui_consts.h>
+#include <bidi_text.h>
+#include <dialog_ui.h>
+#include <aspect_icons.h>
+#include <volume_icons.h>
+#include <perf_overlay.h>
 #include <ui_state.h>
 
 #include <libavutil/buffer.h>
 #include <libavutil/hwcontext.h>
 #include <libavutil/hwcontext_vulkan.h>
 
+#include <sstream>
+#include <iomanip>
+
+#include "ffx_a_embedded.h"
+#include "ffx_fsr1_embedded.h"
+#include "ambient/ambient_consts.h"
+
 /*** global color space variable ***/
 
 pl_color_space m_LastColorspace = {};
+
+/*** Global java variables ***/
+
+static JavaVM* g_vm = nullptr;
+static jobject g_callback = nullptr;
+static jmethodID g_onLog = nullptr;
 
 /*** Screenshot state (Vulkan/libplacebo) ***/
 
@@ -82,12 +106,12 @@ static std::string g_screenshot_name;
 
 /*** define helper functions ***/
 
-JNIEnv *globalEnv;
-jobject globalCallback;
-jmethodID onLogMethod;
-
 const nk_rune* pick_glyph_range(const char* locale) {
     if (!locale) return glyph_range_latin;
+
+    // Hebrew comes out of a font of its own, see pick_font
+    if (locale_is_hebrew(locale))
+        return glyph_range_hebrew;
 
     // Specific variants
     if (strncmp(locale, "ko-FALL", 7) == 0)
@@ -113,6 +137,19 @@ const nk_rune* pick_glyph_range(const char* locale) {
 
     // Default to Latin (en, de, fr, it, pt, etc.)
     return glyph_range_latin;
+}
+
+/**
+ * The typeface the locale is baked from. Every language but hebrew reads out of the merged Noto Sans,
+ * which carries none of the hebrew block, so that one gets the same latin glyphs with hebrew merged in.
+ */
+unsigned char* pick_font(const char* locale, unsigned int* size) {
+    if (locale_is_hebrew(locale)) {
+        *size = NotoSansHebrew_Regular_ttf_len;
+        return NotoSansHebrew_Regular_ttf;
+    }
+    *size = NotoSans_Regular_ttf_len;
+    return NotoSans_Regular_ttf;
 }
 
 #include <sys/stat.h>
@@ -147,14 +184,62 @@ static std::string join_path(const std::string &dir, const std::string &file) {
     return dir + sep + file;
 }
 
-void LogCallbackFunction(void *log_priv, enum pl_log_level level, const char *msg) {
-  if (globalEnv != nullptr && globalCallback != nullptr) {
-      jstring message = globalEnv->NewStringUTF(msg);
-      globalEnv->CallVoidMethod(globalCallback, onLogMethod, (jint)level, message);
-      globalEnv->DeleteLocalRef(message);
-  } else {
-      std::cout << "Log Level " << level << ": " << msg << std::endl;
-  }
+// libplacebo logs from its own worker threads, which are not known to the JVM.
+// Attaching and detaching on every message is expensive enough to dominate the
+// frame budget at debug log levels, so each thread attaches at most once and
+// detaches when it exits.
+namespace {
+
+struct JniAttachment {
+    JNIEnv *env = nullptr;
+    bool owns_attachment = false;
+
+    ~JniAttachment() {
+        if (owns_attachment && g_vm)
+            g_vm->DetachCurrentThread();
+    }
+};
+
+thread_local JniAttachment t_jni;
+
+JNIEnv *jni_env_for_current_thread() {
+    if (t_jni.env)
+        return t_jni.env;
+    if (!g_vm)
+        return nullptr;
+
+    JNIEnv *env = nullptr;
+    if (g_vm->GetEnv(reinterpret_cast<void **>(&env), JNI_VERSION_1_6) == JNI_OK) {
+        t_jni.env = env; // owned by the JVM, must not be detached here
+        return env;
+    }
+
+    // Daemon attachment so a lingering libplacebo thread cannot keep the JVM alive.
+    if (g_vm->AttachCurrentThreadAsDaemon(reinterpret_cast<void **>(&env), nullptr) != JNI_OK)
+        return nullptr;
+
+    t_jni.env = env;
+    t_jni.owns_attachment = true;
+    return env;
+}
+
+} // namespace
+
+void LogCallbackFunction(void*, enum pl_log_level level, const char* msg) {
+    if (!g_vm || !g_callback || !g_onLog) {
+        std::cout << "Log Level " << level << ": " << msg << std::endl;
+        return;
+    }
+
+    JNIEnv* env = jni_env_for_current_thread();
+    if (!env)
+        return;
+
+    jstring jmsg = env->NewStringUTF(msg ? msg : "");
+    env->CallVoidMethod(g_callback, g_onLog, (jint)level, jmsg);
+    env->DeleteLocalRef(jmsg);
+
+    if (env->ExceptionCheck()) env->ExceptionClear();
 }
 
 #include "stb_image_write.h"
@@ -288,6 +373,283 @@ static bool save_pl_frame_to_file(pl_vulkan vulkan,
     return ok;
 }
 
+struct Fsr1State {
+    bool enabled = false;
+    bool enable_rcas = true;
+    float rcas_sharpness = 0.2f;
+
+    const struct pl_hook *hook = nullptr;
+    int num_hooks = 0;
+    std::string shader_text;
+
+    bool dirty = true;
+    bool last_enable_rcas = true;
+    float last_rcas_sharpness = 0.2f;
+    pl_gpu last_gpu = nullptr;
+};
+
+static Fsr1State g_fsr1;
+
+static void fsr1_destroy_hooks()
+{
+    if (g_fsr1.hook) {
+        pl_mpv_user_shader_destroy(&g_fsr1.hook);
+        g_fsr1.hook = nullptr;
+    }
+    g_fsr1.num_hooks = 0;
+    g_fsr1.shader_text.clear();
+}
+
+static std::string build_fsr1_hook_text(bool enable_rcas, float sharpness)
+{
+    std::ostringstream s;
+
+    // -------------------------
+    // EASU PASS
+    // -------------------------
+    s << R"(//!HOOK MAIN
+//!BIND HOOKED
+//!SAVE FSR1_EASU
+//!WIDTH  MAIN.w
+//!HEIGHT MAIN.h
+//!DESC   FSR1 EASU (upscale)
+
+#define A_GPU 1
+#define A_GLSL 1
+#define A_GLSL_INOUT 1
+
+/* --- ffx_a.h --- */
+)";
+
+    s << kFfxA << "\n\n";
+
+    s << R"(
+#define FSR_EASU_F 1
+
+// Callbacks must return gather4 per channel.
+// Use libplacebo's gather wrapper (preferred) OR HOOKED_raw.
+AF4 FsrEasuRF(AF2 p) { return HOOKED_gather(p, 0); }
+AF4 FsrEasuGF(AF2 p) { return HOOKED_gather(p, 1); }
+AF4 FsrEasuBF(AF2 p) { return HOOKED_gather(p, 2); }
+
+/* --- ffx_fsr1.h --- */
+)";
+
+    s << kFfxFsr1 << "\n\n";
+
+    s << R"(
+vec4 hook()
+{
+    AU2 ip = AU2(uvec2(gl_FragCoord.xy));
+
+    vec2 srcSize  = HOOKED_size.xy;
+    vec2 dstSize  = MAIN_size.xy;
+    vec2 viewSize = srcSize;
+
+    AU4 con0, con1, con2, con3;
+    FsrEasuCon(con0, con1, con2, con3,
+               viewSize.x, viewSize.y,
+               srcSize.x,  srcSize.y,
+               dstSize.x,  dstSize.y);
+
+    AF3 c;
+    FsrEasuF(c, ip, con0, con1, con2, con3);
+    return vec4(c, 1.0);
+}
+)";
+
+    if (!enable_rcas)
+        return s.str();
+
+    // -------------------------
+    // RCAS PASS
+    // -------------------------
+    s << R"(
+
+//!HOOK MAIN
+//!BIND FSR1_EASU
+//!DESC   FSR1 RCAS (sharpen)
+
+#define A_GPU 1
+#define A_GLSL 1
+#define A_GLSL_INOUT 1
+
+/* --- ffx_a.h --- */
+)";
+
+    s << kFfxA << "\n\n";
+
+    s << "\n#define FSR_RCAS_F 1\n";
+    s << "\n#define FSR1_SHARPNESS " << std::fixed << std::setprecision(6) << sharpness << "\n\n";
+
+    s << R"(
+
+AF4 FsrRcasLoadF(ASU2 p)
+{
+    ivec2 ip = ivec2(p);
+    return FSR1_EASU_mul * texelFetch(FSR1_EASU_raw, ip, 0);
+}
+
+void FsrRcasInputF(inout AF1 r, inout AF1 g, inout AF1 b) { }
+
+/* --- ffx_fsr1.h --- */
+)";
+
+    s << kFfxFsr1 << "\n\n";
+
+    s << R"(
+vec4 hook()
+{
+    AU4 con;
+    FsrRcasCon(con, FSR1_SHARPNESS);
+
+    AU2 ip = AU2(uvec2(gl_FragCoord.xy));
+
+    AF1 r, g, b;
+    FsrRcasF(r, g, b, ip, con);
+
+    return vec4(r, g, b, 1.0);
+}
+)";
+
+    return s.str();
+}
+
+static bool fsr1_ensure_hooks(pl_vulkan vulkan)
+{
+    if (!g_fsr1.enabled) return true;
+
+    bool gpu_changed = (g_fsr1.last_gpu != vulkan->gpu);
+    bool cfg_changed =
+        (g_fsr1.last_enable_rcas != g_fsr1.enable_rcas) ||
+        (fabsf(g_fsr1.last_rcas_sharpness - g_fsr1.rcas_sharpness) > 1e-6f);
+
+    if (g_fsr1.hook && !g_fsr1.dirty && !gpu_changed && !cfg_changed)
+        return true;
+
+    fsr1_destroy_hooks();
+
+    g_fsr1.shader_text = build_fsr1_hook_text(g_fsr1.enable_rcas, g_fsr1.rcas_sharpness);
+
+    const struct pl_hook *hook = pl_mpv_user_shader_parse(
+        vulkan->gpu,
+        g_fsr1.shader_text.c_str(),
+        g_fsr1.shader_text.size()
+    );
+
+    if (!hook) {
+        LogCallbackFunction(nullptr, PL_LOG_ERR, "FSR1: shader parse failed");
+        return false;
+    }
+
+    g_fsr1.hook = hook;
+    g_fsr1.num_hooks = 1;
+
+    g_fsr1.last_gpu = vulkan->gpu;
+    g_fsr1.last_enable_rcas = g_fsr1.enable_rcas;
+    g_fsr1.last_rcas_sharpness = g_fsr1.rcas_sharpness;
+    g_fsr1.dirty = false;
+
+    return true;
+}
+
+// The gpu of the current session. libplacebo exposes no getter for it out of a
+// pl_renderer, and plValidateUserShaderText is called without a handle of its
+// own, so it is tracked alongside the renderer that owns it.
+static std::atomic<pl_gpu> g_active_gpu{nullptr};
+
+// Side-loaded mpv/libplacebo //!HOOK user shader. Unlike the FSR1 state above,
+// this is written from whichever thread installs a shader while the render
+// thread reads it every frame, so the text is mutex guarded and the parsed hook
+// is published atomically. The render thread stays lock free once the hook for
+// the current (gpu, version) pair exists.
+struct CustomShaderState {
+    std::mutex mtx;
+    std::atomic<const struct pl_hook *> hook{nullptr};
+    std::atomic<pl_gpu> last_gpu{nullptr};
+    std::atomic<uint64_t> last_version{0};
+    std::string text;
+};
+
+static CustomShaderState g_custom;
+static std::atomic<bool> g_custom_text_set{false};
+static std::atomic<uint64_t> g_custom_text_version{0};
+
+// Must be called with g_custom.mtx held.
+static void custom_shader_destroy_hook_locked()
+{
+    const struct pl_hook *hook = g_custom.hook.exchange(nullptr, std::memory_order_acq_rel);
+    if (hook)
+        pl_mpv_user_shader_destroy(&hook);
+    g_custom.last_gpu.store(nullptr, std::memory_order_relaxed);
+    g_custom.last_version.store(0, std::memory_order_relaxed);
+}
+
+// Drops the parsed hook, which belongs to the gpu and must not outlive it. The
+// installed text is deliberately kept, so a shader survives a session teardown
+// and is rebuilt against the next gpu instead of silently disappearing.
+static void custom_shader_release_hook()
+{
+    std::lock_guard<std::mutex> lock(g_custom.mtx);
+    custom_shader_destroy_hook_locked();
+}
+
+// Returns the hook for the installed shader, reparsing when the text or the gpu
+// changed. Returns null when no shader is installed or the source was rejected.
+static const struct pl_hook *custom_shader_get_or_build_hook(pl_gpu gpu)
+{
+    if (!gpu || !g_custom_text_set.load(std::memory_order_acquire))
+        return nullptr;
+
+    const uint64_t version = g_custom_text_version.load(std::memory_order_acquire);
+
+    const struct pl_hook *hook = g_custom.hook.load(std::memory_order_acquire);
+    if (hook && g_custom.last_gpu.load(std::memory_order_relaxed) == gpu
+             && g_custom.last_version.load(std::memory_order_relaxed) == version)
+        return hook;
+
+    std::lock_guard<std::mutex> lock(g_custom.mtx);
+
+    // Re-read under the lock: the text and its version only move together while
+    // it is held, so this is the pair the parse below is allowed to record.
+    const uint64_t locked_version = g_custom_text_version.load(std::memory_order_relaxed);
+
+    hook = g_custom.hook.load(std::memory_order_relaxed);
+    if (hook && g_custom.last_gpu.load(std::memory_order_relaxed) == gpu
+             && g_custom.last_version.load(std::memory_order_relaxed) == locked_version)
+        return hook;
+
+    if (g_custom.text.empty())
+        return nullptr;
+
+    custom_shader_destroy_hook_locked();
+
+    const struct pl_hook *parsed = pl_mpv_user_shader_parse(
+        gpu,
+        g_custom.text.c_str(),
+        g_custom.text.size()
+    );
+
+    if (!parsed) {
+        // Clearing the hint is what stops the render thread from reparsing the
+        // same rejected source on every single frame.
+        LogCallbackFunction(nullptr, PL_LOG_ERR,
+            "Custom user shader rejected; disabled until another one is installed");
+        g_custom.text.clear();
+        g_custom_text_set.store(false, std::memory_order_release);
+        return nullptr;
+    }
+
+    g_custom.last_gpu.store(gpu, std::memory_order_relaxed);
+    g_custom.last_version.store(locked_version, std::memory_order_relaxed);
+    g_custom.hook.store(parsed, std::memory_order_release);
+
+    LogCallbackFunction(nullptr, PL_LOG_INFO,
+        ("Custom user shader built (" + std::to_string(g_custom.text.size()) + " bytes)").c_str());
+
+    return parsed;
+}
+
 struct nk_image globalBtnImage;
 
 void render_ui(struct ui *ui, int width, int height);
@@ -295,8 +657,15 @@ bool ui_draw(struct ui *ui, const struct pl_swapchain_frame *frame);
 
 pl_swapchain_frame m_SwapchainFrame = {0};
 bool m_using_wait_for_rendering = false;
+// True between a successful pl_swapchain_start_frame and its matching
+// pl_swapchain_submit_frame. libplacebo requires that pairing, and a started
+// frame must never be left unsubmitted.
 bool m_HasPendingSwapchainFrame = false;
 int vk_decode_queue_index = -1;
+
+// Reused plane textures for software uploads. Owned by the pl_gpu, so they must
+// be destroyed before the pl_vulkan they came from.
+pl_tex placebo_tex_global[4] = {nullptr, nullptr, nullptr, nullptr};
 
 struct {
 #ifdef _WIN32
@@ -505,6 +874,27 @@ char* copyString(JNIEnv *env, jstring jstr) {
     return newStr;
 }
 
+// Copies a string into a buffer the state owns itself, for what the render thread reads without a lock.
+// A line longer than the buffer is cut behind its last whole utf-8 sequence, so no half glyph is left.
+void copyStringInto(JNIEnv *env, jstring jstr, char* target, size_t capacity) {
+    if (target == nullptr || capacity == 0) return;
+
+    target[0] = '\0';
+    if (jstr == nullptr) return;
+
+    const char* source = env->GetStringUTFChars(jstr, nullptr);
+    if (source == nullptr) return;
+
+    size_t length = std::strlen(source);
+    if (length > capacity - 1) {
+        length = capacity - 1;
+        while (length > 0 && ((unsigned char) source[length] & 0xC0) == 0x80) length--;
+    }
+    std::memcpy(target, source, length);
+    target[length] = '\0';
+    env->ReleaseStringUTFChars(jstr, source);
+}
+
 /*** define JNI methods ***/
 
 extern "C"
@@ -529,11 +919,18 @@ JNIEXPORT jstring JNICALL Java_com_grill_placebo_PlaceboManager_getWindowingSyst
 
 extern "C"
 JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plLogCreate
-  (JNIEnv *env, jobject obj, jint apiVersion, jint logLevel, jobject logCallback) {
-  globalEnv = env;
-  globalCallback = env->NewGlobalRef(logCallback);
-  jclass cls = env->GetObjectClass(logCallback);
-  onLogMethod = env->GetMethodID(cls, "onLog", "(ILjava/lang/String;)V");
+  (JNIEnv *env, jobject obj, jint logLevel, jobject logCallback) {
+    env->GetJavaVM(&g_vm);
+
+    // Repeated calls would otherwise leak the previous global reference.
+    if (g_callback) {
+        env->DeleteGlobalRef(g_callback);
+        g_callback = nullptr;
+    }
+    g_callback = env->NewGlobalRef(logCallback);
+
+    jclass cls = env->GetObjectClass(logCallback);
+    g_onLog = env->GetMethodID(cls, "onLog", "(ILjava/lang/String;)V");
 
   enum pl_log_level plLevel = static_cast<enum pl_log_level>(logLevel);
 
@@ -542,14 +939,14 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plLogCreate
       .log_level = plLevel,
   };
 
-  pl_log placebo_log = pl_log_create(apiVersion, &log_params);
+  pl_log placebo_log = pl_log_create(PL_API_VER, &log_params);
 
   return reinterpret_cast<jlong>(placebo_log);
 }
 
 extern "C"
 JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plLogCreate2
-  (JNIEnv *env, jobject obj, jint apiVersion, jint logLevel) {
+  (JNIEnv *env, jobject obj, jint logLevel) {
   enum pl_log_level plLevel = static_cast<enum pl_log_level>(logLevel);
 
   struct pl_log_params log_params = {
@@ -557,22 +954,27 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plLogCreate2
       .log_level = plLevel,
   };
 
-  pl_log placebo_log = pl_log_create(apiVersion, &log_params);
+  pl_log placebo_log = pl_log_create(PL_API_VER, &log_params);
 
   return reinterpret_cast<jlong>(placebo_log);
 }
 
 extern "C"
-JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plLogDestroy
-  (JNIEnv *env, jobject obj, jlong placebo_log) {
-  pl_log log = reinterpret_cast<pl_log>(placebo_log);
-  if (log != nullptr) {
-      pl_log_destroy(&log);
-  }
-  if (globalCallback != nullptr) {
-      env->DeleteGlobalRef(globalCallback);
-      globalCallback = nullptr;
-  }
+JNIEXPORT void JNICALL
+Java_com_grill_placebo_PlaceboManager_plLogDestroy(JNIEnv *env, jobject /*obj*/, jlong placebo_log)
+{
+    pl_log log = reinterpret_cast<pl_log>(placebo_log);
+    if (log) {
+        pl_log_destroy(&log);
+    }
+
+    if (g_callback) {
+        env->DeleteGlobalRef(g_callback);
+        g_callback = nullptr;
+    }
+
+    g_onLog = nullptr;
+    g_vm = nullptr;
 }
 
 JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVkInstCreate(JNIEnv *env, jobject obj, jlong placebo_log, jint windowingSystemType) {
@@ -597,7 +999,13 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVkInstCreate(JNI
       VK_EXT_HDR_METADATA_EXTENSION_NAME,
   };
 
+  // Handing libplacebo the loader entry point ourselves keeps this independent of
+  // PL_HAVE_VK_PROC_ADDR. On macOS the Vulkan implementation is the MoltenVK archive
+  // this library links, so libplacebo is built without a loader to link against and
+  // would otherwise refuse to create the instance. It is the same function pointer
+  // libplacebo picks up on its own everywhere else.
   struct pl_vk_inst_params vk_inst_params = {
+      .get_proc_addr = vkGetInstanceProcAddr,
       .extensions = vk_exts,
       .num_extensions = 2,
       .opt_extensions = opt_extensions,
@@ -654,9 +1062,19 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanCreateForB
   VkSurfaceKHR vkSurfaceKHR = reinterpret_cast<VkSurfaceKHR>(static_cast<uint64_t>(surface));
 
   uint32_t physicalDeviceCount = 0;
-  vk_funcs.vkEnumeratePhysicalDevices(instance->instance, &physicalDeviceCount, nullptr);
+  if (vk_funcs.vkEnumeratePhysicalDevices(instance->instance, &physicalDeviceCount, nullptr) != VK_SUCCESS ||
+      physicalDeviceCount == 0) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "No Vulkan physical devices available!");
+      return 0;
+  }
+
   std::vector<VkPhysicalDevice> physicalDevices(physicalDeviceCount);
-  vk_funcs.vkEnumeratePhysicalDevices(instance->instance, &physicalDeviceCount, physicalDevices.data());
+  if (vk_funcs.vkEnumeratePhysicalDevices(instance->instance, &physicalDeviceCount, physicalDevices.data()) != VK_SUCCESS ||
+      physicalDeviceCount == 0) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to enumerate Vulkan physical devices!");
+      return 0;
+  }
+  physicalDevices.resize(physicalDeviceCount);
 
   std::set<uint32_t> devicesTried;
   VkPhysicalDeviceProperties deviceProps;
@@ -735,20 +1153,55 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plInitQueue
       return prop.queueFlags & VK_QUEUE_VIDEO_DECODE_BIT_KHR;
   });
 
+  vk_decode_queue_index = -1;
   if (queue_it != queueFamilyProperties.end()) {
-      vk_decode_queue_index = std::distance(queueFamilyProperties.begin(), queue_it);
+      vk_decode_queue_index = static_cast<int>(std::distance(queueFamilyProperties.begin(), queue_it));
   }
 
-  return vk_decode_queue_index != 0;
+  // Family 0 is a perfectly valid decode queue, so anything non-negative is a
+  // success. Only the absence of a decode-capable family is a failure.
+  return static_cast<jboolean>(vk_decode_queue_index >= 0);
 }
+
+// What fills the space around the video, see AMBIENT_MODE_* in ambient_consts.h.
+// Latched from whichever thread changed the setting, picked up by the next frame.
+// It lives up here because plVulkanDestroy below ends the session that owns it.
+std::atomic<int> ambientMode{AMBIENT_MODE_OFF};
+
+// Defined with the rest of the ambient background further down; declared here
+// because the resources belong to the gpu that plVulkanDestroy tears down.
+namespace { void ambient_destroy(); }
 
 extern "C"
 JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanDestroy
   (JNIEnv *env, jobject obj, jlong placebo_vulkan) {
+  // These are all owned by the gpu below, so they have to go before it does.
+  fsr1_destroy_hooks();
+  custom_shader_release_hook();
+  ambient_destroy();
+
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
   if (vulkan != nullptr) {
+      // The plane textures are owned by this gpu, so they have to go first.
+      // plTexDestroy may already have done it; destroying a null texture is a
+      // no-op, which is what makes the call order irrelevant.
+      for (int i = 0; i < 4; i++) {
+          if (placebo_tex_global[i])
+              pl_tex_destroy(vulkan->gpu, &placebo_tex_global[i]);
+      }
+
       pl_vulkan_destroy(&vulkan);
   }
+
+  // Nothing below outlives the device, so do not let it leak into a later session.
+  vk_decode_queue_index = -1;
+  // The ambient setting belongs to the session that pushed it. A next session
+  // that never asks for a background must not inherit this one's.
+  ambientMode.store(AMBIENT_MODE_OFF, std::memory_order_relaxed);
+  g_active_gpu.store(nullptr, std::memory_order_release);
+  m_HasPendingSwapchainFrame = false;
+  m_SwapchainFrame = {};
+  m_LastColorspace = {};
 }
 
 extern "C"
@@ -1084,6 +1537,8 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_plCreateRenderer
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
   pl_log log = reinterpret_cast<pl_log>(placebo_log);
   pl_renderer placebo_renderer = pl_renderer_create(log, vulkan->gpu);
+  if (placebo_renderer != nullptr)
+      g_active_gpu.store(vulkan->gpu, std::memory_order_release);
   return reinterpret_cast<jlong>(placebo_renderer);
 }
 
@@ -1092,6 +1547,7 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plDestroyRenderer
   (JNIEnv *env, jobject obj, jlong renderer) {
   pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
   pl_renderer_destroy(&placebo_renderer);
+  g_active_gpu.store(nullptr, std::memory_order_release);
 }
 
 extern "C"
@@ -1127,6 +1583,14 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plWaitToRender(
         return JNI_FALSE;
     }
 
+    if (m_HasPendingSwapchainFrame) {
+        // The previous frame was started but never submitted, e.g. because
+        // mapping its AVFrame failed. Acquiring a second image on top of it
+        // would fail, so retire it first.
+        m_HasPendingSwapchainFrame = false;
+        pl_swapchain_submit_frame(placebo_swapchain);
+    }
+
 #ifndef _WIN32
     // On non-Windows platforms, wait for previously queued presents to finish
     pl_swapchain_swap_buffers(placebo_swapchain);
@@ -1140,10 +1604,14 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plWaitToRender(
         return JNI_FALSE;
     }
 
-    if (pl_swapchain_start_frame(placebo_swapchain, &m_SwapchainFrame)) {
-        m_HasPendingSwapchainFrame = true;
+    if (!pl_swapchain_start_frame(placebo_swapchain, &m_SwapchainFrame)) {
+        // Reporting success here would let the next render call reuse a stale
+        // swapchain frame that was never acquired.
+        m_HasPendingSwapchainFrame = false;
+        return JNI_FALSE;
     }
 
+    m_HasPendingSwapchainFrame = true;
     return JNI_TRUE;
 }
 
@@ -1173,6 +1641,33 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plSetHwDeviceCt
 
   vkctx->enabled_dev_extensions = vulkan->extensions;
   vkctx->nb_enabled_dev_extensions = vulkan->num_extensions;
+  // libavutil 59.32 replaced the per-purpose queue family fields with a single
+  // ordered array. The old fields still work but are deprecated, and they are
+  // removed at libavutil 61. Filling qf[] here produces the same contents
+  // libavutil would otherwise derive from the legacy fields, video_caps
+  // included, so the two branches behave identically.
+#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(59, 32, 100)
+  auto add_queue_family = [vkctx](int idx, int num, VkQueueFlagBits flags) {
+      if (idx < 0 || num <= 0)
+          return;
+      if (vkctx->nb_qf >= static_cast<int>(sizeof(vkctx->qf) / sizeof(vkctx->qf[0])))
+          return;
+      AVVulkanDeviceQueueFamily *qf = &vkctx->qf[vkctx->nb_qf++];
+      qf->idx = idx;
+      qf->num = num;
+      qf->flags = flags;
+      qf->video_caps = static_cast<VkVideoCodecOperationFlagBitsKHR>(0);
+  };
+
+  // Ordered by preference, as the field documentation requires. Duplicate
+  // indices are permitted, which matters because libplacebo often maps several
+  // purposes onto the same family.
+  vkctx->nb_qf = 0;
+  add_queue_family(vulkan->queue_graphics.index, vulkan->queue_graphics.count, VK_QUEUE_GRAPHICS_BIT);
+  add_queue_family(vulkan->queue_compute.index, vulkan->queue_compute.count, VK_QUEUE_COMPUTE_BIT);
+  add_queue_family(vulkan->queue_transfer.index, vulkan->queue_transfer.count, VK_QUEUE_TRANSFER_BIT);
+  add_queue_family(vk_decode_queue_index, 1, VK_QUEUE_VIDEO_DECODE_BIT_KHR);
+#else
   vkctx->queue_family_index = vulkan->queue_graphics.index;
   vkctx->nb_graphics_queues = vulkan->queue_graphics.count;
   vkctx->queue_family_tx_index = vulkan->queue_transfer.index;
@@ -1182,6 +1677,8 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plSetHwDeviceCt
 
   vkctx->queue_family_decode_index = vk_decode_queue_index;
   vkctx->nb_decode_queues = 1;
+#endif
+
   vkctx->lock_queue = [](struct AVHWDeviceContext *dev_ctx, uint32_t queue_family, uint32_t index) {
       auto vk = reinterpret_cast<pl_vulkan>(dev_ctx->user_opaque);
       vk->lock_queue(vk, queue_family, index);
@@ -1214,215 +1711,856 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plActivateDefaultRe
   render_params = pl_render_default_params;
 }
 
-int renderingFormat = 0;
+// Both are read from the render thread and written from whichever thread changes the setting.
+std::atomic<int> renderingFormat{0};
+std::atomic<float> targetAspect{0.0f};
 
 extern "C"
 JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plSetRenderingFormat
   (JNIEnv *env, jobject obj, jint format) {
   if(format >= 0 && format < 3){
-    renderingFormat = format;
+    renderingFormat.store(format, std::memory_order_relaxed);
   }
 }
 
-pl_tex placebo_tex_global[4] = {nullptr, nullptr, nullptr, nullptr};
+extern "C"
+JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plSetTargetAspect
+  (JNIEnv *env, jobject obj, jfloat aspect) {
+  targetAspect.store(aspect > 0.0f ? aspect : 0.0f, std::memory_order_relaxed);
+}
+
+extern "C"
+JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plSetAmbientBackground
+  (JNIEnv *env, jobject obj, jint mode) {
+  int value = static_cast<int>(mode);
+  if (value < AMBIENT_MODE_OFF || value > AMBIENT_MODE_EDGE)
+      value = AMBIENT_MODE_OFF;
+
+  // Nothing is allocated here. The render thread picks the mode up and creates
+  // the ambient resources on the frame it first needs them.
+  ambientMode.store(value, std::memory_order_relaxed);
+}
+
+// AVFrame ownership contract for plRenderAvFrame and plRenderAvFrameWithUi:
+//
+//   The caller keeps ownership and frees the frame itself once the call has
+//   returned. These functions borrow it for the duration of the call only and
+//   must never free it.
+//
+// Freeing it here would be wrong even though the frame is unused afterwards,
+// because this library links its own static FFmpeg while the caller allocates
+// the frame through a separate FFmpeg build. On Windows the two use different
+// C runtimes -- the javacpp DLLs allocate on the msvcrt heap, this library
+// frees on the UCRT heap -- so av_frame_free() here hands a foreign pointer to
+// RtlFreeHeap and the process dies within a few frames. Linux and macOS have a
+// single process allocator and only survive it by luck.
+//
+// Freeing after the call returns is safe: pl_map_avframe_ex() takes its own
+// av_frame_clone() and pl_unmap_avframe() releases it before we return, so
+// nothing of ours outlives the call. It also keeps the caller's reference alive
+// across the whole call, which guarantees the clone can never drop the last
+// reference to a buffer and free an AVBufferRef that the caller's FFmpeg
+// allocated.
+namespace {
+
+// Unmaps the mapped pl_frame on scope exit.
+struct PlFrameUnmapper {
+    pl_gpu gpu;
+    struct pl_frame *frame;
+
+    PlFrameUnmapper(pl_gpu g, struct pl_frame *f) : gpu(g), frame(f) {}
+    ~PlFrameUnmapper() { pl_unmap_avframe(gpu, frame); }
+
+    PlFrameUnmapper(const PlFrameUnmapper &) = delete;
+    PlFrameUnmapper &operator=(const PlFrameUnmapper &) = delete;
+};
+
+void apply_target_crop(struct pl_frame *target_frame, const struct pl_frame *source_frame)
+{
+    pl_rect2df crop = source_frame->crop;
+    switch (renderingFormat.load(std::memory_order_relaxed)) {
+        case 0: { // normal
+            // A target aspect shrinks the crop to that ratio instead of the source ratio, so the
+            // video is stretched into a fixed frame (16:10, 21:9, ...) rather than letterboxed.
+            const float aspect = targetAspect.load(std::memory_order_relaxed);
+            if (aspect > 0.0f)
+                pl_rect2df_aspect_set(&target_frame->crop, aspect, 0.0);
+            else
+                pl_rect2df_aspect_copy(&target_frame->crop, &crop, 0.0);
+            break;
+        }
+        case 1: // stretched
+            // Nothing to do, target.crop already covers the full image
+            break;
+        case 2: // zoomed
+            pl_rect2df_aspect_copy(&target_frame->crop, &crop, 1.0);
+            break;
+    }
+}
+
+// Builds the hook chain for a single render call. `chain` is only borrowed by
+// `params`, so it has to belong to the caller and stay alive until the matching
+// pl_render_image call has returned.
+void apply_render_hooks(pl_vulkan vulkan, pl_render_params *params,
+                        const struct pl_hook *chain[2])
+{
+    int count = 0;
+
+    // A side-loaded shader is the user's own upscaler, so it runs first and
+    // FSR1 sharpens whatever came out of it.
+    const struct pl_hook *custom = custom_shader_get_or_build_hook(vulkan->gpu);
+    if (custom)
+        chain[count++] = custom;
+
+    if (g_fsr1.enabled) {
+        if (fsr1_ensure_hooks(vulkan) && g_fsr1.hook) {
+            chain[count++] = g_fsr1.hook;
+        } else {
+            LogCallbackFunction(nullptr, PL_LOG_WARN,
+                "FSR1 enabled but hook unavailable; rendering without FSR1");
+        }
+    }
+
+    params->hooks = count > 0 ? chain : nullptr;
+    params->num_hooks = count;
+}
+
+void present_swapchain_frame(pl_swapchain placebo_swapchain)
+{
+#ifdef _WIN32
+    pl_swapchain_swap_buffers(placebo_swapchain);
+#else
+    if (!m_using_wait_for_rendering)
+        pl_swapchain_swap_buffers(placebo_swapchain);
+#endif
+}
+
+// ---------- Ambient background ----------
+//
+// All three modes build a tiny copy of the frame through a second renderer, in
+// the colour space of the swapchain, and then draw the bars from it before the
+// video is rendered on top with `border = PL_CLEAR_SKIP`. Blurred Video and
+// Ambient Colors also reduce that copy 4x4; Edge Extend samples the 128x72
+// source directly. Cost stays independent of the window, the stream and FSR.
+//
+// Everything here belongs to the pl_gpu of the session and is created on the
+// first frame that actually draws a background, so an unused ambient setting
+// costs one atomic load per frame and nothing else.
+
+struct AmbientVertex {
+    float pos[2];   // absolute pixels of the target, y down
+    float rel[2];   // 0..1 across the video rectangle, outside it in the bars
+};
+
+struct AmbientState {
+    pl_gpu gpu = nullptr;
+    pl_renderer renderer = nullptr;   // second, deliberately tiny renderer
+    pl_dispatch dp = nullptr;
+    pl_tex src = nullptr;             // AMBIENT_SRC_W x AMBIENT_SRC_H
+    pl_tex reduced[2] = {nullptr, nullptr};
+    int  reducedCurrent = 0;
+    bool reducedPrimed = false;
+    bool unavailable = false;         // creation failed once, do not try again
+    int  lastMode = AMBIENT_MODE_OFF;
+    struct pl_vertex_attrib attribs[2] = {};
+};
+
+AmbientState g_ambient;
+
+// The video rectangle, and the bars around it. The bars reach one pixel *into*
+// the video: they are drawn first and the video covers them, which is cheaper
+// and safer than trying to predict the exact pixel libplacebo's own quad starts
+// at, and it can never leave a seam.
+struct AmbientBars {
+    pl_rect2d rects[2] = {};
+    int count = 0;
+    float origin[2] = {0.f, 0.f};
+    float size[2] = {0.f, 0.f};
+    float distScale[2] = {0.f, 0.f}; // video size over bar size, per axis
+    float fbSize[2] = {0.f, 0.f};
+};
+
+bool ambient_compute_bars(const struct pl_frame *target, int fbWidth, int fbHeight, AmbientBars &out)
+{
+    out = {};
+    if (fbWidth <= 0 || fbHeight <= 0)
+        return false;
+
+    out.fbSize[0] = (float) fbWidth;
+    out.fbSize[1] = (float) fbHeight;
+
+    const float x0 = fminf(target->crop.x0, target->crop.x1);
+    const float x1 = fmaxf(target->crop.x0, target->crop.x1);
+    const float y0 = fminf(target->crop.y0, target->crop.y1);
+    const float y1 = fmaxf(target->crop.y0, target->crop.y1);
+
+    out.origin[0] = x0;
+    out.origin[1] = y0;
+    out.size[0] = fmaxf(x1 - x0, 1.f);
+    out.size[1] = fmaxf(y1 - y0, 1.f);
+    out.distScale[0] = out.size[0] / fmaxf((fbWidth  - out.size[0]) * 0.5f, 1.f);
+    out.distScale[1] = out.size[1] / fmaxf((fbHeight - out.size[1]) * 0.5f, 1.f);
+
+    auto clampInt = [](float v, int lo, int hi) {
+        int i = (int) lroundf(v);
+        return i < lo ? lo : (i > hi ? hi : i);
+    };
+
+    auto push = [&out](int px0, int py0, int px1, int py1) {
+        if (px1 <= px0 || py1 <= py0 || out.count >= 2)
+            return;
+        pl_rect2d &r = out.rects[out.count++];
+        r.x0 = px0;
+        r.y0 = py0;
+        r.x1 = px1;
+        r.y1 = py1;
+    };
+
+    if (y0 > 0.5f || y1 < fbHeight - 0.5f) {
+        push(0, 0, fbWidth, clampInt(y0 + 1.f, 0, fbHeight));
+        push(0, clampInt(y1 - 1.f, 0, fbHeight), fbWidth, fbHeight);
+    } else if (x0 > 0.5f || x1 < fbWidth - 0.5f) {
+        push(0, 0, clampInt(x0 + 1.f, 0, fbWidth), fbHeight);
+        push(clampInt(x1 - 1.f, 0, fbWidth), 0, fbWidth, fbHeight);
+    }
+
+    return out.count > 0;
+}
+
+void ambient_destroy()
+{
+    pl_gpu gpu = g_ambient.gpu;
+
+    if (gpu) {
+        pl_tex_destroy(gpu, &g_ambient.src);
+        pl_tex_destroy(gpu, &g_ambient.reduced[0]);
+        pl_tex_destroy(gpu, &g_ambient.reduced[1]);
+        pl_dispatch_destroy(&g_ambient.dp);
+        pl_renderer_destroy(&g_ambient.renderer);
+    } else {
+        // Everything below was created from a gpu that is already gone, so there
+        // is nothing left to hand it back to and destroying it would follow dead
+        // handles. Dropping ours is all that can be done.
+        g_ambient.src = nullptr;
+        g_ambient.reduced[0] = nullptr;
+        g_ambient.reduced[1] = nullptr;
+        g_ambient.dp = nullptr;
+        g_ambient.renderer = nullptr;
+    }
+
+    // The vertex formats belong to that gpu as well, so the next session has to
+    // look them up again rather than reuse these.
+    g_ambient.attribs[0] = {};
+    g_ambient.attribs[1] = {};
+
+    g_ambient.gpu = nullptr;
+    g_ambient.reducedCurrent = 0;
+    g_ambient.reducedPrimed = false;
+    g_ambient.lastMode = AMBIENT_MODE_OFF;
+    // A failure belongs to the session it happened in; the next one starts over.
+    g_ambient.unavailable = false;
+}
+
+pl_tex ambient_create_tex(pl_gpu gpu, int w, int h)
+{
+    // 16 bit float holds the PQ and the sRGB range alike, so one format covers
+    // every colour space the swapchain can be in.
+    pl_fmt fmt = pl_find_fmt(gpu, PL_FMT_FLOAT, 4, 16, 0,
+                             (enum pl_fmt_caps) (PL_FMT_CAP_RENDERABLE | PL_FMT_CAP_LINEAR));
+    if (!fmt)
+        return nullptr;
+
+    pl_tex_params tparams = {};
+    tparams.w = w;
+    tparams.h = h;
+    tparams.format = fmt;
+    tparams.sampleable = true;
+    tparams.renderable = true;
+
+    return pl_tex_create(gpu, &tparams);
+}
+
+bool ambient_ensure(pl_gpu gpu, bool needReduced)
+{
+    if (!gpu)
+        return false;
+
+    if (g_ambient.gpu && g_ambient.gpu != gpu) {
+        // A new session on a new device, without the old one having been torn
+        // down. Its resources went away with it, so drop them instead of handing
+        // stale handles to this gpu.
+        g_ambient.gpu = nullptr;
+        ambient_destroy();
+    }
+
+    if (g_ambient.unavailable)
+        return false;
+
+    g_ambient.gpu = gpu;
+
+    if (!g_ambient.renderer)
+        g_ambient.renderer = pl_renderer_create(gpu->log, gpu);
+    if (!g_ambient.dp)
+        g_ambient.dp = pl_dispatch_create(gpu->log, gpu);
+    if (!g_ambient.src)
+        g_ambient.src = ambient_create_tex(gpu, AMBIENT_SRC_W, AMBIENT_SRC_H);
+
+    if (needReduced && !g_ambient.reduced[0]) {
+        for (int i = 0; i < 2; i++)
+            g_ambient.reduced[i] = ambient_create_tex(gpu, AMBIENT_REDUCED_W, AMBIENT_REDUCED_H);
+        // Nothing has been rendered into them yet, so the first blend must not read them.
+        g_ambient.reducedPrimed = false;
+    }
+
+    if (!g_ambient.attribs[0].fmt) {
+        g_ambient.attribs[0].name = "amb_pos";
+        g_ambient.attribs[0].fmt = pl_find_vertex_fmt(gpu, PL_FMT_FLOAT, 2);
+        g_ambient.attribs[0].offset = offsetof(struct AmbientVertex, pos);
+        g_ambient.attribs[1].name = "amb_rel";
+        g_ambient.attribs[1].fmt = pl_find_vertex_fmt(gpu, PL_FMT_FLOAT, 2);
+        g_ambient.attribs[1].offset = offsetof(struct AmbientVertex, rel);
+    }
+
+    const bool ok = g_ambient.renderer && g_ambient.dp && g_ambient.src &&
+                    g_ambient.attribs[0].fmt && g_ambient.attribs[1].fmt &&
+                    (!needReduced || (g_ambient.reduced[0] && g_ambient.reduced[1]));
+
+    if (!ok) {
+        LogCallbackFunction(nullptr, PL_LOG_WARN,
+            "Ambient background unavailable, keeping black bars");
+        // Latched after the teardown, which clears the flag for the next session.
+        ambient_destroy();
+        g_ambient.unavailable = true;
+        return false;
+    }
+
+    return true;
+}
+
+// Renders the whole frame into the tiny texture, in the colour space of the
+// swapchain. libplacebo does the conversion, the tone mapping and the display
+// encode with the same code the video goes through, so foreground and background
+// match and the fills below never have to know about colour at all.
+bool ambient_render_source(const struct pl_frame *image, const struct pl_frame *target)
+{
+    struct pl_frame tiny = {};
+    tiny.num_planes = 1;
+    tiny.planes[0].texture = g_ambient.src;
+    tiny.planes[0].components = 4;
+    tiny.planes[0].component_mapping[0] = PL_CHANNEL_R;
+    tiny.planes[0].component_mapping[1] = PL_CHANNEL_G;
+    tiny.planes[0].component_mapping[2] = PL_CHANNEL_B;
+    tiny.planes[0].component_mapping[3] = PL_CHANNEL_A;
+    tiny.planes[0].address_mode = PL_TEX_ADDRESS_CLAMP;
+
+    tiny.repr = target->repr;
+    // The swapchain's bit depth says nothing about a float texture, and leaving
+    // it in would put a quantisation step in front of a target that has none.
+    tiny.repr.bits = {};
+    tiny.color = target->color;
+
+    tiny.crop.x0 = 0.f;
+    tiny.crop.y0 = 0.f;
+    tiny.crop.x1 = (float) AMBIENT_SRC_W;
+    tiny.crop.y1 = (float) AMBIENT_SRC_H;
+
+    // Deliberately the cheapest configuration there is, and deliberately without
+    // the hooks of the video path: FSR upscaling a frame on its way down to
+    // 128x72 would cost real time and change nothing anyone can see.
+    pl_render_params params = pl_render_fast_params;
+    params.border = PL_CLEAR_SKIP;      // the image covers the whole tiny target
+
+    return pl_render_image(g_ambient.renderer, image, &tiny, &params);
+}
+
+// Fills one rectangle of the target from `source`. `body` is the algorithm, the
+// uniforms below are shared by all of them.
+bool ambient_dispatch_fill(pl_tex target,
+                           pl_tex source,
+                           const char *description,
+                           const char *body,
+                           const AmbientBars &bars,
+                           int barIndex,
+                           bool flipped,
+                           float dim,
+                           float band,
+                           float falloff,
+                           float tapNear,
+                           float tapFar)
+{
+    const pl_rect2d rect = bars.rects[barIndex];
+
+    const float texel[2] = { 1.f / (float) source->params.w, 1.f / (float) source->params.h };
+
+    struct pl_shader_desc desc = {};
+    desc.desc.name = "amb_tex";
+    desc.desc.type = PL_DESC_SAMPLED_TEX;
+    desc.binding.object = source;
+    desc.binding.sample_mode = PL_TEX_SAMPLE_LINEAR;
+    desc.binding.address_mode = PL_TEX_ADDRESS_CLAMP;
+
+    struct pl_shader_var vars[10] = {};
+    vars[0].var = pl_var_vec2("amb_texel");
+    vars[0].data = texel;
+    vars[1].var = pl_var_vec2("amb_distScale");
+    vars[1].data = bars.distScale;
+    vars[1].dynamic = true;
+    vars[2].var = pl_var_float("amb_dim");
+    vars[2].data = &dim;
+    vars[3].var = pl_var_float("amb_band");
+    vars[3].data = &band;
+    vars[4].var = pl_var_float("amb_falloff");
+    vars[4].data = &falloff;
+    vars[5].var = pl_var_float("amb_tapNear");
+    vars[5].data = &tapNear;
+    vars[6].var = pl_var_float("amb_tapFar");
+    vars[6].data = &tapFar;
+    vars[7].var = pl_var_vec2("amb_fbSize");
+    vars[7].data = bars.fbSize;
+    vars[7].dynamic = true;
+    vars[8].var = pl_var_vec2("amb_origin");
+    vars[8].data = bars.origin;
+    vars[8].dynamic = true;
+    vars[9].var = pl_var_vec2("amb_videoSize");
+    vars[9].data = bars.size;
+    vars[9].dynamic = true;
+
+    struct pl_custom_shader custom = {};
+    custom.description = description;
+    custom.body = body;
+    custom.output = PL_SHADER_SIG_COLOR;
+    custom.descriptors = &desc;
+    custom.num_descriptors = 1;
+    custom.variables = vars;
+    custom.num_variables = 10;
+
+    pl_shader sh = pl_dispatch_begin(g_ambient.dp);
+    if (!pl_shader_custom(sh, &custom)) {
+        pl_dispatch_abort(g_ambient.dp, &sh);
+        return false;
+    }
+
+    const AmbientVertex quad[6] = {
+        { { (float) rect.x0, (float) rect.y0 }, {} },
+        { { (float) rect.x1, (float) rect.y0 }, {} },
+        { { (float) rect.x0, (float) rect.y1 }, {} },
+        { { (float) rect.x1, (float) rect.y0 }, {} },
+        { { (float) rect.x1, (float) rect.y1 }, {} },
+        { { (float) rect.x0, (float) rect.y1 }, {} },
+    };
+
+    AmbientVertex vertices[6];
+    for (int i = 0; i < 6; i++) {
+        vertices[i] = quad[i];
+        vertices[i].rel[0] = (vertices[i].pos[0] - bars.origin[0]) / bars.size[0];
+        vertices[i].rel[1] = (vertices[i].pos[1] - bars.origin[1]) / bars.size[1];
+    }
+
+    struct pl_dispatch_vertex_params vparams = {};
+    vparams.shader = &sh;
+    vparams.target = target;
+    // Both the vertices and the scissor are in the space of the visible image;
+    // pl_dispatch_vertex turns them into framebuffer rows, exactly as the
+    // Nuklear pass above hands it its clip rects.
+    vparams.scissors = rect;
+    vparams.vertex_attribs = g_ambient.attribs;
+    vparams.num_vertex_attribs = 2;
+    vparams.vertex_stride = sizeof(struct AmbientVertex);
+    vparams.vertex_position_idx = 0;
+    vparams.vertex_coords = PL_COORDS_ABSOLUTE;
+    vparams.vertex_flipped = flipped;
+    vparams.vertex_type = PL_PRIM_TRIANGLE_LIST;
+    vparams.vertex_count = 6;
+    vparams.vertex_data = vertices;
+
+    return pl_dispatch_vertex(g_ambient.dp, &vparams);
+}
+
+// Ambient Colors takes its colour from a band just inside the nearest edge and
+// fades it towards the window border, off a copy that is reduced further and
+// blended over time. Edge Extend mirrors the outer band of the frame outwards,
+// softening the taps the further out it goes.
+const char *kAmbientColorsBody = R"(
+vec2 before = max(-amb_rel, vec2(0.0));
+vec2 after  = max(amb_rel - vec2(1.0), vec2(0.0));
+vec2 dlo = clamp(before * amb_distScale, vec2(0.0), vec2(1.0));
+vec2 dhi = clamp(after  * amb_distScale, vec2(0.0), vec2(1.0));
+float dist = max(max(dlo.x, dlo.y), max(dhi.x, dhi.y));
+
+vec2 uv = clamp(amb_rel, vec2(0.0), vec2(1.0));
+uv += step(vec2(1e-6), before) * amb_band;
+uv -= step(vec2(1e-6), after)  * amb_band;
+
+vec3 c = textureLod(amb_tex, uv, 0.0).rgb;
+color = vec4(c * mix(1.0, amb_falloff, dist) * amb_dim, 1.0);
+)";
+
+const char *kAmbientEdgeBody = R"(
+vec2 before = max(-amb_rel, vec2(0.0));
+vec2 after  = max(amb_rel - vec2(1.0), vec2(0.0));
+vec2 dlo = clamp(before * amb_distScale, vec2(0.0), vec2(1.0));
+vec2 dhi = clamp(after  * amb_distScale, vec2(0.0), vec2(1.0));
+float dist = max(max(dlo.x, dlo.y), max(dhi.x, dhi.y));
+
+vec2 uv = clamp(amb_rel, vec2(0.0), vec2(1.0));
+uv += dlo * amb_band;
+uv -= dhi * amb_band;
+
+vec2 o = amb_texel * mix(amb_tapNear, amb_tapFar, dist);
+
+vec3 c = textureLod(amb_tex, uv, 0.0).rgb * 2.0;
+c += textureLod(amb_tex, uv + vec2(o.x, 0.0), 0.0).rgb;
+c += textureLod(amb_tex, uv - vec2(o.x, 0.0), 0.0).rgb;
+c += textureLod(amb_tex, uv + vec2(0.0, o.y), 0.0).rgb;
+c += textureLod(amb_tex, uv - vec2(0.0, o.y), 0.0).rgb;
+color = vec4(c * (1.0 / 6.0) * amb_dim, 1.0);
+)";
+
+// Blurred Video: the reduced frame scaled to cover the window, tent filtered.
+// Pixel position is reconstructed from amb_rel so the cover UV lives in the
+// same Y-down window space the bars were built in, matching D3D11 and Metal.
+const char *kAmbientBlurBody = R"(
+vec2 px = amb_origin + amb_rel * amb_videoSize;
+vec2 cover = amb_fbSize / max(amb_videoSize, vec2(1.0));
+vec2 uv = (px - amb_fbSize * 0.5) / (amb_videoSize * max(cover.x, cover.y)) + 0.5;
+vec2 o = amb_texel * amb_tapNear;
+
+vec3 c = textureLod(amb_tex, uv, 0.0).rgb * 4.0;
+c += textureLod(amb_tex, uv + vec2(-o.x, -o.y), 0.0).rgb;
+c += textureLod(amb_tex, uv + vec2( o.x, -o.y), 0.0).rgb;
+c += textureLod(amb_tex, uv + vec2(-o.x,  o.y), 0.0).rgb;
+c += textureLod(amb_tex, uv + vec2( o.x,  o.y), 0.0).rgb;
+color = vec4(c * 0.125 * amb_dim, 1.0);
+)";
+
+// Reduces the tiny source by 4x4 and blends it into the previous result. Four
+// bilinear taps are an exact box average, and the blend is what makes Ambient
+// Colors settle instead of following every flash of the game.
+const char *kAmbientReduceBody = R"(
+vec3 c = textureLod(amb_tex, amb_rel + vec2(-amb_texel.x, -amb_texel.y), 0.0).rgb;
+c += textureLod(amb_tex, amb_rel + vec2( amb_texel.x, -amb_texel.y), 0.0).rgb;
+c += textureLod(amb_tex, amb_rel + vec2(-amb_texel.x,  amb_texel.y), 0.0).rgb;
+c += textureLod(amb_tex, amb_rel + vec2( amb_texel.x,  amb_texel.y), 0.0).rgb;
+c *= 0.25;
+
+if (amb_blend < 0.999) {
+    c = mix(textureLod(amb_prev, amb_rel, 0.0).rgb, c, amb_blend);
+}
+
+color = vec4(c, 1.0);
+)";
+
+// The reduce pass runs over the whole reduced texture, so its quad is the
+// texture itself and `amb_rel` is a plain 0..1 texture coordinate.
+bool ambient_dispatch_reduce(float blend)
+{
+    const int prev = g_ambient.reducedCurrent;
+    const int next = 1 - prev;
+
+    pl_tex target = g_ambient.reduced[next];
+    if (!target)
+        return false;
+
+    const float texel[2] = { 1.f / (float) AMBIENT_SRC_W, 1.f / (float) AMBIENT_SRC_H };
+
+    struct pl_shader_desc descs[2] = {};
+    descs[0].desc.name = "amb_tex";
+    descs[0].desc.type = PL_DESC_SAMPLED_TEX;
+    descs[0].binding.object = g_ambient.src;
+    descs[0].binding.sample_mode = PL_TEX_SAMPLE_LINEAR;
+    descs[0].binding.address_mode = PL_TEX_ADDRESS_CLAMP;
+    descs[1].desc.name = "amb_prev";
+    descs[1].desc.type = PL_DESC_SAMPLED_TEX;
+    descs[1].binding.object = g_ambient.reduced[prev];
+    descs[1].binding.sample_mode = PL_TEX_SAMPLE_LINEAR;
+    descs[1].binding.address_mode = PL_TEX_ADDRESS_CLAMP;
+
+    struct pl_shader_var vars[2] = {};
+    vars[0].var = pl_var_vec2("amb_texel");
+    vars[0].data = texel;
+    vars[1].var = pl_var_float("amb_blend");
+    vars[1].data = &blend;
+    vars[1].dynamic = true;
+
+    struct pl_custom_shader custom = {};
+    custom.description = "ambient reduce";
+    custom.body = kAmbientReduceBody;
+    custom.output = PL_SHADER_SIG_COLOR;
+    custom.descriptors = descs;
+    custom.num_descriptors = 2;
+    custom.variables = vars;
+    custom.num_variables = 2;
+
+    pl_shader sh = pl_dispatch_begin(g_ambient.dp);
+    if (!pl_shader_custom(sh, &custom)) {
+        pl_dispatch_abort(g_ambient.dp, &sh);
+        return false;
+    }
+
+    const float w = (float) AMBIENT_REDUCED_W;
+    const float h = (float) AMBIENT_REDUCED_H;
+
+    const AmbientVertex vertices[6] = {
+        { { 0.f, 0.f }, { 0.f, 0.f } },
+        { {   w, 0.f }, { 1.f, 0.f } },
+        { { 0.f,   h }, { 0.f, 1.f } },
+        { {   w, 0.f }, { 1.f, 0.f } },
+        { {   w,   h }, { 1.f, 1.f } },
+        { { 0.f,   h }, { 0.f, 1.f } },
+    };
+
+    struct pl_dispatch_vertex_params vparams = {};
+    vparams.shader = &sh;
+    vparams.target = target;
+    vparams.scissors.x1 = AMBIENT_REDUCED_W;
+    vparams.scissors.y1 = AMBIENT_REDUCED_H;
+    vparams.vertex_attribs = g_ambient.attribs;
+    vparams.num_vertex_attribs = 2;
+    vparams.vertex_stride = sizeof(struct AmbientVertex);
+    vparams.vertex_position_idx = 0;
+    vparams.vertex_coords = PL_COORDS_ABSOLUTE;
+    vparams.vertex_type = PL_PRIM_TRIANGLE_LIST;
+    vparams.vertex_count = 6;
+    vparams.vertex_data = vertices;
+
+    if (!pl_dispatch_vertex(g_ambient.dp, &vparams))
+        return false;
+
+    g_ambient.reducedCurrent = next;
+    g_ambient.reducedPrimed = true;
+    return true;
+}
+
+// Draws the background into the bars of the swapchain image. Returns false when
+// anything went wrong, in which case the caller lets libplacebo clear the border
+// as usual and the frame simply shows the black bars of today.
+bool ambient_fill_border(pl_gpu gpu,
+                         int mode,
+                         const struct pl_frame *image,
+                         const struct pl_frame *target,
+                         const struct pl_swapchain_frame *sc_frame)
+{
+    if (!sc_frame || !sc_frame->fbo)
+        return false;
+
+    const int fbWidth = sc_frame->fbo->params.w;
+    const int fbHeight = sc_frame->fbo->params.h;
+
+    AmbientBars bars;
+    if (!ambient_compute_bars(target, fbWidth, fbHeight, bars))
+        return false;   // the video covers everything, nothing to fill
+
+    const bool needReduced = (mode != AMBIENT_MODE_EDGE);
+    if (!ambient_ensure(gpu, needReduced))
+        return false;
+
+    if (g_ambient.lastMode != mode) {
+        // Another algorithm, or ambient coming back: do not blend into colours
+        // that were left over from before
+        g_ambient.reducedPrimed = false;
+        g_ambient.lastMode = mode;
+    }
+
+    if (!ambient_render_source(image, target))
+        return false;
+
+    pl_tex source = g_ambient.src;
+
+    if (needReduced) {
+        const float blend = (mode == AMBIENT_MODE_COLORS && g_ambient.reducedPrimed)
+            ? AMBIENT_BLEND_SMOOTHED
+            : AMBIENT_BLEND_INSTANT;
+        if (!ambient_dispatch_reduce(blend))
+            return false;
+        source = g_ambient.reduced[g_ambient.reducedCurrent];
+    }
+
+    // libplacebo hands out display-encoded values, so the reduction has to be
+    // encoded as well. See AMBIENT_DIM_HDR_ENCODED.
+    const float dim = pl_color_transfer_is_hdr(target->color.transfer)
+        ? AMBIENT_DIM_HDR_ENCODED
+        : AMBIENT_DIM_SDR;
+
+    const char *description;
+    const char *body;
+    float band;
+    float falloff;
+    float tapNear;
+    float tapFar;
+    switch (mode) {
+        case AMBIENT_MODE_COLORS:
+            description = "ambient colors";
+            body = kAmbientColorsBody;
+            band = AMBIENT_COLORS_BAND;
+            falloff = AMBIENT_COLORS_FALLOFF;
+            tapNear = 0.f;
+            tapFar = 0.f;
+            break;
+        case AMBIENT_MODE_BLUR:
+            description = "ambient blur";
+            body = kAmbientBlurBody;
+            band = 0.f;
+            falloff = 1.f;
+            tapNear = AMBIENT_BLUR_TAP;
+            tapFar = 0.f;
+            break;
+        default:
+            description = "ambient edge extend";
+            body = kAmbientEdgeBody;
+            band = AMBIENT_EDGE_BAND;
+            falloff = 1.f;
+            tapNear = AMBIENT_EDGE_TAP_NEAR;
+            tapFar = AMBIENT_EDGE_TAP_FAR;
+            break;
+    }
+
+    for (int i = 0; i < bars.count; i++) {
+        if (!ambient_dispatch_fill(sc_frame->fbo, source, description, body, bars, i,
+                                   sc_frame->flipped,
+                                   dim, band, falloff, tapNear, tapFar))
+            return false;
+    }
+
+    return true;
+}
+
+// Nothing of ours drew this frame because the space around the video is black
+// again. The smoothed colours belong to whatever was on screen back then, so
+// a later switch back starts over instead of fading in from a frame that is
+// minutes old. This is what the other two renderers do with their own last mode.
+void ambient_note_inactive()
+{
+    if (g_ambient.lastMode != AMBIENT_MODE_OFF)
+        g_ambient.lastMode = AMBIENT_MODE_OFF;
+}
+
+// Shared body of both render entry points. `ui_instance` is null for the
+// variant without an overlay. Keeping this in one place is deliberate: the two
+// copies had already drifted apart, which is how the FSR1 hooks ended up being
+// ignored in one of them.
+bool render_avframe(AVFrame *raw_frame,
+                    pl_vulkan vulkan,
+                    pl_swapchain placebo_swapchain,
+                    pl_renderer placebo_renderer,
+                    struct ui *ui_instance,
+                    int width,
+                    int height)
+{
+    if (!raw_frame || !vulkan)
+        return false;
+
+    if (m_using_wait_for_rendering && !m_HasPendingSwapchainFrame)
+        return false;
+
+    struct pl_frame placebo_frame = {0};
+    struct pl_avframe_params avparams = {
+        .frame = raw_frame,
+        .tex = placebo_tex_global,
+    };
+
+    if (!pl_map_avframe_ex(vulkan->gpu, &placebo_frame, &avparams)) {
+        LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to map AVFrame to Placebo frame!");
+        return false;
+    }
+    PlFrameUnmapper unmapper(vulkan->gpu, &placebo_frame);
+
+    if (!pl_color_space_equal(&placebo_frame.color, &m_LastColorspace)) {
+        m_LastColorspace = placebo_frame.color;
+        pl_swapchain_colorspace_hint(placebo_swapchain, &placebo_frame.color);
+    }
+
+    if (!m_using_wait_for_rendering) { // otherwise plWaitToRender already started one
+        if (!pl_swapchain_start_frame(placebo_swapchain, &m_SwapchainFrame)) {
+            LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
+            return false;
+        }
+        m_HasPendingSwapchainFrame = true;
+    }
+
+    // The swapchain image is acquired from here on, so it has to be submitted
+    // before returning even when rendering fails. Leaving it unsubmitted makes
+    // the next pl_swapchain_start_frame fail and leaks the image.
+    struct pl_frame target_frame = {0};
+    pl_frame_from_swapchain(&target_frame, &m_SwapchainFrame);
+
+    if (ui_instance)
+        render_ui(ui_instance, width, height);
+
+    apply_target_crop(&target_frame, &placebo_frame);
+
+    pl_render_params params = render_params;
+    const struct pl_hook *hook_chain[2] = {nullptr, nullptr};
+    apply_render_hooks(vulkan, &params, hook_chain);
+
+    // Ambient background. Only the Normal format leaves anything empty. A
+    // disabled ambient setting costs the two loads below and nothing else: no
+    // resources are created until a frame actually draws a background.
+    const int ambient_mode = ambientMode.load(std::memory_order_relaxed);
+    if (ambient_mode != AMBIENT_MODE_OFF && renderingFormat.load(std::memory_order_relaxed) == 0) {
+        if (ambient_fill_border(vulkan->gpu, ambient_mode, &placebo_frame,
+                                &target_frame, &m_SwapchainFrame)) {
+            // The bars already hold the background, so the video must not clear
+            // over it. A failure above keeps the border libplacebo would draw.
+            params.border = PL_CLEAR_SKIP;
+        }
+    } else {
+        ambient_note_inactive();
+    }
+
+    bool rendered = pl_render_image(placebo_renderer, &placebo_frame, &target_frame, &params);
+    if (!rendered)
+        LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to render Placebo frame!");
+
+    if (rendered && g_pending_screenshot) {
+        g_pending_screenshot = false;
+        std::string dir  = g_screenshot_dir;
+        std::string name = g_screenshot_name;
+        g_screenshot_dir.clear();
+        g_screenshot_name.clear();
+
+        if (!save_pl_frame_to_file(vulkan, placebo_renderer, &placebo_frame, dir, name))
+            LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to save screenshot from plRenderAvFrame");
+    }
+
+    if (rendered && ui_instance) {
+        if (!ui_draw(ui_instance, &m_SwapchainFrame))
+            LogCallbackFunction(nullptr, PL_LOG_ERR, "Could not draw UI!");
+    }
+
+    m_HasPendingSwapchainFrame = false;
+    if (!pl_swapchain_submit_frame(placebo_swapchain)) {
+        LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to submit Placebo frame!");
+        return false;
+    }
+
+    present_swapchain_frame(placebo_swapchain);
+    return rendered;
+}
+
+} // namespace
 
 extern "C"
 JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrame
   (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer) {
-  if(m_using_wait_for_rendering && !m_HasPendingSwapchainFrame) {
-      return JNI_FALSE;
-  }
-  AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
-  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
-  pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
-  pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
-  bool ret = false;
-
-  struct pl_frame placebo_frame = {0};
-  struct pl_frame target_frame = {0};
-
-  struct pl_avframe_params avparams = {
-      .frame = frame,
-      .tex = placebo_tex_global,
-  };
-  bool mapped = pl_map_avframe_ex(vulkan->gpu, &placebo_frame, &avparams);
-  if (!mapped) {
-      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to map AVFrame to Placebo frame!");
-      av_frame_free(&frame);
-      return static_cast<jboolean>(ret);
-  }
-  // set colorspace hint
-  if (!pl_color_space_equal(&placebo_frame.color, &m_LastColorspace)) {
-      m_LastColorspace = placebo_frame.color;
-      pl_swapchain_colorspace_hint(placebo_swapchain, &placebo_frame.color);
-  }
-  pl_rect2df crop;
-
-  if(!m_using_wait_for_rendering) { // check if already called in wait for renderer
-    if (!pl_swapchain_start_frame(placebo_swapchain, &m_SwapchainFrame)) {
-        LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
-        goto cleanup;
-    }
-  }
-
-  pl_frame_from_swapchain(&target_frame, &m_SwapchainFrame);
-
-  crop = placebo_frame.crop;
-  switch (renderingFormat) {
-      case 0: // normal
-          pl_rect2df_aspect_copy(&target_frame.crop, &crop, 0.0);
-          break;
-      case 1: // stretched
-          // Nothing to do, target.crop already covers the full image
-          break;
-      case 2: // zoomed
-          pl_rect2df_aspect_copy(&target_frame.crop, &crop, 1.0);
-          break;
-  }
-
-  if (!pl_render_image(placebo_renderer, &placebo_frame, &target_frame, &render_params)) {
-      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to render Placebo frame!");
-      goto cleanup;
-  }
-  // Screenshot request
-  if (g_pending_screenshot) {
-      g_pending_screenshot = false;
-      std::string dir  = g_screenshot_dir;
-      std::string name = g_screenshot_name;
-      g_screenshot_dir.clear();
-      g_screenshot_name.clear();
-
-      bool ok = save_pl_frame_to_file(vulkan, placebo_renderer, &placebo_frame, dir, name);
-      if (!ok) {
-          LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to save screenshot from plRenderAvFrame");
-      }
-  }
-  if (!pl_swapchain_submit_frame(placebo_swapchain)) {
-      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to submit Placebo frame!");
-      goto cleanup;
-  }
-
-  m_HasPendingSwapchainFrame = true;
-
-#ifdef _WIN32
-  pl_swapchain_swap_buffers(placebo_swapchain);
-#else
-  if(!m_using_wait_for_rendering) {
-      pl_swapchain_swap_buffers(placebo_swapchain);
-  }
-#endif
-
-  ret = true;
-
-cleanup:
-  pl_unmap_avframe(vulkan->gpu, &placebo_frame);
-
-  return static_cast<jboolean>(ret);
+  return static_cast<jboolean>(render_avframe(
+      reinterpret_cast<AVFrame *>(avframe),
+      reinterpret_cast<pl_vulkan>(placebo_vulkan),
+      reinterpret_cast<pl_swapchain>(swapchain),
+      reinterpret_cast<pl_renderer>(renderer),
+      nullptr, 0, 0));
 }
 
 extern "C"
 JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderAvFrameWithUi
   (JNIEnv *env, jobject obj, jlong avframe, jlong placebo_vulkan, jlong swapchain, jlong renderer, jlong ui, jint width, jint height) {
-  if(m_using_wait_for_rendering && !m_HasPendingSwapchainFrame) {
-      return JNI_FALSE;
-  }
-  AVFrame *frame = reinterpret_cast<AVFrame*>(avframe);
-  pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
-  pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
-  pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
-  bool ret = false;
-
-  struct pl_frame placebo_frame = {0};
-  struct pl_frame target_frame = {0};
-
-  struct pl_avframe_params avparams = {
-      .frame = frame,
-      .tex = placebo_tex_global,
-  };
-  bool mapped = pl_map_avframe_ex(vulkan->gpu, &placebo_frame, &avparams);
-  if (!mapped) {
-      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to map AVFrame to Placebo frame!");
-      av_frame_free(&frame);
-      return static_cast<jboolean>(ret);
-  }
-  // set colorspace hint
-  if (!pl_color_space_equal(&placebo_frame.color, &m_LastColorspace)) {
-      m_LastColorspace = placebo_frame.color;
-      pl_swapchain_colorspace_hint(placebo_swapchain, &placebo_frame.color);
-  }
-  pl_rect2df crop;
-
-  if(!m_using_wait_for_rendering) { // check if already called in wait for renderer
-    if (!pl_swapchain_start_frame(placebo_swapchain, &m_SwapchainFrame)) {
-        LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
-        goto cleanup;
-    }
-  }
-
-  pl_frame_from_swapchain(&target_frame, &m_SwapchainFrame);
-
-  if(ui != 0) {
-      struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
-      render_ui(ui_instance, width, height);
-  }
-
-  crop = placebo_frame.crop;
-  switch (renderingFormat) {
-      case 0: // normal
-          pl_rect2df_aspect_copy(&target_frame.crop, &crop, 0.0);
-          break;
-      case 1: // stretched
-          // Nothing to do, target.crop already covers the full image
-          break;
-      case 2: // zoomed
-          pl_rect2df_aspect_copy(&target_frame.crop, &crop, 1.0);
-          break;
-  }
-
-  if (!pl_render_image(placebo_renderer, &placebo_frame, &target_frame, &render_params)) {
-      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to render Placebo frame!");
-      goto cleanup;
-  }
-  // Screenshot request
-  if (g_pending_screenshot) {
-      g_pending_screenshot = false;
-      std::string dir  = g_screenshot_dir;
-      std::string name = g_screenshot_name;
-      g_screenshot_dir.clear();
-      g_screenshot_name.clear();
-
-      bool ok = save_pl_frame_to_file(vulkan, placebo_renderer, &placebo_frame, dir, name);
-      if (!ok) {
-          LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to save screenshot from plRenderAvFrame");
-      }
-  }
-  if (ui != 0) {
-     struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
-     if (!ui_draw(ui_instance, &m_SwapchainFrame)) {
-        LogCallbackFunction(nullptr, PL_LOG_ERR, "Could not draw UI!");
-     }
-  }
-  if (!pl_swapchain_submit_frame(placebo_swapchain)) {
-      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to submit Placebo frame!");
-      goto cleanup;
-  }
-
-  m_HasPendingSwapchainFrame = true;
-
-#ifdef _WIN32
-  pl_swapchain_swap_buffers(placebo_swapchain);
-#else
-  if(!m_using_wait_for_rendering) {
-      pl_swapchain_swap_buffers(placebo_swapchain);
-  }
-#endif
-
-  ret = true;
-
-cleanup:
-  pl_unmap_avframe(vulkan->gpu, &placebo_frame);
-
-  return static_cast<jboolean>(ret);
+  return static_cast<jboolean>(render_avframe(
+      reinterpret_cast<AVFrame *>(avframe),
+      reinterpret_cast<pl_vulkan>(placebo_vulkan),
+      reinterpret_cast<pl_swapchain>(swapchain),
+      reinterpret_cast<pl_renderer>(renderer),
+      reinterpret_cast<struct ui *>(ui),
+      static_cast<int>(width),
+      static_cast<int>(height)));
 }
 
 extern "C"
@@ -1431,12 +2569,9 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUiOnly
     if(m_using_wait_for_rendering && !m_HasPendingSwapchainFrame) {
         return JNI_FALSE;
     }
-    pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
     pl_swapchain placebo_swapchain = reinterpret_cast<pl_swapchain>(swapchain);
     pl_renderer placebo_renderer = reinterpret_cast<pl_renderer>(renderer);
-    bool ret = false;
-
-    struct pl_frame target_frame = {0};
+    struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
 
     struct pl_color_space hint = {
         .primaries = PL_COLOR_PRIM_UNKNOWN,
@@ -1448,51 +2583,38 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plRenderUiOnly
         pl_swapchain_colorspace_hint(placebo_swapchain, &hint);
     }
 
-    if(!m_using_wait_for_rendering) { // check if already called in wait for renderer
-      if (!pl_swapchain_start_frame(placebo_swapchain, &m_SwapchainFrame)) {
-          LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
-          goto finish;
-      }
+    if (!m_using_wait_for_rendering) { // otherwise plWaitToRender already started one
+        if (!pl_swapchain_start_frame(placebo_swapchain, &m_SwapchainFrame)) {
+            LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame!");
+            return JNI_FALSE;
+        }
+        m_HasPendingSwapchainFrame = true;
     }
 
+    // Acquired from here on, so it has to be submitted before returning.
+    struct pl_frame target_frame = {0};
     pl_frame_from_swapchain(&target_frame, &m_SwapchainFrame);
 
-    if(ui != 0) {
-        struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
+    if (ui_instance)
         render_ui(ui_instance, width, height);
+
+    bool rendered = pl_render_image(placebo_renderer, NULL, &target_frame, &render_params);
+    if (!rendered)
+        LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to render Placebo frame!");
+
+    if (rendered && ui_instance) {
+        if (!ui_draw(ui_instance, &m_SwapchainFrame))
+            LogCallbackFunction(nullptr, PL_LOG_ERR, "Could not draw UI!");
     }
 
-    if (!pl_render_image(placebo_renderer, NULL, &target_frame, &render_params)) {
-        LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to render Placebo frame!");
-        goto cleanup;
-    }
-    if (ui != 0) {
-       struct ui *ui_instance = reinterpret_cast<struct ui *>(ui);
-       if (!ui_draw(ui_instance, &m_SwapchainFrame)) {
-          LogCallbackFunction(nullptr, PL_LOG_ERR, "Could not draw UI!");
-       }
-    }
+    m_HasPendingSwapchainFrame = false;
     if (!pl_swapchain_submit_frame(placebo_swapchain)) {
         LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to submit Placebo frame!");
-        goto cleanup;
+        return JNI_FALSE;
     }
 
-    m_HasPendingSwapchainFrame = true;
-
-#ifdef _WIN32
-  pl_swapchain_swap_buffers(placebo_swapchain);
-#else
-  if(!m_using_wait_for_rendering) {
-      pl_swapchain_swap_buffers(placebo_swapchain);
-  }
-#endif
-
-    ret = true;
-
-  cleanup:
-    pl_unmap_avframe(vulkan->gpu, &target_frame);
-  finish:
-    return static_cast<jboolean>(ret);
+    present_swapchain_frame(placebo_swapchain);
+    return static_cast<jboolean>(rendered);
 }
 
 extern "C"
@@ -1503,13 +2625,14 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plCleanupRendererCo
       return;
   }
 
-  if (!pl_swapchain_start_frame(placebo_swapchain, &m_SwapchainFrame)) {
-      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to start Placebo frame in cleanup renderer context!");
-      return;
-  }
-
-  pl_swapchain_submit_frame(placebo_swapchain);
+  // A frame was started but never submitted, most likely because the renderer
+  // was torn down mid-frame. Submit it so the swapchain can be destroyed
+  // without leaking the acquired image. Starting another frame here, as this
+  // used to do, would acquire a second image and leak the first.
   m_HasPendingSwapchainFrame = false;
+  if (!pl_swapchain_submit_frame(placebo_swapchain)) {
+      LogCallbackFunction(nullptr, PL_LOG_ERR, "Failed to submit pending Placebo frame during cleanup!");
+  }
 }
 
 extern "C"
@@ -1680,9 +2803,11 @@ struct ui *ui_create(pl_gpu gpu, const char* locale)
   fontConfig.range = pick_glyph_range(locale);
   fontConfig.oversample_h = 1; fontConfig.oversample_v = 1;
   fontConfig.pixel_snap = true;
-  ui->default_font = nk_font_atlas_add_from_memory(&ui->atlas, NotoSans_Regular_ttf, NotoSans_Regular_ttf_len, 26, &fontConfig);
-  ui->default_bold_font = nk_font_atlas_add_from_memory(&ui->atlas, NotoSans_Regular_ttf, NotoSans_Regular_ttf_len, 34, &fontConfig);
-  ui->default_small_font = nk_font_atlas_add_from_memory(&ui->atlas, NotoSans_Regular_ttf, NotoSans_Regular_ttf_len, 16, &fontConfig);
+  unsigned int textFontSize = 0;
+  unsigned char* textFont = pick_font(locale, &textFontSize);
+  ui->default_font = nk_font_atlas_add_from_memory(&ui->atlas, textFont, textFontSize, 26, &fontConfig);
+  ui->default_bold_font = nk_font_atlas_add_from_memory(&ui->atlas, textFont, textFontSize, 34, &fontConfig);
+  ui->default_small_font = nk_font_atlas_add_from_memory(&ui->atlas, textFont, textFontSize, 16, &fontConfig);
   struct nk_font_config iconConfig = nk_font_config(0);
   iconConfig.range = ranges_icons;
   iconConfig.oversample_h = 1; iconConfig.oversample_v = 1;
@@ -1723,6 +2848,19 @@ error:
 
 bool ui_draw(struct ui *ui, const struct pl_swapchain_frame *frame)
 {
+  // The nuklear buffers have to be reset on every path. Bailing out with them
+  // still populated makes each following frame append to the leftovers, so a
+  // persistent failure grows them without bound.
+  struct NuklearBuffersReset {
+      struct ui *instance;
+      ~NuklearBuffersReset() {
+          nk_clear(&instance->nk);
+          nk_buffer_clear(&instance->cmds);
+          nk_buffer_clear(&instance->verts);
+          nk_buffer_clear(&instance->idx);
+      }
+  } reset_buffers{ui};
+
   if (nk_convert(&ui->nk, &ui->cmds, &ui->verts, &ui->idx, &ui->convert_cfg) != NK_CONVERT_SUCCESS) {
       return false;
   }
@@ -1792,15 +2930,12 @@ bool ui_draw(struct ui *ui, const struct pl_swapchain_frame *frame)
       indices += cmd->elem_count;
   }
 
-  nk_clear(&ui->nk);
-  nk_buffer_clear(&ui->cmds);
-  nk_buffer_clear(&ui->verts);
-  nk_buffer_clear(&ui->idx);
   return true;
 }
 
 void render_ui(struct ui *ui, int width, int height) {
-  if (!ui || (!globalUiState.showTouchpad && !globalUiState.showPanel && !globalUiState.showPopup && !globalUiState.showContentNotStreamable))
+  if (!ui || (!globalUiState.showTouchpad && !globalUiState.showPanel && !globalUiState.showPopup
+              && !globalUiState.showContentNotStreamable && !globalUiState.showPerfOverlay))
       return;
 
   struct nk_context *ctx = &ui->nk;
@@ -1809,12 +2944,9 @@ void render_ui(struct ui *ui, int width, int height) {
   nk_style_push_style_item(ctx, &ctx->style.window.fixed_background, nk_style_item_hide());
   if (nk_begin(ctx, "FULLSCREEN", bounds, NK_WINDOW_NO_SCROLLBAR)) {
       nk_layout_space_begin(ctx, NK_STATIC, bounds.w, bounds.h); // use whole window space
-      struct nk_command_buffer* out = nk_window_get_canvas(ctx);
 
       // dynamic sizes
-      float centerPosition = (bounds.w / 2) - 32;
-      float dialogWidth = std::min(800.0f, std::max(500.0f, bounds.w * 0.60f));
-      float dialogHeight = std::min(390.0f, std::max(375.0f, bounds.h * 0.50f));
+      float centerPosition = (bounds.w / 2) - panelCenterOffset;
       // cache button style
       struct nk_style_button cachedButtonStyle = ctx->style.button;
 
@@ -1866,7 +2998,7 @@ void render_ui(struct ui *ui, int width, int height) {
           ctx->style.button.text_active = black_button_color;
           ctx->style.button.rounding = 10;
           // -> Share
-          nk_layout_space_push(ctx, nk_rect(centerPosition - ((buttonSize * 1.5) + 7), ((bounds.h - menuButtonHeight) - bottomPadding) - menuButtonFontSize, buttonSize, menuButtonFontSize));
+          nk_layout_space_push(ctx, nk_rect(centerPosition - ((buttonSize * 1.5) + (buttonSize * 0.15)), ((bounds.h - menuButtonHeight) - bottomPadding) - menuButtonFontSize, buttonSize, menuButtonFontSize));
           nk_label(ctx, "SHARE", NK_TEXT_ALIGN_LEFT);
           nk_layout_space_push(ctx, nk_rect(centerPosition - (buttonSize * 1.5), (bounds.h - menuButtonHeight) - bottomPadding, buttonSize * 0.5, menuButtonHeight));
           if(globalUiState.panelState.shareButtonPressed){
@@ -1884,7 +3016,7 @@ void render_ui(struct ui *ui, int width, int height) {
               ctx->style.button.hover = nk_style_item_color(grey_button_color);
               ctx->style.button.active = nk_style_item_color(grey_button_color);
           }
-          nk_layout_space_push(ctx, nk_rect(centerPosition + ((buttonSize * 2) - 12), ((bounds.h - menuButtonHeight) - bottomPadding) - menuButtonFontSize, buttonSize, menuButtonFontSize));
+          nk_layout_space_push(ctx, nk_rect(centerPosition + ((buttonSize * 2) - (buttonSize * 0.25)), ((bounds.h - menuButtonHeight) - bottomPadding) - menuButtonFontSize, buttonSize, menuButtonFontSize));
           nk_label(ctx, "OPTIONS", NK_TEXT_ALIGN_LEFT);
           nk_layout_space_push(ctx, nk_rect(centerPosition + (buttonSize * 2), (bounds.h - menuButtonHeight) - bottomPadding, buttonSize * 0.5, menuButtonHeight ));
           if(globalUiState.panelState.optionsButtonPressed){
@@ -1920,7 +3052,7 @@ void render_ui(struct ui *ui, int width, int height) {
               ctx->style.button.rounding = 8;
               ctx->style.button.border = 0;
 
-              nk_layout_space_push(ctx, nk_rect(edgePadding, (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
+              nk_layout_space_push(ctx, nk_rect(panelLeftSlotX(0), (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
               if(globalUiState.panelState.micButtonActive) {
                   if (nk_button_label(ctx, "\uf130")) {
                       // event handling (ignored here)
@@ -1930,6 +3062,43 @@ void render_ui(struct ui *ui, int width, int height) {
                       // event handling (ignored here)
                   }
               }
+
+              ctx->style.button = cachedButtonStyle;
+          }
+
+          // **** Volume, the pair right of the mic button, or in its slot when the session hides it
+
+          if(globalUiState.panelState.showVolumeButtons) {
+              nk_draw_volume_buttons(ctx, bounds, globalUiState.panelState.showMicButton,
+                                     globalUiState.panelState.volumeDownPressed,
+                                     globalUiState.panelState.volumeUpPressed);
+          }
+
+          // **** Aspect ratio, one slot left of the fullscreen button, while the strip has room for it
+
+          if(globalUiState.panelState.showAspectButton && panelRightSlotFits(bounds.w, 2)) {
+              const struct nk_rect aspectBounds = nk_rect(panelRightSlotX(bounds.w, 2), (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize);
+
+              if(globalUiState.panelState.aspectButtonPressed){
+                  ctx->style.button.normal = nk_style_item_color(pressed_white_button_color_alpha);
+                  ctx->style.button.hover = nk_style_item_color(pressed_white_button_color_alpha);
+                  ctx->style.button.active = nk_style_item_color(pressed_white_button_color_alpha);
+              } else {
+                  ctx->style.button.normal = nk_style_item_color(white_button_color_alpha);
+                  ctx->style.button.hover = nk_style_item_color(white_button_color_alpha);
+                  ctx->style.button.active = nk_style_item_color(white_button_color_alpha);
+              }
+              ctx->style.button.border_color = black_button_color;
+              ctx->style.button.rounding = 8;
+              ctx->style.button.border = 0;
+              // the chip carries no glyph, the icon of the mode is drawn onto the canvas over it. The
+              // layout space takes its rect in local coordinates while the canvas draws in screen ones,
+              // so the icon has to be placed where the chip ends up rather than where it was asked for.
+              nk_layout_space_push(ctx, aspectBounds);
+              if (nk_button_label(ctx, "")) {
+                  // event handling (ignored here)
+              }
+              nk_draw_aspect_icon(nk_window_get_canvas(ctx), nk_layout_space_rect_to_screen(ctx, aspectBounds), globalUiState.panelState.aspectModeIndex, black_button_color);
 
               ctx->style.button = cachedButtonStyle;
           }
@@ -1953,7 +3122,7 @@ void render_ui(struct ui *ui, int width, int height) {
               ctx->style.button.text_active = black_button_color;
               ctx->style.button.rounding = 8;
               ctx->style.button.border = 0;
-              nk_layout_space_push(ctx, nk_rect((bounds.w - (buttonSize * 2)) - (edgePadding * 1.5), (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
+              nk_layout_space_push(ctx, nk_rect((bounds.w - (buttonSize * 2)) - (edgePadding + panelButtonGap), (bounds.h - buttonSize) - bottomPadding, buttonSize, buttonSize));
               if(globalUiState.panelState.fullscreenButtonActive) {
                   if (nk_button_label(ctx, "\ue804")) {
                       // event handling (ignored here)
@@ -2011,7 +3180,7 @@ void render_ui(struct ui *ui, int width, int height) {
           ctx->style.button.rounding = 8;
           ctx->style.button.border = 1;
           ctx->style.button.padding = nk_vec2(touchpadPadding, touchpadPadding);
-          nk_layout_space_push(ctx, nk_rect(0, 0, bounds.w - ((touchpadPadding * 0.6)), bounds.h - ((touchpadPadding * 2) + buttonSize)));
+          nk_layout_space_push(ctx, nk_rect(0, 0, bounds.w - ((touchpadPadding * 0.6)), bounds.h - (panelStripHeight + touchpadPadding)));
           if (nk_button_label(ctx, "")) {
               // event handling (ignored here)
           }
@@ -2044,14 +3213,14 @@ void render_ui(struct ui *ui, int width, int height) {
               if (!lineEnd)
                   lineEnd = lineStart + strlen(lineStart); // last line
 
-              char lineBuffer[512];
-              size_t lineLen = (size_t)(lineEnd - lineStart);
-              if (lineLen >= sizeof(lineBuffer)) lineLen = sizeof(lineBuffer) - 1;
-              memcpy(lineBuffer, lineStart, lineLen);
-              lineBuffer[lineLen] = '\0';
+              // a hebrew line is drawn in the order it reads, see bidi_text.h
+              char lineBuffer[NK_BIDI_MAX_BYTES];
+              int lineLen = (int)(lineEnd - lineStart);
+              const char *line = nk_bidi_visual(lineStart, lineLen, lineBuffer, (int) sizeof(lineBuffer),
+                                                &lineLen);
 
               nk_layout_space_push(ctx, nk_rect(labelX, startY, maxWidth, lineHeight));
-              nk_text(ctx, lineBuffer, (int)lineLen, NK_TEXT_CENTERED);
+              nk_text(ctx, line, lineLen, NK_TEXT_CENTERED);
 
               startY += lineHeight;
               lineStart = *lineEnd ? lineEnd + 1 : lineEnd;
@@ -2060,83 +3229,33 @@ void render_ui(struct ui *ui, int width, int height) {
           nk_style_set_font(ctx, &ui->default_font->handle);
       }
 
+      // **** Performance overlay, before the popup so its scrim dims the overlay as well
+      // the regular font, not the small one: see the note on the size in perf_overlay.h
+      if(globalUiState.showPerfOverlay && ui->default_font != NULL) {
+          nk_draw_perf_overlay(nk_window_get_canvas(ctx), &ui->default_font->handle,
+                               bounds.w, bounds.h, globalUiState.perfOverlayText,
+                               globalUiState.perfOverlayCollapsed ? nk_true : nk_false,
+                               globalUiState.perfOverlayClosePressed ? nk_true : nk_false,
+                               globalUiState.perfOverlayArrowPressed ? nk_true : nk_false);
+      }
+
       // **** Fullscreen popup
-      if(globalUiState.showPopup) {
-          struct nk_rect dialog_rect = nk_rect((bounds.w / 2) - (dialogWidth / 2), (bounds.h / 2) - (dialogHeight / 2), dialogWidth, dialogHeight); // Background rect
-          nk_fill_rect(out, dialog_rect, 8.0, dialog_background);
+      if(globalUiState.showPopup && ui->default_bold_font != NULL && ui->default_font != NULL) {
+          struct nk_dialog_content content = {};
+          content.title = globalUiState.popupState.headerText;
+          content.text = globalUiState.popupState.popupText;
+          content.showSwitch = globalUiState.popupState.showCheckbox ? nk_true : nk_false;
+          content.switchText = globalUiState.popupState.checkboxText;
+          content.switchChecked = globalUiState.popupState.checkboxChecked ? nk_true : nk_false;
+          content.switchFocused = globalUiState.popupState.checkboxFocused ? nk_true : nk_false;
+          content.leftButtonText = globalUiState.popupState.popupButtonLeft;
+          content.leftButtonFocused = globalUiState.popupState.leftButtonFocused ? nk_true : nk_false;
+          content.leftButtonPressed = globalUiState.popupState.leftButtonPressed ? nk_true : nk_false;
+          content.rightButtonText = globalUiState.popupState.popupButtonRight;
+          content.rightButtonFocused = globalUiState.popupState.rightButtonFocused ? nk_true : nk_false;
+          content.rightButtonPressed = globalUiState.popupState.rightButtonPressed ? nk_true : nk_false;
 
-          /*** change font to bold default ***/
-          nk_style_set_font(ctx, &ui->default_bold_font->handle);
-          /*** change font to bold default ***/
-
-          nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogPaddingRight, dialog_rect.y + dialogHeadingPaddingTop, dialogWidth - (dialogPaddingRight * 2.5), dialogHeadingHeight)); // Heading
-          nk_label_colored(ctx, globalUiState.popupState.headerText, NK_TEXT_LEFT, dialog_blue);
-
-          /*** change font to default ***/
-          nk_style_set_font(ctx, &ui->default_font->handle);
-          /*** change font to default ***/
-
-
-          if (globalUiState.popupState.showCheckbox) { // either text or checkbox
-              nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogPaddingRight, dialog_rect.y + dialogTextContentPaddingTop, dialogWidth - (dialogPaddingRight * 2.5), dialogButtonHeight)); // checkbox
-              nk_bool check = globalUiState.popupState.checkboxChecked;
-              nk_checkbox_label(ctx, globalUiState.popupState.checkboxText, &check);
-          } else {
-              nk_layout_space_push(ctx, nk_rect(dialog_rect.x + dialogPaddingRight, dialog_rect.y + dialogTextContentPaddingTop, dialogWidth - (dialogPaddingRight * 2.5), dialogHeight - dialogTextContentPaddingTop)); // Text
-              nk_label_colored_wrap(ctx, globalUiState.popupState.popupText, white_button_color);
-          }
-
-          float buttonContainerFullWidth = (dialogButtonWidth * 2) + 14;
-          float buttonContainerX = ((dialog_rect.x + dialogWidth) - buttonContainerFullWidth) - 40; // - 40 padding
-          nk_layout_space_push(ctx, nk_rect(buttonContainerX, dialog_rect.y + (dialogHeight * 0.80), dialogButtonWidth, dialogButtonHeight)); // Button left
-
-          ctx->style.button.hover = nk_style_item_color(nk_rgb(255,165,0));
-          ctx->style.button.active = nk_style_item_color(nk_rgba(0,0,0,0));
-          ctx->style.button.rounding = 15;
-          ctx->style.button.border = 4;
-
-          /*** change font to bold default ***/
-          nk_style_set_font(ctx, &ui->default_bold_font->handle);
-          /*** change font to bold default ***/
-
-          if (globalUiState.popupState.popupButtonLeft != NULL && globalUiState.popupState.popupButtonLeft[0] != '\0') {
-              nk_color buttonColor = globalUiState.popupState.leftButtonFocused ? dialog_yellow : dialog_blue;
-              nk_color buttonColorBackground = globalUiState.popupState.leftButtonPressed ? buttonColor : nk_rgba(0,0,0,0);
-              nk_color buttonTextColor = globalUiState.popupState.leftButtonPressed ? black_button_color : buttonColor;
-              ctx->style.button.border_color = buttonColor;
-              ctx->style.button.text_background = buttonTextColor;
-              ctx->style.button.text_normal = buttonTextColor;
-              ctx->style.button.text_hover = buttonTextColor;
-              ctx->style.button.text_active = buttonTextColor;
-              ctx->style.button.normal = nk_style_item_color(buttonColorBackground);
-
-              if (nk_button_label(ctx, globalUiState.popupState.popupButtonLeft)) {
-                  // event handling (ignored here)
-              }
-          }
-
-
-          nk_layout_space_push(ctx, nk_rect(buttonContainerX + (dialogButtonWidth + 14), dialog_rect.y + (dialogHeight * 0.80), dialogButtonWidth, dialogButtonHeight)); // Button right
-
-          nk_color buttonColor = globalUiState.popupState.rightButtonFocused ? dialog_yellow : dialog_blue;
-          nk_color buttonColorBackground = globalUiState.popupState.rightButtonPressed ? buttonColor : nk_rgba(0,0,0,0);
-          nk_color buttonTextColor = globalUiState.popupState.rightButtonPressed ? black_button_color : buttonColor;
-          ctx->style.button.border_color = buttonColor;
-          ctx->style.button.text_background = buttonTextColor;
-          ctx->style.button.text_normal = buttonTextColor;
-          ctx->style.button.text_hover = buttonTextColor;
-          ctx->style.button.text_active = buttonTextColor;
-          ctx->style.button.normal = nk_style_item_color(buttonColorBackground);
-
-          if (nk_button_label(ctx, globalUiState.popupState.popupButtonRight)) {
-              // event handling (ignored here)
-          }
-
-          /*** change font to default ***/
-          nk_style_set_font(ctx, &ui->default_font->handle);
-          /*** change font to default ***/
-
-          ctx->style.button = cachedButtonStyle;
+          nk_dialog_draw(ctx, bounds.w, bounds.h, &ui->default_bold_font->handle, &ui->default_font->handle, &content);
       }
 
       // **** END
@@ -2153,6 +3272,7 @@ JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_nkCreateUI
   pl_vulkan vulkan = reinterpret_cast<pl_vulkan>(placebo_vulkan);
   const char* locale = env->GetStringUTFChars(jlocale, nullptr);
   struct ui *ui_instance = ui_create(vulkan->gpu, locale);
+  env->ReleaseStringUTFChars(jlocale, locale);
   if (ui_instance == NULL) {
       return 0L;
   }
@@ -2166,11 +3286,16 @@ Java_com_grill_placebo_PlaceboManager_nkUpdateUIState(JNIEnv *env, jobject obj,
   jboolean panelShowFullscreenButton, jboolean panelMicButtonPressed, jboolean panelMicButtonActive,
   jboolean panelShareButtonPressed, jboolean panelPsButtonPressed, jboolean panelOptionsButtonPressed,
   jboolean panelFullscreenButtonPressed, jboolean panelFullscreenButtonActive, jboolean panelCloseButtonPressed,
+  jboolean panelShowAspectButton, jboolean panelAspectButtonPressed, jint panelAspectModeIndex,
   jstring popupHeaderText, jstring popupPopupText, jboolean popupShowCheckbox,
   jstring popupButtonLeft, jstring popupButtonRight, jstring popupCheckboxText,
   jboolean popupCheckboxChecked, jboolean popupCheckboxFocused, jboolean popupLeftButtonPressed,
   jboolean popupLeftButtonFocused, jboolean popupRightButtonPressed, jboolean popupRightButtonFocused,
-  jstring contentNotStreamableText, jboolean showContentNotStreamable ) {
+  jstring contentNotStreamableText, jboolean showContentNotStreamable,
+  jboolean showPerfOverlay, jboolean perfOverlayCollapsed, jboolean perfOverlayClosePressed,
+  jboolean perfOverlayArrowPressed, jstring perfOverlayText,
+  // grown at the end, so a java side without them keeps working against this native as well
+  jboolean panelShowVolumeButtons, jboolean panelVolumeDownPressed, jboolean panelVolumeUpPressed ) {
 
   globalUiState.showTouchpad = showTouchpad;
   globalUiState.showPanel = showPanel;
@@ -2192,6 +3317,13 @@ Java_com_grill_placebo_PlaceboManager_nkUpdateUIState(JNIEnv *env, jobject obj,
   globalUiState.panelState.fullscreenButtonPressed = panelFullscreenButtonPressed;
   globalUiState.panelState.fullscreenButtonActive = panelFullscreenButtonActive;
   globalUiState.panelState.closeButtonPressed = panelCloseButtonPressed;
+  globalUiState.panelState.showAspectButton = panelShowAspectButton;
+  globalUiState.panelState.aspectButtonPressed = panelAspectButtonPressed;
+  globalUiState.panelState.aspectModeIndex = (panelAspectModeIndex >= 0 && panelAspectModeIndex < NK_ASPECT_MODE_COUNT)
+                                             ? (int) panelAspectModeIndex : 0;
+  globalUiState.panelState.showVolumeButtons = panelShowVolumeButtons;
+  globalUiState.panelState.volumeDownPressed = panelVolumeDownPressed;
+  globalUiState.panelState.volumeUpPressed = panelVolumeUpPressed;
 
   delete[] globalUiState.popupState.headerText;
   globalUiState.popupState.headerText = copyString(env, popupHeaderText);
@@ -2211,6 +3343,13 @@ Java_com_grill_placebo_PlaceboManager_nkUpdateUIState(JNIEnv *env, jobject obj,
   globalUiState.popupState.leftButtonFocused = popupLeftButtonFocused;
   globalUiState.popupState.rightButtonPressed = popupRightButtonPressed;
   globalUiState.popupState.rightButtonFocused = popupRightButtonFocused;
+
+  // the line first, so the render thread never sees the overlay turned on with the text of the last one
+  copyStringInto(env, perfOverlayText, globalUiState.perfOverlayText, sizeof(globalUiState.perfOverlayText));
+  globalUiState.perfOverlayCollapsed = perfOverlayCollapsed;
+  globalUiState.perfOverlayClosePressed = perfOverlayClosePressed;
+  globalUiState.perfOverlayArrowPressed = perfOverlayArrowPressed;
+  globalUiState.showPerfOverlay = showPerfOverlay;
 }
 
 extern "C"
@@ -2223,4 +3362,104 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_nkDestroyUI
 extern "C"
 JNIEXPORT jlong JNICALL Java_com_grill_placebo_PlaceboManager_getVkGetInstanceProcAddr(JNIEnv *env, jobject obj) {
     return reinterpret_cast<jlong>(&vkGetInstanceProcAddr);
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_grill_placebo_PlaceboManager_plSetFsr1Enabled(JNIEnv*, jobject, jboolean enabled) {
+    bool en = (bool) enabled;
+    if (g_fsr1.enabled == en) return;
+    g_fsr1.enabled = en;
+
+    if (!en) {
+        fsr1_destroy_hooks();
+        g_fsr1.dirty = true;
+    } else {
+        g_fsr1.dirty = true;
+    }
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_grill_placebo_PlaceboManager_plSetFsr1RcasEnabled(JNIEnv*, jobject, jboolean enabled) {
+    bool v = (bool) enabled;
+    if (g_fsr1.enable_rcas == v) return;
+    g_fsr1.enable_rcas = v;
+    g_fsr1.dirty = true;
+}
+
+extern "C" JNIEXPORT void JNICALL
+Java_com_grill_placebo_PlaceboManager_plSetFsr1Sharpness(JNIEnv*, jobject, jfloat sharpness) {
+    float v = (float) sharpness;
+    if (v < 0.0f) v = 0.0f;
+    if (v > 1.0f) v = 1.0f;
+
+    if (fabsf(g_fsr1.rcas_sharpness - v) < 1e-6f) return;
+    g_fsr1.rcas_sharpness = v;
+    g_fsr1.dirty = true;
+}
+
+// Installs, or with null/empty clears, a side-loaded user shader. Only the text
+// is stored here; the parse happens lazily on the render thread, because it can
+// create gpu resources and must not run underneath a frame that is in flight.
+extern "C" JNIEXPORT void JNICALL
+Java_com_grill_placebo_PlaceboManager_plSetCustomShaderText(JNIEnv *env, jobject obj, jstring shaderText) {
+    std::string text;
+    if (shaderText != nullptr) {
+        const char *utf8 = env->GetStringUTFChars(shaderText, nullptr);
+        if (utf8 != nullptr) {
+            const jsize len = env->GetStringUTFLength(shaderText);
+            if (len > 0)
+                text.assign(utf8, static_cast<size_t>(len));
+            env->ReleaseStringUTFChars(shaderText, utf8);
+        }
+    }
+
+    bool has_text;
+    {
+        std::lock_guard<std::mutex> lock(g_custom.mtx);
+        custom_shader_destroy_hook_locked();
+        g_custom.text = std::move(text);
+        has_text = !g_custom.text.empty();
+        // Bumped under the lock so the builder can never record this version
+        // against the text it replaced, which would cost a redundant reparse.
+        g_custom_text_version.fetch_add(1, std::memory_order_acq_rel);
+    }
+
+    g_custom_text_set.store(has_text, std::memory_order_release);
+}
+
+// Pre-flight parse against the live gpu, throwing the result away. Usable only
+// while a session is up, since the parser needs that gpu.
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_grill_placebo_PlaceboManager_plValidateUserShaderText(JNIEnv *env, jobject obj, jstring shaderText) {
+    if (shaderText == nullptr)
+        return JNI_FALSE;
+
+    pl_gpu gpu = g_active_gpu.load(std::memory_order_acquire);
+    if (gpu == nullptr)
+        return JNI_FALSE;
+
+    // This parses on the caller's thread while the render thread is driving the
+    // same gpu, which only backends that advertise it can tolerate. Vulkan does.
+    if (!gpu->limits.thread_safe) {
+        LogCallbackFunction(nullptr, PL_LOG_WARN,
+            "Skipping user shader validation: this gpu cannot be used from two threads");
+        return JNI_FALSE;
+    }
+
+    const char *utf8 = env->GetStringUTFChars(shaderText, nullptr);
+    if (utf8 == nullptr)
+        return JNI_FALSE;
+
+    const jsize len = env->GetStringUTFLength(shaderText);
+
+    bool ok = false;
+    if (len > 0) {
+        const struct pl_hook *hook = pl_mpv_user_shader_parse(gpu, utf8, static_cast<size_t>(len));
+        ok = (hook != nullptr);
+        if (hook)
+            pl_mpv_user_shader_destroy(&hook);
+    }
+
+    env->ReleaseStringUTFChars(shaderText, utf8);
+    return ok ? JNI_TRUE : JNI_FALSE;
 }

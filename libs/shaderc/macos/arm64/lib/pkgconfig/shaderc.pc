@@ -1,0 +1,9 @@
+prefix=${pcfiledir}/../..
+includedir=${prefix}/include
+libdir=${prefix}/lib
+
+Name: shaderc
+Description: A tool for compiling GLSL/HLSL to SPIR-V
+Version: 2024.0
+Cflags: -I${includedir}
+Libs: -L${libdir} -lshaderc -lshaderc_util -lglslang-default-resource-limits -lglslang -lMachineIndependent -lGenericCodeGen -lOSDependent -lSPIRV -lSPVRemapper -lSPIRV-Tools-opt -lSPIRV-Tools -lc++

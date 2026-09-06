@@ -1,0 +1,22 @@
+prefix=${pcfiledir}/../..
+includedir=${prefix}/include
+libdir=${prefix}/lib
+
+pl_has_d3d11=1
+pl_has_dovi=1
+pl_has_gl_proc_addr=1
+pl_has_glslang=1
+pl_has_lcms=1
+pl_has_libdovi=0
+pl_has_opengl=1
+pl_has_shaderc=0
+pl_has_vk_proc_addr=1
+pl_has_vulkan=1
+pl_has_xxhash=0
+
+Name: libplacebo
+Description: Reusable library for GPU-accelerated video/image rendering
+Version: 7.371.0
+Requires: spirv-cross-c-shared >= 0.29.0, vulkan, lcms2 >= 2.9
+Libs: -L${libdir} -lplacebo -lm -lshlwapi -lglslang-default-resource-limits D:/a/_temp/msys64/ucrt64/lib/libSPIRV.dll.a D:/a/_temp/msys64/ucrt64/lib/libglslang.dll.a -lversion
+Cflags: -I${includedir} -DPL_STATIC

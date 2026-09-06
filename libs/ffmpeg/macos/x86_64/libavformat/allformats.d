@@ -5,9 +5,9 @@ libavformat/allformats.o: libavformat/allformats.c libavformat/internal.h \
   libavutil/avconfig.h libavcodec/version_major.h libavformat/avformat.h \
   libavcodec/codec_par.h libavutil/avutil.h libavutil/common.h \
   libavutil/error.h config.h libavutil/intmath.h libavutil/x86/intmath.h \
-  libavutil/mem.h libavutil/internal.h libavutil/pixfmt.h \
-  libavutil/libm.h libavutil/intfloat.h libavutil/mathematics.h \
-  libavutil/log.h libavutil/channel_layout.h libavcodec/codec_id.h \
-  libavutil/samplefmt.h libavcodec/defs.h libavformat/avio.h \
-  libavformat/version_major.h libavformat/mux.h libavformat/muxer_list.c \
-  libavformat/demuxer_list.c
+  libavutil/internal.h libavutil/libm.h libavutil/mathematics.h \
+  libavutil/intfloat.h libavutil/log.h libavutil/pixfmt.h \
+  libavutil/channel_layout.h libavcodec/codec_id.h libavutil/samplefmt.h \
+  libavcodec/defs.h libavformat/avio.h libavformat/version_major.h \
+  libavformat/avformat_internal.h libavformat/demux.h libavformat/mux.h \
+  libavformat/muxer_list.c libavformat/demuxer_list.c

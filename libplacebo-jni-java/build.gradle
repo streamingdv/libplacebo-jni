@@ -5,8 +5,14 @@ plugins {
   id 'maven-publish'
 }
 
-group 'com.grill.placebo'
-version '1.0'
+group = 'com.grill.placebo'
+version = '1.0'
+
+java {
+  toolchain {
+    languageVersion = JavaLanguageVersion.of(25)
+  }
+}
 
 static def osDependentBinary(name) {
   return Os.isFamily(Os.FAMILY_WINDOWS) ? "${name}.exe" : name
@@ -41,13 +47,13 @@ static def findJavaC() {
 def javaCCommand = findJavaC()
 
 processResources {
-  from(nativeBinaries) {
+  from(rootProject.ext.nativeBinaries) {
     into "native-binaries"
   }
 }
 
 compileJava {
-  options.compilerArgs += ["-h", generatedHeadersDir.getAbsolutePath()]
+  options.compilerArgs += ["-h", rootProject.ext.generatedHeadersDir.getAbsolutePath()]
 }
 
 publishing {

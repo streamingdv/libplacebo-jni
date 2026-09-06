@@ -36,7 +36,7 @@ jobs:
       BUILD_LCMS2: ${{ github.event.inputs.build_lcms2 }}
 
     steps:
-      - name: Checkout libplacebo-jni repository
+      - name: Checkout repository
         uses: actions/checkout@v2
         with:
           submodules: 'recursive'
@@ -142,16 +142,6 @@ jobs:
       - name: Debug Check pkg-config xxhash
         run: pkg-config --exists libxxhash && echo "Found xxhash" || echo "Missing xxhash"
 
-      - name: Apply fix_reuse_swapchain patch to libplacebo
-        #if: env.BUILD_LIBPLACEBO == 'true'
-        working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
-        run: git apply ../fix_reuse_swapchain.patch
-
-      - name: Apply vulkan use 16 bit for p010 to libplacebo
-        #if: env.BUILD_LIBPLACEBO == 'true'
-        working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
-        run: git apply ../vulkan_use_16bit_for_p010.patch
-
       - name: Remove problematic <version> include from common.h
         working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
         run: |
@@ -160,6 +150,10 @@ jobs:
       - name: Verify common.h patch
         working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
         run: grep version src/common.h || echo "<version> successfully removed"
+
+      - name: Apply no internally synchronized queues patch to libplacebo
+        working-directory: ./libplacebo-jni-native/3rdparty/libplacebo
+        run: git apply ../no_internally_synchronized_queues.patch
 
       - name: Build libplacebo
         #if: env.BUILD_LIBPLACEBO == 'true'
@@ -179,19 +173,22 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      - name: Install jq
-        run: apt-get update && apt-get install -y jq
-
       - name: Build libplacebo-jni-java compile java
         run: |
           ./gradlew clean
           ./gradlew libplacebo-jni-java:compileJava
 
       - name: Configure and Build libplacebo-jni with CMake
+        shell: bash
         run: |
-          FULL_REPO_PATH="/__w/libplacebo-jni/libplacebo-jni"
-          LIBPLACEBO_LIB_PATH=${FULL_REPO_PATH}/libplacebo-jni-native/3rdparty/libplacebo/install/lib/x86_64-linux-gnu/libplacebo.a
-          LIBPLACEBO_HEADERS_DIR=${FULL_REPO_PATH}/libplacebo-jni-native/3rdparty/libplacebo/install/include
+          set -eux
+
+          FULL_REPO_PATH="${GITHUB_WORKSPACE}"
+          LIBPLACEBO_LIB_PATH="${FULL_REPO_PATH}/libplacebo-jni-native/3rdparty/libplacebo/install/lib/x86_64-linux-gnu/libplacebo.a"
+          LIBPLACEBO_HEADERS_DIR="${FULL_REPO_PATH}/libplacebo-jni-native/3rdparty/libplacebo/install/include"
+
+          ls -la "${FULL_REPO_PATH}/libplacebo-jni-native/3rdparty/libplacebo/install/lib" || true
+          ls -la "${FULL_REPO_PATH}/libplacebo-jni-native/3rdparty/libplacebo/install/lib/x86_64-linux-gnu" || true
 
           cmake -G "Ninja" -B build -S ./libplacebo-jni-native \
             -DCMAKE_BUILD_TYPE=Release \
@@ -212,13 +209,95 @@ jobs:
 
           cmake --build build
 
-      - name: Rename DLL file
+      - name: Rename SO file
+        shell: bash
         run: |
-          cp /__w/libplacebo-jni/libplacebo-jni/build/nativeBinaries/libplacebo-jni-native.so \
-             /__w/libplacebo-jni/libplacebo-jni/libplacebo-jni-native-64.so
+          set -eux
+          cp "${GITHUB_WORKSPACE}/build/nativeBinaries/libplacebo-jni-native.so" \
+             "${GITHUB_WORKSPACE}/libplacebo-jni-native-64.so"
+
+      - name: Verify Ubuntu 20.04 ABI compatibility
+        shell: bash
+        run: |
+          chmod +x ./.github/scripts/check-linux-abi.sh
+          ./.github/scripts/check-linux-abi.sh "${GITHUB_WORKSPACE}/libplacebo-jni-native-64.so"
 
       - name: Upload Artifact
         uses: actions/upload-artifact@v4
         with:
           name: linux-libplacebo-jni-artifact-64bit
-          path: /__w/libplacebo-jni/libplacebo-jni/libplacebo-jni-native-64.so
+          path: ${{ github.workspace }}/libplacebo-jni-native-64.so
+
+  # Symbol inspection proves the ABI floor; this proves the library actually
+  # loads. Ubuntu 20.04 is the oldest distro we support.
+  verify-ubuntu-2004:
+    name: Verify the lib loads on Ubuntu 20.04
+    needs: build-binaries-unix
+    runs-on: ubuntu-latest
+    container:
+      image: ubuntu:20.04
+
+    steps:
+      # Deliberately minimal: a Vulkan ICD loader and the C++ runtime are things
+      # any desktop already has. Anything else this turns out to need is a
+      # dependency we would otherwise be silently pushing onto users.
+      - name: Install runtime dependencies
+        run: |
+          set -eux
+          apt-get update
+          DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            ca-certificates curl tar unzip \
+            libvulkan1 libstdc++6 libdrm2 libx11-6 zlib1g \
+            libva2 libva-drm2 libva-x11-2
+
+      - name: Download the built library
+        uses: actions/download-artifact@v4
+        with:
+          name: linux-libplacebo-jni-artifact-64bit
+          path: artifact
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '25'
+
+      # ldd -r resolves function relocations too, so it lists every unresolved
+      # symbol at once instead of stopping at the first one like the JVM does.
+      # Reporting only: the load test below is the gate.
+      - name: Report the runtime it is being loaded against
+        run: |
+          set -eux
+          . /etc/os-release && echo "$PRETTY_NAME"
+          ldd --version | head -n1
+          ldd artifact/libplacebo-jni-native-64.so
+          echo "== missing libraries =="
+          ldd artifact/libplacebo-jni-native-64.so | grep 'not found' || echo "  none"
+          echo "== unresolved symbols =="
+          ldd -r artifact/libplacebo-jni-native-64.so 2>&1 \
+            | grep -E 'undefined symbol' || echo "  none"
+
+      # LD_BIND_NOW makes the loader resolve every symbol up front. Without it
+      # the JVM's dlopen is lazy and a missing symbol would only surface on the
+      # first call into it, long after CI has gone green.
+      #
+      # System.load is a restricted method as of JDK 24, so it needs
+      # --enable-native-access or it warns now and fails on a future JDK.
+      - name: Load the library in a JVM
+        run: |
+          set -eux
+          cat > LoadTest.java <<'EOF'
+          import java.io.File;
+
+          public class LoadTest {
+              public static void main(String[] args) {
+                  File lib = new File(args[0]);
+                  System.load(lib.getAbsolutePath());
+                  System.out.println("Loaded " + lib.getName() + " on "
+                          + System.getProperty("os.name") + " with Java "
+                          + System.getProperty("java.version"));
+              }
+          }
+          EOF
+          LD_BIND_NOW=1 java --enable-native-access=ALL-UNNAMED \
+            LoadTest.java artifact/libplacebo-jni-native-64.so

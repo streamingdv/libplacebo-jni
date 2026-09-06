@@ -25,11 +25,14 @@
 
 #include <libplacebo/utils/dolbyvision.h>
 
+#include <libavutil/common.h>
 #include <libavutil/hwcontext.h>
 #include <libavutil/hwcontext_drm.h>
 #include <libavutil/imgutils.h>
+#include <libavutil/macros.h>
 #include <libavutil/pixdesc.h>
 #include <libavutil/display.h>
+#include <libavformat/version.h>
 #include <libavcodec/version.h>
 
 // Try importing <vulkan.h> dynamically if it wasn't already
@@ -39,14 +42,12 @@
 # endif
 #endif
 
-#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(57, 8, 100) && \
-    defined(PL_HAVE_VULKAN) && defined(VK_API_VERSION_1_2)
+#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(58, 11, 100) && \
+    defined(PL_HAVE_VULKAN) && defined(VK_API_VERSION_1_2) && \
+    VK_HEADER_VERSION >= 175
 # define PL_HAVE_LAV_VULKAN
 # include <libavutil/hwcontext_vulkan.h>
 # include <libplacebo/vulkan.h>
-# if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(58, 11, 100)
-#  define PL_HAVE_LAV_VULKAN_V2
-# endif
 #endif
 
 PL_LIBAV_API enum pl_color_system pl_system_from_av(enum AVColorSpace spc)
@@ -61,6 +62,11 @@ PL_LIBAV_API enum pl_color_system pl_system_from_av(enum AVColorSpace spc)
     case AVCOL_SPC_SMPTE170M:           return PL_COLOR_SYSTEM_BT_601;
     case AVCOL_SPC_SMPTE240M:           return PL_COLOR_SYSTEM_SMPTE_240M;
     case AVCOL_SPC_YCGCO:               return PL_COLOR_SYSTEM_YCGCO;
+#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(59, 13, 100)
+    case AVCOL_SPC_IPT_C2:              return PL_COLOR_SYSTEM_UNKNOWN; // missing
+    case AVCOL_SPC_YCGCO_RE:            return PL_COLOR_SYSTEM_YCGCO_RE;
+    case AVCOL_SPC_YCGCO_RO:            return PL_COLOR_SYSTEM_YCGCO_RO;
+#endif
     case AVCOL_SPC_BT2020_NCL:          return PL_COLOR_SYSTEM_BT_2020_NC;
     case AVCOL_SPC_BT2020_CL:           return PL_COLOR_SYSTEM_BT_2020_C;
     case AVCOL_SPC_SMPTE2085:           return PL_COLOR_SYSTEM_UNKNOWN; // missing
@@ -70,7 +76,7 @@ PL_LIBAV_API enum pl_color_system pl_system_from_av(enum AVColorSpace spc)
     // requires inferring from other sources, but libplacebo makes explicit.
     // Default to PQ as it's the more common scenario.
     case AVCOL_SPC_ICTCP:               return PL_COLOR_SYSTEM_BT_2100_PQ;
-    case AVCOL_SPC_NB:                  return PL_COLOR_SYSTEM_COUNT;
+    case AVCOL_SPC_NB:                  return PL_COLOR_SYSTEM_UNKNOWN;
     }
 
     return PL_COLOR_SYSTEM_UNKNOWN;
@@ -89,9 +95,16 @@ PL_LIBAV_API enum AVColorSpace pl_system_to_av(enum pl_color_system sys)
     case PL_COLOR_SYSTEM_BT_2100_HLG:   return AVCOL_SPC_ICTCP;
     case PL_COLOR_SYSTEM_DOLBYVISION:   return AVCOL_SPC_UNSPECIFIED; // missing
     case PL_COLOR_SYSTEM_YCGCO:         return AVCOL_SPC_YCGCO;
+#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(59, 13, 100)
+    case PL_COLOR_SYSTEM_YCGCO_RE:      return AVCOL_SPC_YCGCO_RE;
+    case PL_COLOR_SYSTEM_YCGCO_RO:      return AVCOL_SPC_YCGCO_RO;
+#else
+    case PL_COLOR_SYSTEM_YCGCO_RE:      return AVCOL_SPC_UNSPECIFIED;
+    case PL_COLOR_SYSTEM_YCGCO_RO:      return AVCOL_SPC_UNSPECIFIED;
+#endif
     case PL_COLOR_SYSTEM_RGB:           return AVCOL_SPC_RGB;
     case PL_COLOR_SYSTEM_XYZ:           return AVCOL_SPC_UNSPECIFIED; // handled differently
-    case PL_COLOR_SYSTEM_COUNT:         return AVCOL_SPC_NB;
+    case PL_COLOR_SYSTEM_COUNT:         return AVCOL_SPC_UNSPECIFIED;
     }
 
     return AVCOL_SPC_UNSPECIFIED;
@@ -103,7 +116,7 @@ PL_LIBAV_API enum pl_color_levels pl_levels_from_av(enum AVColorRange range)
     case AVCOL_RANGE_UNSPECIFIED:       return PL_COLOR_LEVELS_UNKNOWN;
     case AVCOL_RANGE_MPEG:              return PL_COLOR_LEVELS_LIMITED;
     case AVCOL_RANGE_JPEG:              return PL_COLOR_LEVELS_FULL;
-    case AVCOL_RANGE_NB:                return PL_COLOR_LEVELS_COUNT;
+    case AVCOL_RANGE_NB:                return PL_COLOR_LEVELS_UNKNOWN;
     }
 
     return PL_COLOR_LEVELS_UNKNOWN;
@@ -115,7 +128,7 @@ PL_LIBAV_API enum AVColorRange pl_levels_to_av(enum pl_color_levels levels)
     case PL_COLOR_LEVELS_UNKNOWN:       return AVCOL_RANGE_UNSPECIFIED;
     case PL_COLOR_LEVELS_LIMITED:       return AVCOL_RANGE_MPEG;
     case PL_COLOR_LEVELS_FULL:          return AVCOL_RANGE_JPEG;
-    case PL_COLOR_LEVELS_COUNT:         return AVCOL_RANGE_NB;
+    case PL_COLOR_LEVELS_COUNT:         return AVCOL_RANGE_UNSPECIFIED;
     }
 
     return AVCOL_RANGE_UNSPECIFIED;
@@ -138,7 +151,11 @@ PL_LIBAV_API enum pl_color_primaries pl_primaries_from_av(enum AVColorPrimaries 
     case AVCOL_PRI_SMPTE431:        return PL_COLOR_PRIM_DCI_P3;
     case AVCOL_PRI_SMPTE432:        return PL_COLOR_PRIM_DISPLAY_P3;
     case AVCOL_PRI_JEDEC_P22:       return PL_COLOR_PRIM_EBU_3213;
-    case AVCOL_PRI_NB:              return PL_COLOR_PRIM_COUNT;
+#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(60, 16, 100)
+    case AVCOL_PRI_V_GAMUT:         return PL_COLOR_PRIM_V_GAMUT;
+    case AVCOL_PRI_EXT_NB:          return PL_COLOR_PRIM_UNKNOWN;
+#endif
+    case AVCOL_PRI_NB:              return PL_COLOR_PRIM_UNKNOWN;
     }
 
     return PL_COLOR_PRIM_UNKNOWN;
@@ -160,12 +177,16 @@ PL_LIBAV_API enum AVColorPrimaries pl_primaries_to_av(enum pl_color_primaries pr
     case PL_COLOR_PRIM_CIE_1931:    return AVCOL_PRI_SMPTE428;
     case PL_COLOR_PRIM_DCI_P3:      return AVCOL_PRI_SMPTE431;
     case PL_COLOR_PRIM_DISPLAY_P3:  return AVCOL_PRI_SMPTE432;
+#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(60, 16, 100)
+    case PL_COLOR_PRIM_V_GAMUT:     return AVCOL_PRI_V_GAMUT;
+#else
     case PL_COLOR_PRIM_V_GAMUT:     return AVCOL_PRI_UNSPECIFIED; // missing
+#endif
     case PL_COLOR_PRIM_S_GAMUT:     return AVCOL_PRI_UNSPECIFIED; // missing
     case PL_COLOR_PRIM_FILM_C:      return AVCOL_PRI_FILM;
     case PL_COLOR_PRIM_ACES_AP0:    return AVCOL_PRI_UNSPECIFIED; // missing
     case PL_COLOR_PRIM_ACES_AP1:    return AVCOL_PRI_UNSPECIFIED; // missing
-    case PL_COLOR_PRIM_COUNT:       return AVCOL_PRI_NB;
+    case PL_COLOR_PRIM_COUNT:       return AVCOL_PRI_UNSPECIFIED;
     }
 
     return AVCOL_PRI_UNSPECIFIED;
@@ -193,7 +214,11 @@ PL_LIBAV_API enum pl_color_transfer pl_transfer_from_av(enum AVColorTransferChar
     case AVCOL_TRC_SMPTE2084:       return PL_COLOR_TRC_PQ;
     case AVCOL_TRC_SMPTE428:        return PL_COLOR_TRC_ST428;
     case AVCOL_TRC_ARIB_STD_B67:    return PL_COLOR_TRC_HLG;
-    case AVCOL_TRC_NB:              return PL_COLOR_TRC_COUNT;
+#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(60, 16, 100)
+    case AVCOL_TRC_V_LOG:           return PL_COLOR_TRC_V_LOG;
+    case AVCOL_TRC_EXT_NB:          return PL_COLOR_TRC_UNKNOWN;
+#endif
+    case AVCOL_TRC_NB:              return PL_COLOR_TRC_UNKNOWN;
     }
 
     return PL_COLOR_TRC_UNKNOWN;
@@ -216,10 +241,15 @@ PL_LIBAV_API enum AVColorTransferCharacteristic pl_transfer_to_av(enum pl_color_
     case PL_COLOR_TRC_PRO_PHOTO:    return AVCOL_TRC_UNSPECIFIED; // missing
     case PL_COLOR_TRC_PQ:           return AVCOL_TRC_SMPTE2084;
     case PL_COLOR_TRC_HLG:          return AVCOL_TRC_ARIB_STD_B67;
+#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(60, 16, 100)
+    case PL_COLOR_TRC_V_LOG:        return AVCOL_TRC_V_LOG;
+#else
     case PL_COLOR_TRC_V_LOG:        return AVCOL_TRC_UNSPECIFIED; // missing
+#endif
     case PL_COLOR_TRC_S_LOG1:       return AVCOL_TRC_UNSPECIFIED; // missing
     case PL_COLOR_TRC_S_LOG2:       return AVCOL_TRC_UNSPECIFIED; // missing
-    case PL_COLOR_TRC_COUNT:        return AVCOL_TRC_NB;
+    case PL_COLOR_TRC_SCRGB:        return AVCOL_TRC_UNSPECIFIED; // missing
+    case PL_COLOR_TRC_COUNT:        return AVCOL_TRC_UNSPECIFIED;
     }
 
     return AVCOL_TRC_UNSPECIFIED;
@@ -235,7 +265,7 @@ PL_LIBAV_API enum pl_chroma_location pl_chroma_from_av(enum AVChromaLocation loc
     case AVCHROMA_LOC_TOP:          return PL_CHROMA_TOP_CENTER;
     case AVCHROMA_LOC_BOTTOMLEFT:   return PL_CHROMA_BOTTOM_LEFT;
     case AVCHROMA_LOC_BOTTOM:       return PL_CHROMA_BOTTOM_CENTER;
-    case AVCHROMA_LOC_NB:           return PL_CHROMA_COUNT;
+    case AVCHROMA_LOC_NB:           return PL_CHROMA_UNKNOWN;
     }
 
     return PL_CHROMA_UNKNOWN;
@@ -251,11 +281,38 @@ PL_LIBAV_API enum AVChromaLocation pl_chroma_to_av(enum pl_chroma_location loc)
     case PL_CHROMA_TOP_CENTER:      return AVCHROMA_LOC_TOP;
     case PL_CHROMA_BOTTOM_LEFT:     return AVCHROMA_LOC_BOTTOMLEFT;
     case PL_CHROMA_BOTTOM_CENTER:   return AVCHROMA_LOC_BOTTOM;
-    case PL_CHROMA_COUNT:           return AVCHROMA_LOC_NB;
+    case PL_CHROMA_COUNT:           return AVCHROMA_LOC_UNSPECIFIED;
     }
 
     return AVCHROMA_LOC_UNSPECIFIED;
 }
+
+#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(60, 11, 100)
+PL_LIBAV_API enum pl_alpha_mode pl_alpha_from_av(enum AVAlphaMode mode)
+{
+    switch (mode) {
+    case AVALPHA_MODE_UNSPECIFIED:   return PL_ALPHA_UNKNOWN;
+    case AVALPHA_MODE_STRAIGHT:      return PL_ALPHA_INDEPENDENT;
+    case AVALPHA_MODE_PREMULTIPLIED: return PL_ALPHA_PREMULTIPLIED;
+    case AVALPHA_MODE_NB:            return PL_ALPHA_UNKNOWN;
+    }
+
+    return PL_ALPHA_UNKNOWN;
+}
+
+PL_LIBAV_API enum AVAlphaMode pl_alpha_to_av(enum pl_alpha_mode mode)
+{
+    switch (mode) {
+    case PL_ALPHA_NONE:             return AVALPHA_MODE_UNSPECIFIED; // missing
+    case PL_ALPHA_UNKNOWN:          return AVALPHA_MODE_UNSPECIFIED;
+    case PL_ALPHA_INDEPENDENT:      return AVALPHA_MODE_STRAIGHT;
+    case PL_ALPHA_PREMULTIPLIED:    return AVALPHA_MODE_PREMULTIPLIED;
+    case PL_ALPHA_MODE_COUNT:       return AVALPHA_MODE_UNSPECIFIED;
+    }
+
+    return AVALPHA_MODE_UNSPECIFIED;
+}
+#endif
 
 #ifdef PL_HAVE_LAV_HDR
 PL_LIBAV_API void pl_map_hdr_metadata(struct pl_hdr_metadata *out,
@@ -265,7 +322,7 @@ PL_LIBAV_API void pl_map_hdr_metadata(struct pl_hdr_metadata *out,
         if (data->mdm->has_luminance) {
             out->max_luma = av_q2d(data->mdm->max_luminance);
             out->min_luma = av_q2d(data->mdm->min_luminance);
-            if (out->max_luma < 10.0 || out->min_luma >= out->max_luma)
+            if (out->max_luma < 5.0 || out->min_luma >= out->max_luma)
                 out->max_luma = out->min_luma = 0; /* sanity */
         }
         if (data->mdm->has_primaries) {
@@ -288,7 +345,6 @@ PL_LIBAV_API void pl_map_hdr_metadata(struct pl_hdr_metadata *out,
     }
 
     if (data->dhp && data->dhp->application_version < 2) {
-        float hist_max = 0;
         const AVHDRPlusColorTransformParams *pars = &data->dhp->params[0];
         assert(data->dhp->num_windows > 0);
         out->scene_max[0] = 10000 * av_q2d(pars->maxscl[0]);
@@ -296,22 +352,48 @@ PL_LIBAV_API void pl_map_hdr_metadata(struct pl_hdr_metadata *out,
         out->scene_max[2] = 10000 * av_q2d(pars->maxscl[2]);
         out->scene_avg = 10000 * av_q2d(pars->average_maxrgb);
 
-        // Calculate largest value from histogram to use as fallback for clips
-        // with missing MaxSCL information. Note that this may end up picking
-        // the "reserved" value at the 5% percentile, which in practice appears
-        // to track the brightest pixel in the scene.
-        for (int i = 0; i < pars->num_distribution_maxrgb_percentiles; i++) {
-            float hist_val = av_q2d(pars->distribution_maxrgb[i].percentile);
-            if (hist_val > hist_max)
-                hist_max = hist_val;
-        }
-        hist_max *= 10000;
+        // ST 2094-40 B.3: when MaxSCL is missing, the fallback is
+        // DistributionMaxRGBPercentiles[Ω], the last element of maxrgb dist.
+        uint8_t n = pars->num_distribution_maxrgb_percentiles;
+        float scene_max_hist = n > 0
+            ? 10000 * av_q2d(pars->distribution_maxrgb[n - 1].percentile)
+            : 0;
         if (!out->scene_max[0])
-            out->scene_max[0] = hist_max;
+            out->scene_max[0] = scene_max_hist;
         if (!out->scene_max[1])
-            out->scene_max[1] = hist_max;
+            out->scene_max[1] = scene_max_hist;
         if (!out->scene_max[2])
-            out->scene_max[2] = hist_max;
+            out->scene_max[2] = scene_max_hist;
+
+        // ST 2094-40 8.5.4 defines the constraints on the histogram values in
+        // metadata. Specifically the 5% (V1) and 10% (V2) values are not part of
+        // the CDF in app_ver=1. They must be initialized to V1=0.00000, V2=0.00255.
+        // Otherwise, they are reserved, as per 2094-50, and defined as follows:
+        // V1 = Nit99y: scene luminance at 99.99% of the frame
+        // V2 = Dp100f: percentage of pixels <= 100 nits
+        // <https://www.youtube.com/watch?v=n7kOr3vsU50&t=1763s>
+        // V1 is exactly what we use and need for tone-mapping, so plug that in.
+        if (data->dhp->application_version == 1 && n == 9 &&
+            pars->distribution_maxrgb[1].percentage == 5 &&
+            pars->distribution_maxrgb[2].percentage == 10)
+        {
+            const float v1 = av_q2d(pars->distribution_maxrgb[1].percentile);
+            // Reject the V1=0 sentinel. With some small value, values below are
+            // insignificant anyway.
+            if (v1 > 1e-6f) {
+                // V1 is 99.99% of the linearized luminance value for each frame.
+                const float y99_nits = 10000 * v1;
+                out->max_pq_y = pl_hdr_rescale(PL_HDR_NITS, PL_HDR_PQ, y99_nits);
+                // There is no scene_avg, but we can infer it by rescaling the
+                // RGB average value, should be good enough approximation.
+                float max = FFMAX3(out->scene_max[0], out->scene_max[1], out->scene_max[2]);
+                if (max > 0 && out->scene_avg) {
+                    const float coef = y99_nits / max;
+                    out->avg_pq_y = pl_hdr_rescale(PL_HDR_NITS, PL_HDR_PQ,
+                                                   coef * out->scene_avg);
+                }
+            }
+        }
 
         if (pars->tone_mapping_flag == 1) {
             out->ootf.target_luma = av_q2d(data->dhp->targeted_system_display_maximum_luminance);
@@ -528,14 +610,6 @@ PL_LIBAV_API int pl_plane_data_from_pixfmt(struct pl_plane_data out_data[4],
     first = true;
     for (int p = 0; p < planes; p++) {
         aligned_data[p] = out_data[p];
-
-        // Planes with only an alpha component should be ignored
-        if (pl_plane_data_num_comps(&aligned_data[p]) == 1 &&
-            aligned_data[p].component_map[0] == PL_CHANNEL_A)
-        {
-            continue;
-        }
-
         if (!pl_plane_data_align(&aligned_data[p], &bits))
             goto misaligned;
 
@@ -665,6 +739,9 @@ PL_LIBAV_API void pl_avframe_set_repr(AVFrame *frame, struct pl_color_repr repr)
 {
     frame->colorspace = pl_system_to_av(repr.sys);
     frame->color_range = pl_levels_to_av(repr.levels);
+#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(60, 11, 100)
+    frame->alpha_mode = pl_alpha_to_av(repr.alpha);
+#endif
 
     // No real way to map repr.bits, the image format already has to match
 }
@@ -711,8 +788,12 @@ PL_LIBAV_API void pl_frame_from_avframe(struct pl_frame *out,
             .sys = pl_system_from_av(frame->colorspace),
             .levels = pl_levels_from_av(frame->color_range),
             .alpha = (desc->flags & AV_PIX_FMT_FLAG_ALPHA)
-                        ? PL_ALPHA_INDEPENDENT
-                        : PL_ALPHA_UNKNOWN,
+#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(60, 11, 100)
+                ? pl_alpha_from_av(frame->alpha_mode)
+#else
+                ? PL_ALPHA_INDEPENDENT
+#endif
+                : PL_ALPHA_NONE,
 
             // For sake of simplicity, just use the first component's depth as
             // the authoritative color depth for the whole image. Usually, this
@@ -722,6 +803,9 @@ PL_LIBAV_API void pl_frame_from_avframe(struct pl_frame *out,
             .bits.color_depth = desc->comp[0].depth,
         },
     };
+
+    if (frame->sample_aspect_ratio.num && frame->sample_aspect_ratio.den)
+        out->pixel_aspect_ratio = av_q2d(frame->sample_aspect_ratio);
 
     pl_color_space_from_avframe(&out->color, frame);
 
@@ -793,30 +877,67 @@ PL_LIBAV_API void pl_frame_from_avframe(struct pl_frame *out,
     }
 }
 
+#if LIBAVFORMAT_VERSION_INT >= AV_VERSION_INT(60, 15, 100)
+PL_LIBAV_API const uint8_t *pl_av_stream_get_side_data(const AVStream *st,
+                                                 enum AVPacketSideDataType type)
+{
+    const AVPacketSideData *sd;
+    sd = av_packet_side_data_get(st->codecpar->coded_side_data,
+                                 st->codecpar->nb_coded_side_data,
+                                 type);
+    return sd ? sd->data : NULL;
+}
+#else
+# define pl_av_stream_get_side_data(st, type) av_stream_get_side_data(st, type, NULL)
+#endif
+
 PL_LIBAV_API void pl_frame_copy_stream_props(struct pl_frame *out,
-                                                 const AVStream *stream)
+                                             const AVStream *stream)
 {
     const uint8_t *sd;
-    if ((sd = av_stream_get_side_data(stream, AV_PKT_DATA_DISPLAYMATRIX, NULL))) {
+    if ((sd = pl_av_stream_get_side_data(stream, AV_PKT_DATA_DISPLAYMATRIX))) {
         double rot = av_display_rotation_get((const int32_t *) sd);
         out->rotation = pl_rotation_normalize(4.5 - rot / 90.0);
     }
 
+    if (stream->sample_aspect_ratio.num && stream->sample_aspect_ratio.den)
+        out->pixel_aspect_ratio = av_q2d(stream->sample_aspect_ratio);
+
 #ifdef PL_HAVE_LAV_HDR
     pl_map_hdr_metadata(&out->color.hdr, &(struct pl_av_hdr_metadata) {
-        .mdm = (void *) av_stream_get_side_data(stream,
-                        AV_PKT_DATA_MASTERING_DISPLAY_METADATA, NULL),
-        .clm = (void *) av_stream_get_side_data(stream,
-                        AV_PKT_DATA_CONTENT_LIGHT_LEVEL, NULL),
+        .mdm = (void *) pl_av_stream_get_side_data(stream,
+                        AV_PKT_DATA_MASTERING_DISPLAY_METADATA),
+        .clm = (void *) pl_av_stream_get_side_data(stream,
+                        AV_PKT_DATA_CONTENT_LIGHT_LEVEL),
 # if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(59, 2, 100)
-        .dhp = (void *) av_stream_get_side_data(stream,
-                        AV_PKT_DATA_DYNAMIC_HDR10_PLUS, NULL),
+        .dhp = (void *) pl_av_stream_get_side_data(stream,
+                        AV_PKT_DATA_DYNAMIC_HDR10_PLUS),
 # endif
     });
 #endif
 }
 
+#undef pl_av_stream_get_side_data
+
 #ifdef PL_HAVE_LAV_DOLBY_VISION
+static bool pl_avdovi_nlq_is_trivial(const AVDOVIRpuDataHeader *header,
+                                     const AVDOVINLQParams *nlq)
+{
+    return nlq->nlq_offset == 0 &&
+           nlq->vdr_in_max == (1ULL << header->coef_log2_denom) &&
+           nlq->linear_deadzone_slope == 0 &&
+           nlq->linear_deadzone_threshold == 0;
+}
+
+static bool pl_avdovi_mapping_nlq_is_trivial(const AVDOVIRpuDataHeader *header,
+                                             const AVDOVIDataMapping *mapping)
+{
+    return mapping->nlq_method_idc == AV_DOVI_NLQ_LINEAR_DZ &&
+           pl_avdovi_nlq_is_trivial(header, &mapping->nlq[0]) &&
+           pl_avdovi_nlq_is_trivial(header, &mapping->nlq[1]) &&
+           pl_avdovi_nlq_is_trivial(header, &mapping->nlq[2]);
+}
+
 PL_LIBAV_API void pl_map_dovi_metadata(struct pl_dovi_metadata *out,
                                        const AVDOVIMetadata *data)
 {
@@ -868,31 +989,82 @@ PL_LIBAV_API void pl_map_dovi_metadata(struct pl_dovi_metadata *out,
             }
         }
     }
+
+    // NLQ parameters for FEL composition. Populated whenever the bitstream
+    // carries non-trivial LINEAR_DZ NLQ (i.e. residuals exist). Consumers
+    // that have not bound an enhancement layer must not look at these fields.
+    out->nlq_active = !header->disable_residual_flag &&
+                      mapping->nlq_method_idc == AV_DOVI_NLQ_LINEAR_DZ &&
+                      !pl_avdovi_mapping_nlq_is_trivial(header, mapping);
+    if (out->nlq_active) {
+        const float el_scale = 1.0f / ((1 << header->el_bit_depth) - 1);
+        // Use double for `coef_scale_d` math to preserve numerical stability.
+        const double coef_scale_d  = 1.0 / (1ULL << header->coef_log2_denom);
+        // DV LINEAR_DZ dequantization: for residual code rr,
+        //   r_norm = sign(rr) * ((|rr| - 0.5) * S_norm + T_norm)
+        // where S_norm, T_norm are coef_log2_denom-normalized. To let the
+        // shader operate on el_centered in [-1, 1] / (2^eld - 1) space, we
+        // pre-fold (2^eld - 1) into slope and -0.5*S into threshold.
+        const double slope_scale_d = ((1ULL << header->el_bit_depth) - 1)
+                                   * coef_scale_d;
+        for (int c = 0; c < 3; c++) {
+            const AVDOVINLQParams *src = &mapping->nlq[c];
+            struct pl_dovi_nlq_data *dst = &out->nlq[c];
+            const double S = src->linear_deadzone_slope;
+            const double T = src->linear_deadzone_threshold;
+            dst->offset = el_scale * src->nlq_offset;
+            dst->deadzone_slope = slope_scale_d * S;
+            dst->deadzone_threshold = coef_scale_d * (T - 0.5 * S);
+        }
+    }
+}
+
+PL_DEPRECATED_IN(v7.370)
+PL_LIBAV_API bool pl_avdovi_metadata_supported(const AVDOVIMetadata *metadata)
+{
+    (void)metadata;
+    return true;
+}
+
+PL_LIBAV_API void pl_map_avdovi_metadata(struct pl_color_space *color,
+                                         struct pl_color_repr *repr,
+                                         struct pl_dovi_metadata *dovi,
+                                         const AVDOVIMetadata *metadata)
+{
+    const AVDOVIColorMetadata *dovi_color;
+#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(59, 12, 100)
+    const AVDOVIDmData *dovi_ext;
+#endif
+    if (!color || !repr || !dovi)
+        return;
+
+    dovi_color = av_dovi_get_color(metadata);
+    pl_map_dovi_metadata(dovi, metadata);
+
+    repr->dovi = dovi;
+    repr->sys = PL_COLOR_SYSTEM_DOLBYVISION;
+    color->primaries = PL_COLOR_PRIM_BT_2020;
+    color->transfer = PL_COLOR_TRC_PQ;
+    color->hdr.min_luma =
+        pl_hdr_rescale(PL_HDR_PQ, PL_HDR_NITS, dovi_color->source_min_pq / 4095.0f);
+    color->hdr.max_luma =
+        pl_hdr_rescale(PL_HDR_PQ, PL_HDR_NITS, dovi_color->source_max_pq / 4095.0f);
+
+#if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(59, 12, 100)
+    if ((dovi_ext = av_dovi_find_level(metadata, 1))) {
+        color->hdr.max_pq_y = dovi_ext->l1.max_pq / 4095.0f;
+        color->hdr.avg_pq_y = dovi_ext->l1.avg_pq / 4095.0f;
+    }
+#endif
 }
 
 PL_LIBAV_API void pl_frame_map_avdovi_metadata(struct pl_frame *out_frame,
                                                struct pl_dovi_metadata *dovi,
                                                const AVDOVIMetadata *metadata)
 {
-    const AVDOVIRpuDataHeader *header;
-    const AVDOVIColorMetadata *color;
-    if (!dovi || !metadata)
+    if (!out_frame)
         return;
-
-    header = av_dovi_get_header(metadata);
-    color = av_dovi_get_color(metadata);
-    if (header->disable_residual_flag) {
-        pl_map_dovi_metadata(dovi, metadata);
-
-        out_frame->repr.dovi = dovi;
-        out_frame->repr.sys = PL_COLOR_SYSTEM_DOLBYVISION;
-        out_frame->color.primaries = PL_COLOR_PRIM_BT_2020;
-        out_frame->color.transfer = PL_COLOR_TRC_PQ;
-        out_frame->color.hdr.min_luma =
-            pl_hdr_rescale(PL_HDR_PQ, PL_HDR_NITS, color->source_min_pq / 4095.0f);
-        out_frame->color.hdr.max_luma =
-            pl_hdr_rescale(PL_HDR_PQ, PL_HDR_NITS, color->source_max_pq / 4095.0f);
-    }
+    pl_map_avdovi_metadata(&out_frame->color, &out_frame->repr, dovi, metadata);
 }
 #endif // PL_HAVE_LAV_DOLBY_VISION
 
@@ -944,18 +1116,41 @@ struct pl_avframe_priv {
     pl_tex planar; // for planar vulkan textures
 };
 
-static void pl_fix_hwframe_sample_depth(struct pl_frame *out, const AVFrame *frame)
+static void pl_map_hwframe_bit_encoding(struct pl_bit_encoding *out_bits,
+                                        enum AVPixelFormat pix_fmt)
 {
-    const AVHWFramesContext *hwfc = (AVHWFramesContext *) frame->hw_frames_ctx->data;
+    const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(pix_fmt);
+    struct pl_bit_encoding bits = {0};
+    bool is_supported = true;
+    if (!out_bits || !desc)
+        return;
+
+    // Calculate bit encoding from all components (excluding alpha)
+    for (int c = 0; c < FFMIN(desc->nb_components, 3); c++) {
+        const AVComponentDescriptor *comp = &desc->comp[c];
+        struct pl_bit_encoding cbits = {
+            .sample_depth = comp->depth + FFABS(comp->shift),
+            .color_depth  = comp->depth,
+            .bit_shift    = FFMAX(comp->shift, 0),
+        };
+
+        if (bits.sample_depth && !pl_bit_encoding_equal(&bits, &cbits)) {
+            // Bit encoding differs between components, cannot handle this
+            is_supported = false;
+            break;
+        }
+
+        bits = cbits;
+    }
+    if (is_supported)
+        *out_bits = bits;
+}
+
+static void pl_fix_hwframe_sample_depth(struct pl_frame *out)
+{
     pl_fmt fmt = out->planes[0].texture->params.format;
     struct pl_bit_encoding *bits = &out->repr.bits;
-
     bits->sample_depth = fmt->component_depth[0];
-
-    switch (hwfc->sw_format) {
-    case AV_PIX_FMT_P010: bits->bit_shift = 6; break;
-    default: break;
-    }
 }
 
 static bool pl_map_avframe_drm(pl_gpu gpu, struct pl_frame *out,
@@ -965,7 +1160,7 @@ static bool pl_map_avframe_drm(pl_gpu gpu, struct pl_frame *out,
     const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(hwfc->sw_format);
     const AVDRMFrameDescriptor *drm = (AVDRMFrameDescriptor *) frame->data[0];
     assert(frame->format == AV_PIX_FMT_DRM_PRIME);
-    if (!(gpu->import_caps.tex & PL_HANDLE_DMA_BUF))
+    if (!(gpu->import_caps.tex & PL_HANDLE_DMA_BUF) || !out->num_planes)
         return false;
 
     assert(drm->nb_layers >= out->num_planes);
@@ -999,7 +1194,9 @@ static bool pl_map_avframe_drm(pl_gpu gpu, struct pl_frame *out,
             return false;
     }
 
-    pl_fix_hwframe_sample_depth(out, frame);
+    pl_map_hwframe_bit_encoding(&out->repr.bits, hwfc->sw_format);
+    pl_fix_hwframe_sample_depth(out);
+
     return true;
 }
 
@@ -1038,11 +1235,7 @@ static bool pl_acquire_avframe(pl_gpu gpu, struct pl_frame *frame)
     AVVulkanFramesContext *vkfc = hwfc->hwctx;
     AVVkFrame *vkf = (AVVkFrame *) priv->avframe->data[0];
 
-#ifdef PL_HAVE_LAV_VULKAN_V2
     vkfc->lock_frame(hwfc, vkf);
-#else
-    (void) vkfc;
-#endif
 
     for (int n = 0; n < frame->num_planes; n++) {
         pl_vulkan_release_ex(gpu, pl_vulkan_release_params(
@@ -1085,11 +1278,46 @@ static void pl_release_avframe(pl_gpu gpu, struct pl_frame *frame)
             break;
     }
 
-#ifdef PL_HAVE_LAV_VULKAN_V2
     vkfc->unlock_frame(hwfc, vkf);
-#else
-    (void) vkfc;
-#endif
+}
+
+static VkFormat map_vk_fmt(const AVVulkanFramesContext *vkfc, VkFormat fmt,
+                           struct pl_bit_encoding *bits)
+{
+    if (!(vkfc->img_flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT))
+        return fmt;
+
+    switch (fmt) {
+#define VK_FMT_CASE(SHIFT, OLDFMT, NEWFMT) \
+    case VK_FORMAT_##OLDFMT: bits->bit_shift = SHIFT; return VK_FORMAT_##NEWFMT
+
+    VK_FMT_CASE(6, R10X6_UNORM_PACK16,                         R16_UNORM);
+    VK_FMT_CASE(6, R10X6G10X6_UNORM_2PACK16,                   R16G16_UNORM);
+    VK_FMT_CASE(6, R10X6G10X6B10X6A10X6_UNORM_4PACK16,         R16G16B16A16_UNORM);
+    VK_FMT_CASE(6, G10X6B10X6G10X6R10X6_422_UNORM_4PACK16,     G16B16G16R16_422_UNORM);
+    VK_FMT_CASE(6, B10X6G10X6R10X6G10X6_422_UNORM_4PACK16,     B16G16R16G16_422_UNORM);
+    VK_FMT_CASE(6, G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16, G16_B16_R16_3PLANE_420_UNORM);
+    VK_FMT_CASE(6, G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16,  G16_B16R16_2PLANE_420_UNORM);
+    VK_FMT_CASE(6, G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16, G16_B16_R16_3PLANE_422_UNORM);
+    VK_FMT_CASE(6, G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16,  G16_B16R16_2PLANE_422_UNORM);
+    VK_FMT_CASE(6, G10X6_B10X6_R10X6_3PLANE_444_UNORM_3PACK16, G16_B16_R16_3PLANE_444_UNORM);
+    VK_FMT_CASE(6, G10X6_B10X6R10X6_2PLANE_444_UNORM_3PACK16,  G16_B16R16_2PLANE_444_UNORM);
+
+    VK_FMT_CASE(4, R12X4_UNORM_PACK16,                         R16_UNORM);
+    VK_FMT_CASE(4, R12X4G12X4_UNORM_2PACK16,                   R16G16_UNORM);
+    VK_FMT_CASE(4, R12X4G12X4B12X4A12X4_UNORM_4PACK16,         R16G16B16A16_UNORM);
+    VK_FMT_CASE(4, G12X4B12X4G12X4R12X4_422_UNORM_4PACK16,     G16B16G16R16_422_UNORM);
+    VK_FMT_CASE(4, B12X4G12X4R12X4G12X4_422_UNORM_4PACK16,     B16G16R16G16_422_UNORM);
+    VK_FMT_CASE(4, G12X4_B12X4_R12X4_3PLANE_420_UNORM_3PACK16, G16_B16_R16_3PLANE_420_UNORM);
+    VK_FMT_CASE(4, G12X4_B12X4R12X4_2PLANE_420_UNORM_3PACK16,  G16_B16R16_2PLANE_420_UNORM);
+    VK_FMT_CASE(4, G12X4_B12X4_R12X4_3PLANE_422_UNORM_3PACK16, G16_B16_R16_3PLANE_422_UNORM);
+    VK_FMT_CASE(4, G12X4_B12X4R12X4_2PLANE_422_UNORM_3PACK16,  G16_B16R16_2PLANE_422_UNORM);
+    VK_FMT_CASE(4, G12X4_B12X4_R12X4_3PLANE_444_UNORM_3PACK16, G16_B16_R16_3PLANE_444_UNORM);
+    VK_FMT_CASE(4, G12X4_B12X4R12X4_2PLANE_444_UNORM_3PACK16,  G16_B16R16_2PLANE_444_UNORM);
+
+    default: return fmt;
+#undef VK_FMT_CASE
+    }
 }
 
 static bool pl_map_avframe_vulkan(pl_gpu gpu, struct pl_frame *out,
@@ -1099,31 +1327,29 @@ static bool pl_map_avframe_vulkan(pl_gpu gpu, struct pl_frame *out,
     const AVPixFmtDescriptor *desc = av_pix_fmt_desc_get(hwfc->sw_format);
     const AVVulkanFramesContext *vkfc = hwfc->hwctx;
     AVVkFrame *vkf = (AVVkFrame *) frame->data[0];
+    const VkFormat *vk_fmt = vkfc->format;
     struct pl_avframe_priv *priv = out->user_data;
     pl_vulkan vk = pl_vulkan_get(gpu);
-
-#ifdef PL_HAVE_LAV_VULKAN_V2
-    const VkFormat *vk_fmt = vkfc->format;
-#else
-    const VkFormat *vk_fmt = av_vkfmt_from_pixfmt(hwfc->sw_format);
-#endif
 
     assert(frame->format == AV_PIX_FMT_VULKAN);
     priv->planar = NULL;
     if (!vk)
         return false;
 
+    pl_map_hwframe_bit_encoding(&out->repr.bits, hwfc->sw_format);
+
     for (int n = 0; n < out->num_planes; n++) {
         struct pl_plane *plane = &out->planes[n];
+        struct pl_bit_encoding bits = {0};
         bool chroma = n == 1 || n == 2;
         int num_subplanes;
         assert(vk_fmt[n]);
 
         plane->texture = pl_vulkan_wrap(gpu, pl_vulkan_wrap_params(
             .image  = vkf->img[n],
-            .width  = AV_CEIL_RSHIFT(frame->width, chroma ? desc->log2_chroma_w : 0),
-            .height = AV_CEIL_RSHIFT(frame->height, chroma ? desc->log2_chroma_h : 0),
-            .format = vk_fmt[n],
+            .width  = AV_CEIL_RSHIFT(hwfc->width, chroma ? desc->log2_chroma_w : 0),
+            .height = AV_CEIL_RSHIFT(hwfc->height, chroma ? desc->log2_chroma_h : 0),
+            .format = map_vk_fmt(vkfc, vk_fmt[n], &bits),
             .usage  = vkfc->usage,
         ));
         if (!plane->texture)
@@ -1132,6 +1358,15 @@ static bool pl_map_avframe_vulkan(pl_gpu gpu, struct pl_frame *out,
         num_subplanes = plane->texture->params.format->num_planes;
         if (num_subplanes) {
             assert(num_subplanes == out->num_planes);
+
+            // Cannot shift on non-mutable multiplane vk image
+            if (!n && num_subplanes > 1 && out->repr.bits.bit_shift) {
+                if (vkfc->img_flags & VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT)
+                    assert(out->repr.bits.bit_shift == bits.bit_shift);
+                else
+                    out->repr.bits.bit_shift = 0;
+            }
+
             priv->planar = plane->texture;
             for (int i = 0; i < num_subplanes; i++)
                 out->planes[i].texture = priv->planar->planes[i];
@@ -1141,7 +1376,7 @@ static bool pl_map_avframe_vulkan(pl_gpu gpu, struct pl_frame *out,
 
     out->acquire = pl_acquire_avframe;
     out->release = pl_release_avframe;
-    pl_fix_hwframe_sample_depth(out, frame);
+    pl_fix_hwframe_sample_depth(out);
     return true;
 }
 
@@ -1178,10 +1413,7 @@ PL_LIBAV_API bool pl_map_avframe_ex(pl_gpu gpu, struct pl_frame *out,
         AVFrameSideData *sd = av_frame_get_side_data(frame, AV_FRAME_DATA_DOVI_METADATA);
         if (sd) {
             const AVDOVIMetadata *metadata = (AVDOVIMetadata *) sd->data;
-            const AVDOVIRpuDataHeader *header = av_dovi_get_header(metadata);
-            // Only automatically map DoVi RPUs that don't require an EL
-            if (header->disable_residual_flag)
-                pl_frame_map_avdovi_metadata(out, &priv->dovi, metadata);
+            pl_map_avdovi_metadata(&out->color, &out->repr, &priv->dovi, metadata);
         }
 
 #ifdef PL_HAVE_LIBDOVI
@@ -1341,8 +1573,10 @@ PL_LIBAV_API bool pl_download_avframe(pl_gpu gpu,
     return true;
 }
 
-#define PL_ALIGN2(x, align) (((x) + (align) - 1) & ~((align) - 1))
+#define PL_DIV_UP(x, y) (((x) + (y) - 1) / (y))
+#define PL_ALIGN(x, align) ((align) ? PL_DIV_UP(x, align) * (align) : (x))
 #define PL_MAX(x, y) ((x) > (y) ? (x) : (y))
+#define PL_LCM(x, y) ((x) * ((y) / av_gcd(x, y)))
 
 static inline void pl_avalloc_free(void *opaque, uint8_t *data)
 {
@@ -1388,10 +1622,11 @@ PL_LIBAV_API int pl_get_buffer2(AVCodecContext *avctx, AVFrame *pic, int flags)
     if ((ret = av_image_fill_linesizes(pic->linesize, pic->format, width)))
         return ret;
 
-    for (int p = 0; p < 4; p++) {
-        alignment[p] = PL_ALIGN2(alignment[p], gpu->limits.align_tex_xfer_pitch);
-        alignment[p] = PL_ALIGN2(alignment[p], gpu->limits.align_tex_xfer_offset);
-        pic->linesize[p] = PL_ALIGN2(pic->linesize[p], alignment[p]);
+    for (int p = 0; p < planes; p++) {
+        alignment[p] = PL_LCM(alignment[p], gpu->limits.align_tex_xfer_pitch);
+        alignment[p] = PL_LCM(alignment[p], gpu->limits.align_tex_xfer_offset);
+        alignment[p] = PL_LCM(alignment[p], data[p].pixel_stride);
+        pic->linesize[p] = PL_ALIGN(pic->linesize[p], alignment[p]);
     }
 
 #if LIBAVUTIL_VERSION_INT >= AV_VERSION_INT(56, 56, 100)
@@ -1439,7 +1674,7 @@ PL_LIBAV_API int pl_get_buffer2(AVCodecContext *avctx, AVFrame *pic, int flags)
             return AVERROR(ENOMEM);
         }
 
-        pic->data[p] = (uint8_t *) PL_ALIGN2((uintptr_t) alloc->buf->data, alignment[p]);
+        pic->data[p] = (uint8_t *) PL_ALIGN((uintptr_t) alloc->buf->data, alignment[p]);
         pic->buf[p] = av_buffer_create(alloc->buf->data, buf_size, pl_avalloc_free, alloc, 0);
         if (!pic->buf[p]) {
             pl_buf_destroy(gpu, &alloc->buf);

@@ -1,7 +1,17 @@
 FROM debian:10
 
+# Debian 10 (buster) is EOL: use archive.debian.org and relax apt checks.
+# Buster predates the `<codename>-security` naming, so the security suite must
+# stay `buster/updates` - archive.debian.org has no `buster-security`.
+RUN set -eux; \
+    sed -i 's|http://deb.debian.org/debian|http://archive.debian.org/debian|g' /etc/apt/sources.list; \
+    sed -i 's|http://security.debian.org|http://archive.debian.org|g' /etc/apt/sources.list; \
+    printf 'Acquire::Check-Valid-Until "false";\nAcquire::AllowReleaseInfoChange "true";\n' \
+      > /etc/apt/apt.conf.d/99eol-buster; \
+    cat /etc/apt/sources.list
+
 # Install dependencies
-RUN apt-get update && \
+RUN apt-get update --allow-releaseinfo-change && \
     apt-get install -y \
         build-essential \
         g++ \
@@ -22,6 +32,9 @@ RUN apt-get update && \
         libxxhash-dev \
         libvulkan-dev \
         liblcms2-dev \
+        libdrm-dev \
+        libx11-dev \
+        libva-dev \
         cmake \
         python3-pip \
         libssl-dev \
@@ -35,18 +48,18 @@ RUN apt-get update && \
         liblzma-dev \
         tk-dev
 
-# Install Zulu JDK 17
+# Install Zulu JDK 25
 RUN wget -qO - https://repos.azul.com/azul-repo.key | apt-key add - && \
     echo "deb https://repos.azul.com/zulu/deb stable main" > /etc/apt/sources.list.d/zulu.list && \
-    apt-get update && \
-    apt-get install -y zulu17-jdk && \
-    update-alternatives --install /usr/bin/java java /usr/lib/jvm/zulu17/bin/java 1 && \
-    update-alternatives --set java /usr/lib/jvm/zulu17/bin/java && \
-    update-alternatives --install /usr/bin/javac javac /usr/lib/jvm/zulu17/bin/javac 1 && \
-    update-alternatives --set javac /usr/lib/jvm/zulu17/bin/javac
+    apt-get update --allow-releaseinfo-change && \
+    apt-get install -y zulu25-jdk && \
+    update-alternatives --install /usr/bin/java java /usr/lib/jvm/zulu25/bin/java 1 && \
+    update-alternatives --set java /usr/lib/jvm/zulu25/bin/java && \
+    update-alternatives --install /usr/bin/javac javac /usr/lib/jvm/zulu25/bin/javac 1 && \
+    update-alternatives --set javac /usr/lib/jvm/zulu25/bin/javac
 
 # Set JAVA_HOME and update PATH
-ENV JAVA_HOME=/usr/lib/jvm/zulu17
+ENV JAVA_HOME=/usr/lib/jvm/zulu25
 ENV PATH="$JAVA_HOME/bin:$PATH"
 
 # Print Java version
@@ -70,7 +83,7 @@ RUN pip3 install --upgrade pip && pip3 install meson==1.3.0
 # LLVM + Clang 17
 RUN wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
     echo "deb http://apt.llvm.org/buster/ llvm-toolchain-buster-17 main" > /etc/apt/sources.list.d/llvm.list && \
-    apt-get update && \
+    apt-get update --allow-releaseinfo-change && \
     apt-get install -y clang-17 lld-17 && \
     update-alternatives --install /usr/bin/clang clang /usr/bin/clang-17 100 && \
     update-alternatives --install /usr/bin/clang++ clang++ /usr/bin/clang++-17 100

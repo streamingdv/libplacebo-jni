@@ -45,5 +45,6 @@ bin/
 .idea/misc.xml
 .idea/vcs.xml
 
-### Android ###
 local.properties
+
+.idea/

@@ -5,10 +5,10 @@ includedir=/usr/local/include
 
 Name: libavcodec
 Description: FFmpeg codec library
-Version: 60.31.102
-Requires: libavutil >= 58.29.100
+Version: 62.28.102
+Requires: libavutil >= 60.26.102
 Requires.private: 
 Conflicts:
-Libs: -L${libdir}  -lavcodec -pthread -lm -latomic
+Libs: -L${libdir}  -lavcodec -pthread -lm -latomic -lva -ldl
 Libs.private: 
 Cflags: -I${includedir}

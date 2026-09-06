@@ -4,4 +4,4 @@ libavutil/hash.o: libavutil/hash.c libavutil/hash.h libavutil/adler32.h \
   libavutil/sha512.h libavutil/avstring.h libavutil/base64.h \
   libavutil/error.h libavutil/macros.h libavutil/avconfig.h \
   libavutil/intreadwrite.h libavutil/bswap.h config.h \
-  libavutil/aarch64/bswap.h libavutil/mem.h
+  libavutil/aarch64/intreadwrite.h libavutil/mem.h

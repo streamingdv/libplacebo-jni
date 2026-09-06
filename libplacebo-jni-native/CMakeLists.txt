@@ -36,6 +36,35 @@ if(NOT JNI_FOUND)
     message(FATAL_ERROR "JNI not found")
 endif()
 
+find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+set(GEN_DIR "${CMAKE_BINARY_DIR}/generated")
+set(FFX_A_IN    "${CMAKE_SOURCE_DIR}/src/ffx_a.h")
+set(FFX_FSR1_IN "${CMAKE_SOURCE_DIR}/src/ffx_fsr1.h")
+
+set(FFX_A_OUT    "${GEN_DIR}/ffx_a_embedded.h")
+set(FFX_FSR1_OUT "${GEN_DIR}/ffx_fsr1_embedded.h")
+
+file(MAKE_DIRECTORY "${GEN_DIR}")
+
+add_custom_command(
+  OUTPUT "${FFX_A_OUT}"
+  COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/embed_text.py"
+          "${FFX_A_IN}" "kFfxA" "${FFX_A_OUT}"
+  DEPENDS "${FFX_A_IN}" "${CMAKE_SOURCE_DIR}/tools/embed_text.py"
+  VERBATIM
+)
+
+add_custom_command(
+  OUTPUT "${FFX_FSR1_OUT}"
+  COMMAND "${Python3_EXECUTABLE}" "${CMAKE_SOURCE_DIR}/tools/embed_text.py"
+          "${FFX_FSR1_IN}" "kFfxFsr1" "${FFX_FSR1_OUT}"
+  DEPENDS "${FFX_FSR1_IN}" "${CMAKE_SOURCE_DIR}/tools/embed_text.py"
+  VERBATIM
+)
+
+add_custom_target(embed_ffx_headers DEPENDS "${FFX_A_OUT}" "${FFX_FSR1_OUT}")
+
 # Include JNI headers
 include_directories(${JNI_INCLUDE_DIRS})
 
@@ -109,12 +138,22 @@ set(SOURCES
     src/libav_impl.c
     src/stb_image_write_impl.cpp
     src/placebo_jni.cpp
-    src/d3d11va_native_jni.cpp
 )
+
+if(WIN32)
+    list(APPEND SOURCES src/d3d11va_native_jni.cpp)
+endif()
+
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    list(APPEND SOURCES src/libstdcxx_compat.cpp)
+endif()
 
 # Add shared library target
 add_library(libplacebo-jni-native SHARED ${SOURCES})
 target_compile_definitions(libplacebo-jni-native PRIVATE PL_STATIC)
+
+add_dependencies(libplacebo-jni-native embed_ffx_headers)
+target_include_directories(libplacebo-jni-native PRIVATE "${GEN_DIR}")
 
 # Set link options for Windows
 if(IS_RUNNING_ON_WINDOWS)
@@ -151,6 +190,11 @@ if(IS_RUNNING_ON_WINDOWS)
         "${SHADERC_LIB_DIR}/libSPIRV-Tools-opt.a"
         "${SHADERC_LIB_DIR}/libSPIRV-Tools.a"
         "${SHADERC_LIB_DIR}/libSPIRV-Tools-diff.a"
+        # FFmpeg 8.x inflates its precompiled Vulkan shaders in
+        # ff_vk_shader_link, so libavcodec.a leaves inflate/inflateEnd/
+        # inflateInit2_ undefined and zlib has to follow it on the link line.
+        # -static above keeps this on libz.a rather than the import library.
+        z
         shlwapi
         bcrypt
     )
@@ -165,6 +209,15 @@ else()
 
     if(APPLE)
         set(MOLTENVK_LIB "${MOLTENVK_LIB_PATH}" CACHE STRING "MoltenVK static library path")
+
+        # ld64 records an LC_LOAD_DYLIB for every dylib named on the link line,
+        # used or not. JNI_LIBRARIES names libjvm and libjawt, neither of which
+        # this library calls, and CMake then adds the build machine's JDK
+        # directories as LC_RPATH so those two can be found. That bakes a path
+        # that only exists on the build machine into a shipped artifact. This is
+        # the ld64 counterpart to --as-needed below.
+        target_link_options(libplacebo-jni-native PRIVATE -Wl,-dead_strip_dylibs)
+
         target_link_libraries(libplacebo-jni-native PRIVATE
             ${LIBPLACEBO_LIB_PATH}
             ${JNI_LIBRARIES}
@@ -188,6 +241,12 @@ else()
             "${SHADERC_LIB_DIR}/libSPIRV-Tools-opt.a"
             "${SHADERC_LIB_DIR}/libSPIRV-Tools.a"
             "${SHADERC_LIB_DIR}/libSPIRV-Tools-diff.a"
+            # FFmpeg 8.x inflates its precompiled Vulkan shaders in
+            # ff_vk_shader_link, so libavcodec.a leaves inflate/inflateEnd/
+            # inflateInit2_ undefined and zlib has to follow it here. Named as
+            # -lz rather than via find_package so it always resolves to the
+            # SDK's libz, never to a keg-only Homebrew copy under /usr/local.
+            z
             "-framework CoreFoundation"
             "-framework CoreMedia"
             "-framework CoreVideo"
@@ -203,6 +262,37 @@ else()
     else()
         pkg_check_modules(VULKAN REQUIRED vulkan)
         link_directories(${VULKAN_LIBRARY_DIRS})
+
+        # The vendored FFmpeg was configured with libdrm, VA-API and X11 support,
+        # so its static archives leave those symbols undefined. A shared library
+        # links without complaint and only fails at dlopen, so they have to be
+        # named explicitly. The set comes from EXTRALIBS-* in the FFmpeg build
+        # config:
+        #   avutil   -pthread -lm -ldrm -latomic -lva -lva-drm -lva-x11 -lX11
+        #   avformat -lm -lz -latomic
+        #   avcodec  -pthread -lm -latomic
+        # x11 via pkg-config, not find_package(X11): CMake's FindX11 prepends
+        # X11_X_PRE_LIBS (libSM and libICE) to X11_LIBRARIES for the benefit of
+        # classic X toolkits, which would add two DT_NEEDED entries FFmpeg never
+        # asked for and that a headless system will not have.
+        pkg_check_modules(LIBDRM REQUIRED libdrm)
+        pkg_check_modules(X11 REQUIRED x11)
+        # VA-API is one of the hardware decode paths the decoder selects on
+        # Linux, so avutil's vaapi hwcontext is compiled in and needs these.
+        pkg_check_modules(LIBVA REQUIRED libva libva-drm libva-x11)
+        find_package(ZLIB REQUIRED)
+        find_package(Threads REQUIRED)
+
+        # x86_64 resolves most atomics inline, so libatomic may not be installed.
+        find_library(ATOMIC_LIB NAMES atomic libatomic.so.1)
+        if(NOT ATOMIC_LIB)
+            set(ATOMIC_LIB "")
+        endif()
+
+        # Drop DT_NEEDED entries for shared libraries whose symbols are never
+        # actually referenced. Without this the .so acquires dependencies that a
+        # minimal system will not have, and it only surfaces at dlopen time.
+        target_link_options(libplacebo-jni-native PRIVATE -Wl,--as-needed)
 
         target_link_libraries(libplacebo-jni-native PRIVATE
             ${LIBPLACEBO_LIB_PATH}
@@ -227,6 +317,15 @@ else()
             "${SHADERC_LIB_DIR}/libSPIRV-Tools-opt.a"
             "${SHADERC_LIB_DIR}/libSPIRV-Tools.a"
             "${SHADERC_LIB_DIR}/libSPIRV-Tools-diff.a"
+            # Must follow the static archives above so the linker can satisfy
+            # their pending references.
+            ${LIBDRM_LIBRARIES}
+            ${LIBVA_LIBRARIES}
+            ${X11_LIBRARIES}
+            ZLIB::ZLIB
+            Threads::Threads
+            ${ATOMIC_LIB}
+            m
         )
     endif()
 endif()
