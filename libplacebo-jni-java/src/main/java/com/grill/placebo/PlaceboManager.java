@@ -392,6 +392,18 @@ public class PlaceboManager {
     public native void plSetAmbientBackground(int ambientMode);
 
     /**
+     * Sets the color of the light bar stripe along the top edge of the window, the band that reflects
+     * what the console asks the controller's light bar to show. Only latched: the UI pass of the next
+     * frame draws it, and a session this is never called on draws no band at all.
+     * <p>
+     * Can be called at any time, including between two frames of a running render loop.
+     *
+     * @param lightBarArgb the color as 0xAARRGGBB, or 0 to draw no band. Of the alpha only whether it is
+     *                     set is read, so a console asking for black still gets a band
+     */
+    public native void plSetLightBarColor(int lightBarArgb);
+
+    /**
      * Renders an avframe.
      * <p>
      * <b>Ownership:</b> the frame is only borrowed for the duration of the call. The caller

@@ -74,6 +74,7 @@
 #include <aspect_icons.h>
 #include <volume_icons.h>
 #include <perf_overlay.h>
+#include <light_bar_stripe.h>
 #include <ui_state.h>
 
 #include <libavutil/buffer.h>
@@ -1168,6 +1169,12 @@ JNIEXPORT jboolean JNICALL Java_com_grill_placebo_PlaceboManager_plInitQueue
 // It lives up here because plVulkanDestroy below ends the session that owns it.
 std::atomic<int> ambientMode{AMBIENT_MODE_OFF};
 
+// The colour of the light bar stripe as 0xAARRGGBB, or zero for a session that
+// draws none, which is every one but the two light bar modes that ask for it.
+// Latched the same way the ambient mode above is: nothing about the band is hit
+// tested, so it needs neither the UI state lock nor a version of its own.
+std::atomic<unsigned int> lightBarArgb{0};
+
 // Defined with the rest of the ambient background further down; declared here
 // because the resources belong to the gpu that plVulkanDestroy tears down.
 namespace { void ambient_destroy(); }
@@ -1739,6 +1746,15 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plSetAmbientBackgro
   // Nothing is allocated here. The render thread picks the mode up and creates
   // the ambient resources on the frame it first needs them.
   ambientMode.store(value, std::memory_order_relaxed);
+}
+
+extern "C"
+JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plSetLightBarColor
+  (JNIEnv *env, jobject obj, jint argb) {
+  // Latched only, like the ambient mode above. A session that never calls this
+  // leaves it at zero, and render_ui then has no band to draw. See
+  // light_bar_stripe.h for the shape of it.
+  lightBarArgb.store(static_cast<unsigned int>(argb), std::memory_order_relaxed);
 }
 
 // AVFrame ownership contract for plRenderAvFrame and plRenderAvFrameWithUi:
@@ -2934,8 +2950,12 @@ bool ui_draw(struct ui *ui, const struct pl_swapchain_frame *frame)
 }
 
 void render_ui(struct ui *ui, int width, int height) {
+  // Read once, so the band cannot be gone by the time it would be drawn below
+  const unsigned int currentLightBarArgb = lightBarArgb.load(std::memory_order_relaxed);
+
   if (!ui || (!globalUiState.showTouchpad && !globalUiState.showPanel && !globalUiState.showPopup
-              && !globalUiState.showContentNotStreamable && !globalUiState.showPerfOverlay))
+              && !globalUiState.showContentNotStreamable && !globalUiState.showPerfOverlay
+              && (currentLightBarArgb >> 24) == 0u))
       return;
 
   struct nk_context *ctx = &ui->nk;
@@ -2949,6 +2969,9 @@ void render_ui(struct ui *ui, int width, int height) {
       float centerPosition = (bounds.w / 2) - panelCenterOffset;
       // cache button style
       struct nk_style_button cachedButtonStyle = ctx->style.button;
+
+      // **** Light bar stripe, first so everything else composites over the band rather than under it
+      nk_draw_light_bar_stripe(nk_window_get_canvas(ctx), bounds.w, bounds.h, currentLightBarArgb);
 
       if(globalUiState.showPanel) {
           // **** PS button ****
