@@ -1205,6 +1205,9 @@ JNIEXPORT void JNICALL Java_com_grill_placebo_PlaceboManager_plVulkanDestroy
   // The ambient setting belongs to the session that pushed it. A next session
   // that never asks for a background must not inherit this one's.
   ambientMode.store(AMBIENT_MODE_OFF, std::memory_order_relaxed);
+  // The light bar colour likewise. A session whose light bar mode draws no band
+  // never pushes a colour at all, so this one's would be left for it to draw.
+  lightBarArgb.store(0u, std::memory_order_relaxed);
   g_active_gpu.store(nullptr, std::memory_order_release);
   m_HasPendingSwapchainFrame = false;
   m_SwapchainFrame = {};
