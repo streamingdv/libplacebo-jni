@@ -74,6 +74,9 @@
 #include <aspect_icons.h>
 #include <volume_icons.h>
 #include <perf_overlay.h>
+#include <join_hint.h>
+#include <pad_overlay.h>
+#include <player_picker.h>
 #include <light_bar_stripe.h>
 #include <ui_state.h>
 
@@ -2725,6 +2728,26 @@ struct ui_vertex {
 
 #define NUM_VERTEX_ATTRIBS 3
 
+/**
+ * The faces of the account card on their way from the app to the tiles of it, see player_picker.h.
+ *
+ * They cross a thread here. The app hands the pixels over on whichever thread it holds the card on, and
+ * only the render thread may make textures of them, so the bytes wait here until that thread comes past
+ * and turns whatever is new into textures of its own. It knows there is something new by the version,
+ * which is the one thing it reads without taking the lock.
+ *
+ * A lock rather than the write-and-publish the rest of the ui state uses: a face is a picture and not a
+ * line of text, so it is not written in place but handed over whole, and the two threads must not be in
+ * the buffer at the same time. Taken twice per join and never per frame.
+ */
+static struct {
+    std::mutex lock;
+    std::string staged;                     // the tiles back to back, edge*edge*4 each, in tile order
+    int stagedEdge = 0;
+    unsigned int stagedMask = 0;            // bit per tile of staged that carries a picture
+    std::atomic<uint64_t> stagedVersion{0}; // bumped by the app with every handover
+} g_playerPickerFaces;
+
 struct ui {
   pl_gpu gpu;
   pl_dispatch dp;
@@ -2732,14 +2755,99 @@ struct ui {
   struct nk_font *default_bold_font;
   struct nk_font *default_small_font;
   struct nk_font *icon_font;
+  // the default one at the two sizes the account card sets its own text in: the names under the tiles and
+  // the lines of its text bands. Kept here rather than made per frame because a drawn line holds its font
+  // until the frame is converted, see player_picker.h
+  struct nk_user_font name_font;
+  struct nk_user_font band_font;
   struct nk_context nk;
   struct nk_font_atlas atlas;
   struct nk_buffer cmds, verts, idx;
   pl_tex font_tex;
+  // the faces of the account card, made on the render thread out of what the app staged, and the handles
+  // the card is given for them. Their mask says which tiles ended up with one, see player_picker.h
+  pl_tex avatar_tex[NK_PLAYER_PICKER_MAX_TILES];
+  struct nk_image avatar_image[NK_PLAYER_PICKER_MAX_TILES];
+  unsigned int avatar_mask;
+  uint64_t avatar_version;         // the handover these were made out of
   struct pl_vertex_attrib attribs_pl[NUM_VERTEX_ATTRIBS];
   struct nk_draw_vertex_layout_element attribs_nk[NUM_VERTEX_ATTRIBS+1];
   struct nk_convert_config convert_cfg;
 };
+
+/** Hands the textures of the faces back, which only the render thread may do. */
+static void ui_release_avatars(struct ui *ui)
+{
+  const struct nk_image none = {};
+  for (int tile = 0; tile < NK_PLAYER_PICKER_MAX_TILES; ++tile) {
+      pl_tex_destroy(ui->gpu, &ui->avatar_tex[tile]);
+      ui->avatar_image[tile] = none;
+  }
+  ui->avatar_mask = 0;
+}
+
+/**
+ * Turns whatever the app has handed over into textures, once per handover.
+ *
+ * On the render thread and off the hot path: a frame with nothing new about the faces pays for one read of
+ * an atomic and nothing else, which is what a session that never shows the card pays as well.
+ */
+static void ui_upload_avatars(struct ui *ui)
+{
+  std::string staged;
+  int edge;
+  unsigned int mask;
+  uint64_t version;
+
+  // without the lock, and only to find out whether there is anything to take it for
+  if (g_playerPickerFaces.stagedVersion.load(std::memory_order_acquire) == ui->avatar_version)
+      return;
+
+  {
+      std::lock_guard<std::mutex> held(g_playerPickerFaces.lock);
+      version = g_playerPickerFaces.stagedVersion.load(std::memory_order_relaxed);
+      // taken away rather than copied: the pixels are of no further use to the app once they are textures
+      staged = std::move(g_playerPickerFaces.staged);
+      g_playerPickerFaces.staged.clear();
+      g_playerPickerFaces.staged.shrink_to_fit();
+      edge = g_playerPickerFaces.stagedEdge;
+      mask = g_playerPickerFaces.stagedMask;
+      g_playerPickerFaces.stagedEdge = 0;
+      g_playerPickerFaces.stagedMask = 0;
+  }
+
+  ui->avatar_version = version;
+  ui_release_avatars(ui);
+  if (edge <= 0 || mask == 0)
+      return;
+
+  const size_t face = (size_t) edge * (size_t) edge * 4u;
+  size_t at = 0;
+  for (int tile = 0; tile < NK_PLAYER_PICKER_MAX_TILES; ++tile) {
+      if (!(mask & (1u << tile)))
+          continue;
+      if (at + face > staged.size())
+          break;
+
+      struct pl_tex_params tparams = {};
+      tparams.w = edge;
+      tparams.h = edge;
+      tparams.format = pl_find_named_fmt(ui->gpu, "rgba8");
+      tparams.sampleable = true;
+      tparams.initial_data = staged.data() + at;
+      at += face;
+
+      if (!tparams.format)
+          break;
+
+      ui->avatar_tex[tile] = pl_tex_create(ui->gpu, &tparams);
+      if (!ui->avatar_tex[tile])
+          continue;
+
+      ui->avatar_image[tile] = nk_image_ptr((void *) ui->avatar_tex[tile]);
+      ui->avatar_mask |= (1u << tile);
+  }
+}
 
 void ui_destroy(struct ui *ui)
 {
@@ -2752,7 +2860,22 @@ void ui_destroy(struct ui *ui)
   nk_free(&ui->nk);
   nk_font_atlas_clear(&ui->atlas);
   pl_tex_destroy(ui->gpu, &ui->font_tex);
+  ui_release_avatars(ui);
   pl_dispatch_destroy(&ui->dp);
+
+  /*
+   * The pixels the app staged go too, this being the end of the renderer they were meant for. They are
+   * static and would otherwise sit there for the rest of the process, which a session that ended with the
+   * card still open would leave behind: the app clears them when the card closes, and that is a card that
+   * never closed. A later session stages its own before it draws one.
+   */
+  {
+      std::lock_guard<std::mutex> held(g_playerPickerFaces.lock);
+      g_playerPickerFaces.staged.clear();
+      g_playerPickerFaces.staged.shrink_to_fit();
+      g_playerPickerFaces.stagedEdge = 0;
+      g_playerPickerFaces.stagedMask = 0;
+  }
 
   delete[] globalUiState.notStreamableText;
   delete[] globalUiState.popupState.headerText;
@@ -2854,6 +2977,9 @@ struct ui *ui_create(pl_gpu gpu, const char* locale)
       goto error;
   }
 
+  ui->name_font = nk_player_picker_derived_font(&ui->default_font->handle, playerPickerNameFontHeight);
+  ui->band_font = nk_player_picker_derived_font(&ui->default_font->handle, playerPickerBandFontHeight);
+
   nk_buffer_init_default(&ui->cmds);
   nk_buffer_init_default(&ui->verts);
   nk_buffer_init_default(&ui->idx);
@@ -2891,6 +3017,14 @@ bool ui_draw(struct ui *ui, const struct pl_swapchain_frame *frame)
       if (!cmd->elem_count)
           continue;
 
+      /*
+       * The atlas carries coverage and a picture carries colour, so what a command samples follows from the
+       * texture it brought along: everything of the overlay but the faces of the account card is the atlas.
+       * A picture is also smoothed rather than picked, being drawn at the size of the circle it goes in and
+       * not at the size it came as. See player_picker.h.
+       */
+      const bool isImage = (cmd->texture.ptr && cmd->texture.ptr != (void *) ui->font_tex);
+
       pl_shader sh = pl_dispatch_begin(ui->dp);
       struct pl_shader_desc shader_desc = {
           .desc = {
@@ -2899,12 +3033,13 @@ bool ui_draw(struct ui *ui, const struct pl_swapchain_frame *frame)
           },
           .binding = {
               .object = cmd->texture.ptr,
-              .sample_mode = PL_TEX_SAMPLE_NEAREST,
+              .sample_mode = isImage ? PL_TEX_SAMPLE_LINEAR : PL_TEX_SAMPLE_NEAREST,
           },
       };
       struct pl_custom_shader custom_shader = {
-          .description = "nuklear UI",
-          .body = "color = textureLod(ui_tex, coord, 0.0).r * vcolor;",
+          .description = isImage ? "nuklear UI image" : "nuklear UI",
+          .body = isImage ? "color = textureLod(ui_tex, coord, 0.0) * vcolor;"
+                          : "color = textureLod(ui_tex, coord, 0.0).r * vcolor;",
           .output = PL_SHADER_SIG_COLOR,
           .descriptors = &shader_desc,
           .num_descriptors = 1,
@@ -2956,9 +3091,20 @@ void render_ui(struct ui *ui, int width, int height) {
   // Read once, so the band cannot be gone by the time it would be drawn below
   const unsigned int currentLightBarArgb = lightBarArgb.load(std::memory_order_relaxed);
 
-  if (!ui || (!globalUiState.showTouchpad && !globalUiState.showPanel && !globalUiState.showPopup
-              && !globalUiState.showContentNotStreamable && !globalUiState.showPerfOverlay
-              && (currentLightBarArgb >> 24) == 0u))
+  if (!ui)
+      return;
+
+  // The faces of the account card, if the app has handed new ones over since the last frame. Ahead of the
+  // return below rather than beside the card, so that the textures of a card that has closed are given
+  // back on the frame after it closed instead of being held for the rest of the session.
+  ui_upload_avatars(ui);
+
+  // The controller overlay asks for nothing of its own here: it is only drawn along with the button panel,
+  // so a session holding a seating with the panel away has no more to draw than one holding none.
+  if (!globalUiState.showTouchpad && !globalUiState.showPanel && !globalUiState.showPopup
+      && !globalUiState.showContentNotStreamable && !globalUiState.showPerfOverlay
+      && !globalUiState.showJoinHint && !globalUiState.showPlayerPicker
+      && (currentLightBarArgb >> 24) == 0u)
       return;
 
   struct nk_context *ctx = &ui->nk;
@@ -3265,6 +3411,56 @@ void render_ui(struct ui *ui, int width, int height) {
                                globalUiState.perfOverlayArrowPressed ? nk_true : nk_false);
       }
 
+      // **** Join hint, below the performance overlay it makes room for, see join_hint.h
+      // a step up from the font of that overlay, for the reason that file gives
+      if(globalUiState.showJoinHint && ui->default_bold_font != NULL) {
+          nk_draw_join_hint(nk_window_get_canvas(ctx), &ui->default_bold_font->handle,
+                            bounds.w, bounds.h, globalUiState.joinHintText,
+                            globalUiState.showPerfOverlay ? nk_true : nk_false,
+                            globalUiState.perfOverlayCollapsed ? nk_true : nk_false);
+      }
+
+      // **** Controller overlay, top left and clear of both of the above, see pad_overlay.h. Shown with
+      // the button panel, and on its own while the app holds it up because the seating has just changed.
+      if(globalUiState.padOverlaySeats > 0 && (globalUiState.showPanel || globalUiState.padOverlayHold)
+         && ui->default_font != NULL) {
+          nk_draw_pad_overlay(nk_window_get_canvas(ctx), &ui->default_font->handle,
+                              bounds.w, bounds.h, globalUiState.padOverlaySeats,
+                              globalUiState.padOverlayConnectedMask, globalUiState.padOverlayJoinedMask,
+                              globalUiState.padOverlayNames,
+                              globalUiState.showPerfOverlay ? nk_true : nk_false,
+                              globalUiState.perfOverlayCollapsed ? nk_true : nk_false);
+      }
+
+      // **** The card a joining player picks an account on, over the overlays and under a popup, being a
+      // modal of its own. Only a multiplayer session on a PlayStation 5 ever asks for it, see player_picker.h
+      if(globalUiState.showPlayerPicker && ui->default_bold_font != NULL && ui->default_font != NULL) {
+          struct nk_player_picker_content picker = {};
+          picker.page = globalUiState.playerPickerState.page;
+          picker.focused = globalUiState.playerPickerState.focused;
+          picker.accountCount = globalUiState.playerPickerState.accountCount;
+          picker.title = globalUiState.playerPickerState.title;
+          picker.message = globalUiState.playerPickerState.message;
+          picker.hint = globalUiState.playerPickerState.hint;
+          picker.accountNames = globalUiState.playerPickerState.accountNames;
+          picker.monograms = globalUiState.playerPickerState.monograms;
+          // the tiles whose faces have arrived draw them instead of their letter, the rest of the array
+          // being the empty handles the card falls back on
+          picker.avatars = ui->avatar_mask ? ui->avatar_image : NULL;
+          picker.newAccountText = globalUiState.playerPickerState.newAccountText;
+          picker.cancelText = globalUiState.playerPickerState.cancelText;
+          picker.backText = globalUiState.playerPickerState.backText;
+          picker.showBackButton = globalUiState.playerPickerState.showBackButton ? nk_true : nk_false;
+          picker.cancelPressed = globalUiState.playerPickerState.cancelPressed ? nk_true : nk_false;
+          picker.backPressed = globalUiState.playerPickerState.backPressed ? nk_true : nk_false;
+          picker.qrModuleCount = globalUiState.playerPickerState.qrModuleCount;
+          picker.qrModules = globalUiState.playerPickerState.qrModules;
+          picker.typedDigits = globalUiState.playerPickerState.typedDigits;
+
+          nk_player_picker_draw(ctx, bounds.w, bounds.h, &ui->default_bold_font->handle,
+                                &ui->default_font->handle, &ui->name_font, &ui->band_font, &picker);
+      }
+
       // **** Fullscreen popup
       if(globalUiState.showPopup && ui->default_bold_font != NULL && ui->default_font != NULL) {
           struct nk_dialog_content content = {};
@@ -3321,7 +3517,13 @@ Java_com_grill_placebo_PlaceboManager_nkUpdateUIState(JNIEnv *env, jobject obj,
   jboolean showPerfOverlay, jboolean perfOverlayCollapsed, jboolean perfOverlayClosePressed,
   jboolean perfOverlayArrowPressed, jstring perfOverlayText,
   // grown at the end, so a java side without them keeps working against this native as well
-  jboolean panelShowVolumeButtons, jboolean panelVolumeDownPressed, jboolean panelVolumeUpPressed ) {
+  jboolean panelShowVolumeButtons, jboolean panelVolumeDownPressed, jboolean panelVolumeUpPressed,
+  jboolean showJoinHint, jstring joinHintText,
+  jint padOverlaySeats, jint padOverlayConnectedMask, jstring padOverlayNames,
+  jint padOverlayJoinedMask,
+  // and last for the moment the controller overlay is held up on its own, which an older java side
+  // never asks for and this then never does
+  jboolean padOverlayHold ) {
 
   globalUiState.showTouchpad = showTouchpad;
   globalUiState.showPanel = showPanel;
@@ -3376,6 +3578,115 @@ Java_com_grill_placebo_PlaceboManager_nkUpdateUIState(JNIEnv *env, jobject obj,
   globalUiState.perfOverlayClosePressed = perfOverlayClosePressed;
   globalUiState.perfOverlayArrowPressed = perfOverlayArrowPressed;
   globalUiState.showPerfOverlay = showPerfOverlay;
+
+  // the sentence before the flag as well, for the same reason
+  copyStringInto(env, joinHintText, globalUiState.joinHintText, sizeof(globalUiState.joinHintText));
+  globalUiState.showJoinHint = showJoinHint;
+
+  // and the names before the seat count, so no row can be drawn from the names of the last seating
+  copyStringInto(env, padOverlayNames, globalUiState.padOverlayNames, sizeof(globalUiState.padOverlayNames));
+  globalUiState.padOverlayConnectedMask = padOverlayConnectedMask;
+  globalUiState.padOverlayJoinedMask = padOverlayJoinedMask;
+  globalUiState.padOverlayHold = padOverlayHold;
+  globalUiState.padOverlaySeats = padOverlaySeats;
+}
+
+/**
+ * The card a joining player picks the account they join with on, see player_picker.h.
+ *
+ * Pushed on its own rather than with the state above, which the mouse changes on every movement: the card
+ * changes a handful of times per join, and the code it draws is a few thousand bytes that a session
+ * showing no card has no reason to carry along.
+ *
+ * Everything of the card is written before the flag that turns it on, so the render thread, which reads
+ * this without a lock, cannot draw one page with the content of another.
+ */
+extern "C" JNIEXPORT void JNICALL
+Java_com_grill_placebo_PlaceboManager_nkUpdatePlayerPicker(JNIEnv *env, jobject obj,
+  jboolean show, jint page, jint focused, jint accountCount,
+  jstring title, jstring message, jstring hint,
+  jstring accountNames, jstring monograms,
+  jstring newAccountText, jstring cancelText, jstring backText,
+  jboolean showBackButton, jboolean cancelPressed, jboolean backPressed,
+  jint qrModuleCount, jbyteArray qrModules, jint typedDigits ) {
+
+  PlayerPickerState& picker = globalUiState.playerPickerState;
+
+  if (!show) {
+      globalUiState.showPlayerPicker = false;
+      picker.qrModuleCount = 0;
+      return;
+  }
+
+  copyStringInto(env, title, picker.title, sizeof(picker.title));
+  copyStringInto(env, message, picker.message, sizeof(picker.message));
+  copyStringInto(env, hint, picker.hint, sizeof(picker.hint));
+  copyStringInto(env, accountNames, picker.accountNames, sizeof(picker.accountNames));
+  copyStringInto(env, monograms, picker.monograms, sizeof(picker.monograms));
+  copyStringInto(env, newAccountText, picker.newAccountText, sizeof(picker.newAccountText));
+  copyStringInto(env, cancelText, picker.cancelText, sizeof(picker.cancelText));
+  copyStringInto(env, backText, picker.backText, sizeof(picker.backText));
+
+  picker.page = page;
+  picker.focused = focused;
+  picker.accountCount = accountCount;
+  picker.showBackButton = showBackButton;
+  picker.cancelPressed = cancelPressed;
+  picker.backPressed = backPressed;
+  // however many boxes the card should show as filled, whatever the app says, never the digits themselves
+  picker.typedDigits = typedDigits;
+
+  // one byte per module of the code, row by row, and the count last so no code is read half written
+  picker.qrModuleCount = 0;
+  if (qrModules != nullptr && qrModuleCount > 0 && qrModuleCount <= PLAYER_PICKER_MAX_QR_MODULES) {
+      const jsize needed = (jsize) qrModuleCount * (jsize) qrModuleCount;
+      if (env->GetArrayLength(qrModules) >= needed) {
+          env->GetByteArrayRegion(qrModules, 0, needed, reinterpret_cast<jbyte*>(picker.qrModules));
+          picker.qrModuleCount = qrModuleCount;
+      }
+  }
+
+  globalUiState.showPlayerPicker = true;
+}
+
+/**
+ * The faces of that card, one square of edge*edge straight RGBA per tile and in tile order, with a bit set
+ * in mask for every tile that has one.
+ *
+ * Pushed on its own and once per join rather than with the card above, which is pushed again on every
+ * movement of the highlight: a face is a picture, and there is no reason to carry it along for the sake of
+ * a highlight that moved. An edge of zero drops the ones that are there.
+ *
+ * Only staged here. The render thread is the one that may make textures, and it does that on its next
+ * frame, see ui_upload_avatars.
+ */
+extern "C" JNIEXPORT void JNICALL
+Java_com_grill_placebo_PlaceboManager_nkUpdatePlayerPickerAvatars(JNIEnv *env, jobject obj,
+  jint edge, jint mask, jbyteArray rgba) {
+
+  const jsize length = (rgba != nullptr && edge > 0 && mask != 0) ? env->GetArrayLength(rgba) : 0;
+  const bool sane = (length > 0 && edge <= NK_PLAYER_PICKER_AVATAR_MAX_EDGE
+                     && (size_t) length >= (size_t) edge * (size_t) edge * 4u);
+
+  std::lock_guard<std::mutex> held(g_playerPickerFaces.lock);
+
+  if (sane) {
+      g_playerPickerFaces.staged.resize((size_t) length);
+      env->GetByteArrayRegion(rgba, 0, length, reinterpret_cast<jbyte *>(&g_playerPickerFaces.staged[0]));
+      g_playerPickerFaces.stagedEdge = edge;
+      g_playerPickerFaces.stagedMask = ((unsigned int) mask) & ((1u << NK_PLAYER_PICKER_MAX_TILES) - 1u);
+  } else {
+      // the app either has no faces to show or sent something this cannot be, and the tiles keep their
+      // letters either way
+      g_playerPickerFaces.staged.clear();
+      g_playerPickerFaces.staged.shrink_to_fit();
+      g_playerPickerFaces.stagedEdge = 0;
+      g_playerPickerFaces.stagedMask = 0;
+  }
+
+  // Inside the lock, so that the number and the bytes it stands for are never out of step: the render
+  // thread reads it without the lock only to find out whether it has to take it at all.
+  g_playerPickerFaces.stagedVersion.fetch_add(1, std::memory_order_release);
 }
 
 extern "C"

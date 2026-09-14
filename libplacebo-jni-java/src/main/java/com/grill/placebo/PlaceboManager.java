@@ -483,8 +483,70 @@ public class PlaceboManager {
             boolean showPerfOverlay, boolean perfOverlayCollapsed, boolean perfOverlayClosePressed,
             boolean perfOverlayArrowPressed, String perfOverlayText,
             // grown at the end, so a native without them still resolves and simply draws no volume pair
-            boolean panelShowVolumeButtons, boolean panelVolumeDownPressed, boolean panelVolumeUpPressed
+            boolean panelShowVolumeButtons, boolean panelVolumeDownPressed, boolean panelVolumeUpPressed,
+            // and again for the join hint, which such a native likewise simply does not draw
+            boolean showJoinHint, String joinHintText,
+            // and once more for the controller overlay, drawn by a native that knows the three below
+            int padOverlaySeats, int padOverlayConnectedMask, String padOverlayNames,
+            // and last for which of those seats the console has let in, which an older native reads as
+            // none of them and draws every dot of a connected controller in white
+            int padOverlayJoinedMask,
+            // and once more for the moment the controller overlay is held up with the panel down, which
+            // an older native ignores and so only ever shows that overlay along with the panel
+            boolean padOverlayHold
     );
+
+    /**
+     * Hands the renderer the card a joining player picks the account they join with on, or takes it off
+     * screen again.
+     * <p>
+     * Pushed on its own rather than with the state above, which the mouse changes on every movement: the
+     * card changes a handful of times per join, and the code it draws is a few thousand bytes that a
+     * session showing no card has no reason to carry along.
+     *
+     * @param show          whether the card is on screen, everything below being ignored while it is not
+     * @param page          0 for the accounts, 1 for the code a phone reads, 2 for the wait after it,
+     *                      3 for the passcode of the account being joined with
+     * @param focused       which tile carries the highlight, the new account one coming after the last
+     * @param accountCount  how many accounts are on offer
+     * @param accountNames  what they are called, newline separated and in tile order
+     * @param monograms     the letters of their circles, newline separated and in the same order
+     * @param qrModuleCount how many modules the code has along each edge, quiet zone included, or 0
+     * @param qrModules     one byte per module of it, row by row, non zero for a dark one
+     * @param typedDigits   how many digits of the passcode have been typed, on that page only, which is
+     *                      how many of its boxes are filled and which one of them is lit. A count and
+     *                      never the digits: what a player types is an answer to their own console and has
+     *                      no reason to reach a renderer
+     */
+    public native void nkUpdatePlayerPicker(
+            boolean show, int page, int focused, int accountCount,
+            String title, String message, String hint,
+            String accountNames, String monograms,
+            String newAccountText, String cancelText, String backText,
+            boolean showBackButton, boolean cancelPressed, boolean backPressed,
+            int qrModuleCount, byte[] qrModules,
+            // grown at the end for the passcode page, which a native without it simply never draws
+            int typedDigits
+    );
+
+    /**
+     * Hands the renderer the faces of that card, which the tiles draw in their circles instead of the
+     * letters above, or drops the ones it has.
+     *
+     * Pushed on its own and once per join rather than with the card above, which is pushed again on every
+     * movement of the highlight: a face is a picture, and there is no reason to carry it along for the sake
+     * of a highlight that moved. A tile whose face is missing keeps its letter, so a face that arrives late
+     * or not at all costs nothing but the letter staying.
+     * <p>
+     * The pixels are only staged by this call. The render thread makes textures of them on its next frame,
+     * being the only one that may.
+     *
+     * @param edge how many pixels one face is along each edge, at most 160, or 0 to drop them
+     * @param mask bit per tile that has a face, in tile order and from the lowest bit
+     * @param rgba the faces back to back and in tile order, edge * edge * 4 bytes of straight (not
+     *             premultiplied) RGBA each, the rounding already drawn into their alpha
+     */
+    public native void nkUpdatePlayerPickerAvatars(int edge, int mask, byte[] rgba);
 
     /**
      * Destroys the nuklear ui stuff
