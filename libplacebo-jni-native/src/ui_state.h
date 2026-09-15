@@ -73,6 +73,9 @@ struct UiState {
     bool showPopup;
     bool touchpadPressed;
     bool panelPressed;
+    // The share of the window width the touchpad spans, see touchpadRect of ui_consts.h. Set for the
+    // session rather than per frame, and zero until a java side that knows this setting names it.
+    float touchpadWidthFraction;
     bool showContentNotStreamable;
     bool showPerfOverlay;           // the performance overlay, only for a session that has it enabled
     bool perfOverlayCollapsed;      // folded away to the pill, for the rest of the session

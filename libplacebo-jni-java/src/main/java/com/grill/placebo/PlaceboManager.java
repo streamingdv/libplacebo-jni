@@ -497,6 +497,22 @@ public class PlaceboManager {
     );
 
     /**
+     * How much of the window width the onscreen touchpad spans, the rest of it being left to either side
+     * of a touchpad that is centered in the window. Only the width is narrowed: the touchpad reaches from
+     * the top edge of the window down to just above the button strip either way.
+     * <p>
+     * Pushed on its own rather than with the state above, which the mouse changes on every movement: this
+     * is a setting, so it is named once when a session builds its UI and does not change again while that
+     * session runs.
+     * <p>
+     * The touchpad is hit tested on the app side, which has to agree with this on the rectangle.
+     *
+     * @param widthFraction between 0 and 1, where 1 is the full width of the window. A native library
+     *                      from before this call draws the touchpad at the full width.
+     */
+    public native void nkSetTouchpadWidthFraction(float widthFraction);
+
+    /**
      * Hands the renderer the card a joining player picks the account they join with on, or takes it off
      * screen again.
      * <p>

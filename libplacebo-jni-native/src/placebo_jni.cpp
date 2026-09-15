@@ -3352,7 +3352,7 @@ void render_ui(struct ui *ui, int width, int height) {
           ctx->style.button.rounding = 8;
           ctx->style.button.border = 1;
           ctx->style.button.padding = nk_vec2(touchpadPadding, touchpadPadding);
-          nk_layout_space_push(ctx, nk_rect(0, 0, bounds.w - ((touchpadPadding * 0.6)), bounds.h - (panelStripHeight + touchpadPadding)));
+          nk_layout_space_push(ctx, touchpadRect(bounds.w, bounds.h, globalUiState.touchpadWidthFraction));
           if (nk_button_label(ctx, "")) {
               // event handling (ignored here)
           }
@@ -3589,6 +3589,19 @@ Java_com_grill_placebo_PlaceboManager_nkUpdateUIState(JNIEnv *env, jobject obj,
   globalUiState.padOverlayJoinedMask = padOverlayJoinedMask;
   globalUiState.padOverlayHold = padOverlayHold;
   globalUiState.padOverlaySeats = padOverlaySeats;
+}
+
+/**
+ * How much of the window width the onscreen touchpad spans, see touchpadRect of ui_consts.h.
+ *
+ * Pushed on its own rather than with the state above, which the mouse changes on every movement: the
+ * touchpad width is a setting, so it is named once when the session builds its UI and does not change
+ * again while that session runs.
+ */
+extern "C" JNIEXPORT void JNICALL
+Java_com_grill_placebo_PlaceboManager_nkSetTouchpadWidthFraction(JNIEnv *env, jobject obj,
+  jfloat widthFraction ) {
+  globalUiState.touchpadWidthFraction = static_cast<float>(widthFraction);
 }
 
 /**

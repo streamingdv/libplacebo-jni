@@ -367,6 +367,30 @@ static nk_bool panelRightSlotFits(float panelWidth, int slot)
     return panelRightSlotX(panelWidth, slot) >= panelCenterClusterRight(panelWidth);
 }
 
+/**
+ * The rectangle of the onscreen touchpad, which the touchpad width setting of PXPlay narrows. Its share
+ * of the window width arrives through nkSetTouchpadWidthFraction, and only the width is ever narrowed:
+ * the touchpad reaches from the top edge down to one touchpadPadding above the button strip either way.
+ *
+ * A touchpad narrower than the window is centered in it. The full width one keeps the rectangle it has
+ * always had, whose slight inset on the right comes from the padding of the nuklear button it is drawn
+ * as, so that this setting leaves the look of a session that does not use it exactly as it was.
+ *
+ * A fraction of zero is what a java side from before this setting leaves behind, and is read as the full
+ * width rather than as a touchpad of no width at all.
+ *
+ * The touchpad is hit tested on the java side, so TouchpadArea of PXPlay mirrors this.
+ */
+static struct nk_rect touchpadRect(float windowWidth, float windowHeight, float widthFraction)
+{
+    const float height = windowHeight - (panelStripHeight + touchpadPadding);
+    if (!(widthFraction > 0.0f) || widthFraction >= 1.0f) {
+        return nk_rect(0, 0, windowWidth - (touchpadPadding * 0.6f), height);
+    }
+    const float width = windowWidth * widthFraction;
+    return nk_rect((windowWidth - width) * 0.5f, 0, width, height);
+}
+
 // the dialog brings its own sizes and colors, see dialog_ui.h
 // colors
 const struct nk_color touchpad_white_border_color_alpha = nk_rgba(255, 255, 255, 190);
