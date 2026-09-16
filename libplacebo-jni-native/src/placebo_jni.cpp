@@ -3099,11 +3099,17 @@ void render_ui(struct ui *ui, int width, int height) {
   // back on the frame after it closed instead of being held for the rest of the session.
   ui_upload_avatars(ui);
 
-  // The controller overlay asks for nothing of its own here: it is only drawn along with the button panel,
-  // so a session holding a seating with the panel away has no more to draw than one holding none.
+  // The controller overlay is drawn along with the button panel, and on its own while the app holds it up
+  // because the seating has just changed, so a card held up over a panel that is away has to keep this
+  // pass alive by itself. The same condition the card is drawn under below, rather than a second reading
+  // of it, so the two cannot come apart again.
+  const bool padOverlayShowing = globalUiState.padOverlaySeats > 0
+                                 && (globalUiState.showPanel || globalUiState.padOverlayHold);
+
   if (!globalUiState.showTouchpad && !globalUiState.showPanel && !globalUiState.showPopup
       && !globalUiState.showContentNotStreamable && !globalUiState.showPerfOverlay
       && !globalUiState.showJoinHint && !globalUiState.showPlayerPicker
+      && !padOverlayShowing
       && (currentLightBarArgb >> 24) == 0u)
       return;
 
@@ -3422,8 +3428,7 @@ void render_ui(struct ui *ui, int width, int height) {
 
       // **** Controller overlay, top left and clear of both of the above, see pad_overlay.h. Shown with
       // the button panel, and on its own while the app holds it up because the seating has just changed.
-      if(globalUiState.padOverlaySeats > 0 && (globalUiState.showPanel || globalUiState.padOverlayHold)
-         && ui->default_font != NULL) {
+      if(padOverlayShowing && ui->default_font != NULL) {
           nk_draw_pad_overlay(nk_window_get_canvas(ctx), &ui->default_font->handle,
                               bounds.w, bounds.h, globalUiState.padOverlaySeats,
                               globalUiState.padOverlayConnectedMask, globalUiState.padOverlayJoinedMask,
